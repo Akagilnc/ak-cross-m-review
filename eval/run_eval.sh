@@ -79,27 +79,47 @@ if [ $STUB_MODE -eq 1 ]; then
   exit 0
 fi
 
-PROMPT="prompts/reviewer-doc.md"
-if [ ! -f "$PROMPT" ]; then
-  echo "error: $PROMPT not found" >&2
+PROMPT_FILE="prompts/reviewer-doc.md"
+if [ ! -f "$PROMPT_FILE" ]; then
+  echo "error: $PROMPT_FILE not found" >&2
   exit 2
 fi
 
+# Compose the full dispatch prompt: task prompt + fixture content.
+DISPATCH_PROMPT="$(
+  cat "$PROMPT_FILE"
+  echo
+  echo "--- BEGIN TARGET FILE: $FIXTURE ---"
+  echo
+  cat "$FIXTURE"
+  echo
+  echo "--- END TARGET FILE ---"
+  echo
+  echo "Return JSON only. No markdown wrapper."
+)"
+
+echo "dispatch prompt: $(printf '%s' "$DISPATCH_PROMPT" | wc -c) bytes"
+echo ""
 echo "dispatching 3 reviewers in parallel..."
 (
-  backends/claude-headless.sh "$PROMPT" "$FIXTURE" "$MODE" \
+  printf '%s' "$DISPATCH_PROMPT" | backends/claude-headless.sh "$MODE" \
     > "$RUN_DIR/claude.json" 2> "$RUN_DIR/claude.err" &
   CLAUDE_PID=$!
-  backends/codex.sh "$PROMPT" "$FIXTURE" "$MODE" \
+
+  printf '%s' "$DISPATCH_PROMPT" | backends/codex.sh "$MODE" "$PROTO_ROOT" \
     > "$RUN_DIR/codex.json" 2> "$RUN_DIR/codex.err" &
   CODEX_PID=$!
-  backends/gemini.sh "$PROMPT" "$FIXTURE" "$MODE" \
+
+  printf '%s' "$DISPATCH_PROMPT" | backends/gemini.sh "$MODE" \
     > "$RUN_DIR/gemini.json" 2> "$RUN_DIR/gemini.err" &
   GEMINI_PID=$!
 
-  wait $CLAUDE_PID && echo "  ✓ claude done" || echo "  ✗ claude failed"
-  wait $CODEX_PID && echo "  ✓ codex done" || echo "  ✗ codex failed"
-  wait $GEMINI_PID && echo "  ✓ gemini done" || echo "  ✗ gemini failed"
+  wait $CLAUDE_PID  && echo "  ✓ claude  done ($(jq '.findings | length' "$RUN_DIR/claude.json" 2>/dev/null || echo '?') findings)" \
+                    || echo "  ✗ claude  failed — see $RUN_DIR/claude.err"
+  wait $CODEX_PID   && echo "  ✓ codex   done ($(jq '.findings | length' "$RUN_DIR/codex.json" 2>/dev/null || echo '?') findings)" \
+                    || echo "  ✗ codex   failed — see $RUN_DIR/codex.err"
+  wait $GEMINI_PID  && echo "  ✓ gemini  done ($(jq '.findings | length' "$RUN_DIR/gemini.json" 2>/dev/null || echo '?') findings)" \
+                    || echo "  ✗ gemini  failed — see $RUN_DIR/gemini.err"
 )
 
 # --- Step 3: merge ---
