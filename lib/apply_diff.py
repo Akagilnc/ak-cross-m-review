@@ -48,6 +48,42 @@ HUNK_HEADER_RE = re.compile(
     r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)$"
 )
 
+DIFF_MINUS_HEADER_RE = re.compile(r"^--- (?:a/)?(.+?)(\s*)$")
+DIFF_PLUS_HEADER_RE = re.compile(r"^\+\+\+ (?:b/)?(.+?)(\s*)$")
+
+
+def normalize_diff_paths(diff_text: str, target_basename: str) -> str:
+    """Rewrite the file-header paths in the diff to target_basename.
+
+    LLM-generated diffs frequently use the full (possibly absolute) path
+    of the target in the `--- a/<path>` / `+++ b/<path>` lines. When we
+    then run `git apply` from the target's parent directory with the
+    default `-p1` strip, the resulting relative path does not resolve
+    because the diff expected the caller's CWD to be `/`.
+
+    This pass leaves all hunk content and content lines alone. It only
+    rewrites the two file-header lines to use a bare basename so the
+    diff is portable regardless of CWD.
+    """
+    out_lines: list[str] = []
+    for line in diff_text.splitlines(keepends=False):
+        m_minus = DIFF_MINUS_HEADER_RE.match(line)
+        if m_minus and not line.startswith("---") is False:
+            # It's exactly a `--- something` header
+            if line.startswith("---") and not line.startswith("----"):
+                out_lines.append(f"--- a/{target_basename}")
+                continue
+        m_plus = DIFF_PLUS_HEADER_RE.match(line)
+        if m_plus and line.startswith("+++") and not line.startswith("++++"):
+            out_lines.append(f"+++ b/{target_basename}")
+            continue
+        out_lines.append(line)
+
+    result = "\n".join(out_lines)
+    if diff_text.endswith("\n"):
+        result += "\n"
+    return result
+
 
 def normalize_diff_hunks(diff_text: str) -> str:
     """Recount each hunk's old/new line totals and rewrite its header.
@@ -223,11 +259,18 @@ def main() -> int:
         print_fix_summary(fixer)
         return 0
 
-    # Pre-flight: normalize hunk headers so LLM-produced count errors do
+    # Pre-flight 1: normalize file-header paths to target basename so
+    # the diff is portable regardless of the CWD git apply runs in.
+    normalized_diff = normalize_diff_paths(diff, target.name)
+    if normalized_diff != diff:
+        print(f"apply_diff: normalized diff paths to basename ({target.name})")
+
+    # Pre-flight 2: normalize hunk headers so LLM-produced count errors do
     # not trip git apply --check. This is a pure re-counting pass, not a
     # content change.
-    normalized_diff = normalize_diff_hunks(diff)
-    if normalized_diff != diff:
+    pre_hunk_diff = normalized_diff
+    normalized_diff = normalize_diff_hunks(normalized_diff)
+    if normalized_diff != pre_hunk_diff:
         print("apply_diff: normalized diff hunk headers (LLM miscounted line totals)")
 
     diff_file = write_diff_to_temp(normalized_diff)
