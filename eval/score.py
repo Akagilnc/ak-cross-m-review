@@ -36,12 +36,25 @@ def load_json(path: str) -> dict[str, Any]:
 
 
 def finding_corpus(merged_finding: dict[str, Any]) -> str:
-    """Concatenate all reviewer text fields into one lowercase haystack."""
+    """Concatenate all reviewer text fields into one lowercase haystack.
+
+    by_reviewer is a dict of reviewer -> list of finding dicts (a single
+    reviewer may have multiple findings merged into the same group).
+    Back-compat: also accept the old shape where by_reviewer is a dict of
+    reviewer -> single finding dict.
+    """
     parts: list[str] = []
     for reviewer_data in merged_finding.get("by_reviewer", {}).values():
-        for field in ("claim_quote", "location", "verification", "suggested_fix"):
-            v = reviewer_data.get(field) or ""
-            parts.append(v)
+        # Normalize to a list of finding dicts.
+        findings_list = (
+            reviewer_data if isinstance(reviewer_data, list) else [reviewer_data]
+        )
+        for f in findings_list:
+            if not isinstance(f, dict):
+                continue
+            for field in ("claim_quote", "location", "verification", "suggested_fix"):
+                v = f.get(field) or ""
+                parts.append(v)
     parts.append(merged_finding.get("category", "") or "")
     return " ".join(parts).lower()
 

@@ -180,7 +180,12 @@ def merge_finding_groups(
         for f in payload.get("findings", []):
             placed = False
             for g in groups:
-                if any(findings_match(f, existing) for existing in g["_raw"]):
+                # Match against the canonical (first) finding of the group
+                # ONLY. Matching against any finding would create transitive
+                # chains that collapse unrelated issues into one group —
+                # e.g., R1 ↔ R2 and R2 ↔ R3 does not mean R1 ↔ R3.
+                canonical = g["_raw"][0]
+                if findings_match(f, canonical):
                     g["_raw"].append(f)
                     g["_reviewers"].append(reviewer)
                     placed = True
@@ -208,19 +213,21 @@ def merge_finding_groups(
         # Use the first finding's category as the canonical one.
         category = raws[0].get("category", "unknown")
 
-        by_reviewer: dict[str, Any] = {}
+        # Preserve ALL findings from each reviewer in the group, not just
+        # the first. Dropping later findings lost information needed by
+        # downstream display and recall scoring (session 5 eval round 1:
+        # 34→1 collapse hid post-decider finding that was reported but
+        # never surfaced in by_reviewer).
+        by_reviewer: dict[str, list[dict[str, Any]]] = {}
         for reviewer, raw in zip(reviewers, raws):
-            # If a reviewer reported multiple findings in this group (rare),
-            # keep the first one.
-            if reviewer not in by_reviewer:
-                by_reviewer[reviewer] = {
-                    "severity": raw.get("severity"),
-                    "category": raw.get("category"),
-                    "claim_quote": raw.get("claim_quote"),
-                    "location": raw.get("location"),
-                    "verification": raw.get("verification"),
-                    "suggested_fix": raw.get("suggested_fix"),
-                }
+            by_reviewer.setdefault(reviewer, []).append({
+                "severity": raw.get("severity"),
+                "category": raw.get("category"),
+                "claim_quote": raw.get("claim_quote"),
+                "location": raw.get("location"),
+                "verification": raw.get("verification"),
+                "suggested_fix": raw.get("suggested_fix"),
+            })
 
         merged.append({
             "merged_id": f"M{i}",
@@ -423,9 +430,19 @@ def selftest() -> int:
     check("merge: finding count after merge", len(merged) == 3,
           f"got {len(merged)} expected 3 (run-tick shared, Beta shared, x-editor alone)")
 
+    def group_quote_contains(m: dict[str, Any], needle: str) -> bool:
+        """Check any claim_quote across all reviewers (lists) for substring."""
+        needle = needle.lower()
+        for reviewer_list in m.get("by_reviewer", {}).values():
+            entries = reviewer_list if isinstance(reviewer_list, list) else [reviewer_list]
+            for entry in entries:
+                if needle in (entry.get("claim_quote") or "").lower():
+                    return True
+        return False
+
     # Find the run-tick merged finding
     run_tick_group = next(
-        (m for m in merged if "run-tick" in m["by_reviewer"].get("claude", {}).get("claim_quote", "")),
+        (m for m in merged if group_quote_contains(m, "run-tick")),
         None,
     )
     check("merge: run-tick finding matched between claude+codex", run_tick_group is not None)
@@ -439,9 +456,8 @@ def selftest() -> int:
 
     # Find the Beta math merged finding
     beta_group = next(
-        (m for m in merged if "beta" in m["category"].lower() or
-         any("beta" in bv.get("claim_quote", "").lower()
-             for bv in m["by_reviewer"].values())),
+        (m for m in merged if "beta" in m["category"].lower()
+         or group_quote_contains(m, "beta")),
         None,
     )
     check("merge: Beta finding matched between claude+gemini", beta_group is not None)
@@ -452,9 +468,7 @@ def selftest() -> int:
 
     # x-editor should be solo
     x_editor_group = next(
-        (m for m in merged if "editor-pass" in " ".join(
-            bv.get("claim_quote", "") for bv in m["by_reviewer"].values()
-        )),
+        (m for m in merged if group_quote_contains(m, "editor-pass")),
         None,
     )
     check("merge: x-editor solo finding preserved", x_editor_group is not None)
