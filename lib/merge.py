@@ -108,11 +108,17 @@ def tokenize(s: str) -> set[str]:
 
 
 def finding_tokens(f: dict[str, Any]) -> set[str]:
-    """Collect fuzzy-match tokens from a single finding."""
+    """Collect fuzzy-match tokens from a single finding.
+
+    Intentionally excludes the `verification` field. In code mode, every
+    finding's verification starts with "Read <file>:<range>" which leaks
+    file-path and procedure tokens into every pairwise comparison, letting
+    unrelated findings jump the cross-category match threshold purely on
+    review-log boilerplate. claim_quote + location is enough identity.
+    """
     return (
         tokenize(f.get("claim_quote", ""))
         | tokenize(f.get("location", ""))
-        | tokenize(f.get("verification", ""))
     )
 
 
