@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -41,6 +42,73 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+
+HUNK_HEADER_RE = re.compile(
+    r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)$"
+)
+
+
+def normalize_diff_hunks(diff_text: str) -> str:
+    """Recount each hunk's old/new line totals and rewrite its header.
+
+    LLM-generated diffs frequently get hunk sizes wrong when a single hunk
+    contains multiple edits close together — the model correctly merges
+    the edits into one hunk but forgets that the declared `-X,N +Y,M`
+    counts must include every line (context + additions + deletions).
+
+    This is a pure re-counting pass: it does NOT change any content, just
+    updates the four numbers in each `@@` header to match what the hunk
+    body actually contains. If the diff has no hunks or the headers are
+    unparseable, the input is returned unchanged.
+    """
+    lines = diff_text.splitlines(keepends=False)
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        m = HUNK_HEADER_RE.match(line)
+        if not m:
+            out.append(line)
+            i += 1
+            continue
+
+        old_start = int(m.group(1))
+        new_start = int(m.group(3))
+        trailing = m.group(5) or ""
+
+        # Collect hunk body until the next @@ header, ---, or end of input.
+        body_start = i + 1
+        body_end = body_start
+        minus_count = 0
+        plus_count = 0
+        context_count = 0
+        while body_end < len(lines):
+            bl = lines[body_end]
+            if HUNK_HEADER_RE.match(bl):
+                break
+            if bl.startswith("---") or bl.startswith("+++"):
+                break
+            if bl.startswith("-"):
+                minus_count += 1
+            elif bl.startswith("+"):
+                plus_count += 1
+            else:
+                context_count += 1
+            body_end += 1
+
+        old_total = minus_count + context_count
+        new_total = plus_count + context_count
+        new_header = f"@@ -{old_start},{old_total} +{new_start},{new_total} @@{trailing}"
+        out.append(new_header)
+        out.extend(lines[body_start:body_end])
+        i = body_end
+
+    # Preserve trailing newline if the input had one.
+    result = "\n".join(out)
+    if diff_text.endswith("\n"):
+        result += "\n"
+    return result
 
 
 def load_fixer_json(path: str) -> dict[str, Any]:
@@ -155,8 +223,15 @@ def main() -> int:
         print_fix_summary(fixer)
         return 0
 
-    diff_file = write_diff_to_temp(diff)
-    print(f"apply_diff: wrote diff to {diff_file} ({len(diff)} bytes)")
+    # Pre-flight: normalize hunk headers so LLM-produced count errors do
+    # not trip git apply --check. This is a pure re-counting pass, not a
+    # content change.
+    normalized_diff = normalize_diff_hunks(diff)
+    if normalized_diff != diff:
+        print("apply_diff: normalized diff hunk headers (LLM miscounted line totals)")
+
+    diff_file = write_diff_to_temp(normalized_diff)
+    print(f"apply_diff: wrote diff to {diff_file} ({len(normalized_diff)} bytes)")
 
     try:
         # --- Stage 1: check ---
