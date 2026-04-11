@@ -1,0 +1,18 @@
+# Run outputs (per-run findings, merged reports, proposed diffs)
+outputs/*
+!outputs/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Disposable scipy venvs from grounded-review verifier carve-out
+/tmp/ground-review-*/
+
+# Editor / OS cruft
+.DS_Store
+*.swp
+.vscode/
+.idea/
