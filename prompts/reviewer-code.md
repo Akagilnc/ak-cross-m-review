@@ -118,7 +118,6 @@ object.
       "category": "null-dereference",
       "claim_quote": "const name = user.profile.name;",
       "location": "src/billing.ts:47",
-      "related_locations": [],
       "verification": "Read src/billing.ts:42-50. Line 42 calls `findUser(id)` which returns `User | null`. Line 47 dereferences `user.profile` without a null check. If `findUser` returns null (happens when the id is for a deleted account), line 47 throws TypeError: Cannot read property 'profile' of null.",
       "suggested_fix": "Add `if (!user) throw new NotFoundError(\"user not found\");` between lines 42 and 47, or use optional chaining `user?.profile?.name ?? \"Unknown\"` if the absent case should render gracefully."
     }
@@ -127,10 +126,8 @@ object.
 ```
 
 **Required fields per finding**: `id`, `severity`, `category`, `claim_quote`,
-`location`, `related_locations`, `verification`, `suggested_fix`. Do not
-omit any. If a field is not applicable, write the string `"n/a"` — do not
-use null. `related_locations` is an array (use `[]` if the bug appears
-only once).
+`location`, `verification`, `suggested_fix`. Do not omit any. If a field
+is not applicable, write the string `"n/a"` — do not use null.
 
 Rules:
 
@@ -154,44 +151,6 @@ Rules:
 
 If you find **no** defects, return
 `{"reviewer": "<name>", "mode": "code", "findings": []}`.
-
-## Concept Sweep — find ALL occurrences, not just the first
-
-When you find a real defect, **do not stop at the first occurrence**.
-The same bug pattern often appears in multiple places: copy-pasted
-logic, similar call sites, duplicated validation, or the same wrong
-assumption applied in different functions.
-
-After identifying a finding, grep the codebase for the same pattern.
-Report ALL locations where the bug appears or could appear in a
-`related_locations` field on the finding.
-
-Example: if `user.profile.name` is dereferenced without a null check
-at line 47, and the same `user.profile` access pattern exists at lines
-83 and 112, your finding should list all three:
-
-```json
-{
-  "id": "R1",
-  "severity": "high",
-  "category": "null-dereference",
-  "claim_quote": "const name = user.profile.name;",
-  "location": "src/billing.ts:47",
-  "related_locations": [
-    "src/billing.ts:83 — same user.profile access without null check",
-    "src/billing.ts:112 — user.profile.email, same pattern"
-  ],
-  "verification": "Read src/billing.ts:42-50, 80-88, 109-115. All three dereference user.profile without checking user which is User | null.",
-  "suggested_fix": "Add null check after findUser() call. Fix at all three locations."
-}
-```
-
-Rules:
-- `related_locations` is an array of strings. Each string is a
-  `file:line` reference with a brief note.
-- If the bug appears only once, set `related_locations` to `[]`.
-- The `suggested_fix` should mention that ALL occurrences need fixing.
-- Use `Grep` or `Read` to search for the same pattern. Do not guess.
 
 ## Anti-hallucination reminders
 
