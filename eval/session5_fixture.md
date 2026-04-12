@@ -58,10 +58,10 @@ Logged as open question Q10 for future sessions.
 
 - **Bank card unavailable (hard infrastructure)** — only free-tier APIs usable. Rules out X API, Claude API, ChatGPT API. Permits Bluesky (atproto, free), Instagram Meta Graph (free), Mastodon (free), Threads (free tier), Reddit (RSS free / PRAW free with user auth), Gemini (already using).
 - **Must NOT disrupt postflow** — postflow is a live client delivery. Zero changes to postflow code in MVP1 or phase 2. Future migration of postflow to a shared publish kit is possible but explicitly **not** on the MVP1 critical path.
-- **Must reuse ai-blogger-lab editorial infrastructure** — no rewrite of editorial-memory, piece-critique, quality-rules, quality-audit, editor-pass, or run-tick. New code must fit into the existing abstraction layer via dependency injection and persona config, not structural refactor.
+- **Must reuse ai-blogger-lab editorial infrastructure** — no rewrite of editorial-memory, quality-rules, quality-audit, or run-tick. New code must fit into the existing abstraction layer via dependency injection and persona config, not structural refactor. Exception: `editor-pass` and `piece-critique` are hardcoded for CJK slop markers and Chinese-specific heuristics; robot-en requires either new English-specific variants or a refactor to externalize the locale-specific logic into persona config.
 - **Must not physically move existing XHS files in MVP1** — "brain shell injection" is the allowed abstraction level. Directory reorg (`personas/xhs-zh/` as a physical location) is a phase 2 chore, not MVP1 scope.
 - **Persona config is data, not code** — new persona configs live as JSON / TypeScript config files under `personas/<persona-id>/config.ts` or `config.json`. Adding a future persona should not require modifying the brain code.
-- **Language: TypeScript** — ai-blogger-lab stays TS. No Python for new code. `comic-compositor.py` stays as-is (it's a pure-function subprocess called from TS). If case-card rendering is chosen for MVP1 image source, reuse the existing `case-card.ts` → `comic-compositor.py` bridge (single-panel already supported).
+- **Language: TypeScript** — ai-blogger-lab stays TS. No Python for new code. `comic-compositor.py` stays as-is (it's a pure-function subprocess called from TS). If case-card rendering is chosen for MVP1 image source, reuse the existing `comic-card.ts` → `comic-compositor.py` bridge (single-panel already supported).
 - **SDK wrapper duplication with postflow is accepted (sized honestly)** — Bluesky and Instagram clients will exist in both ai-blogger-lab (TS, new) and postflow (Python, existing). In MVP1 the duplication is ~70 lines (Bluesky only, TS). At phase 2 steady state (Bluesky + Instagram both implemented), it grows to ~120 lines TS side plus the existing ~160 lines Python side. By phase 4 (Bluesky + IG + Mastodon + Threads all shipped in ai-blogger-lab TS), total duplicated commodity-layer surface across both projects is ~300-500 lines. This is accepted as commodity-layer duplication, not strategic debt — the editorial brain (editor-pass, piece-critique, learning loop) is NOT duplicated, and that is the part whose maintenance cost scales with project complexity.
 
 ## Premises (Session 5 locked set)
@@ -90,7 +90,7 @@ Instagram (phase 2, reusing postflow's existing Meta Graph API knowledge), Masto
 **B6. MVP1 includes an image; bake-off deferred.**
 (REVISED from session 4 "no image in MVP1" AND from session 5 earlier "three-way bake-off".) Both second-opinion subagents argue for shipping the cheapest image path and letting L3 tell us if image type matters.
 
-Session 5 revision: MVP1 uses the **Pillow single-panel case card reusing the existing yonkoma robot character assets**. This path requires zero new assets (robot expressions already at `assets/robot/*.png`), zero new dependencies (Pillow already present via `requirements.txt` from the 2026-04-05 design), and zero new rendering logic (single-panel already supported via `src/content/case-card.ts`).
+Session 5 revision: MVP1 uses the **Pillow single-panel case card reusing the existing yonkoma robot character assets**. This path requires zero new assets (robot expressions already at `assets/robot/*.png`), zero new dependencies (Pillow already present via `requirements.txt` from the 2026-04-05 design), and zero new rendering logic (single-panel already supported via `src/content/comic-card.ts`).
 
 Gemini Imagen and Unsplash alternatives are NOT killed — they are rotated into the pool as `image_mode` variants in the L3 `hypothesis_id`. L3 will A/B/C them naturally via Thompson sampling once engagement data starts flowing.
 
@@ -98,7 +98,7 @@ Gemini Imagen and Unsplash alternatives are NOT killed — they are rotated into
 No payment-gated APIs in MVP1 or any phase until bank card status changes. This is infrastructure reality, not a scoping decision.
 
 **B8. Publishing cadence mirrors postflow.**
-GitHub Actions cron (hourly check) + `schedule_config.json` (fixed post_hours) + random jitter (60-1800s per postflow pattern). Target: ~5-7 Field Notes per weekday + 1 Sunday Failed Hypotheses Recap thread.
+GitHub Actions cron (hourly check) + `schedule_config.json` (fixed post_hours — new config file, does not exist yet; current repo uses env vars `WINDOW_START_HOUR`/`WINDOW_END_HOUR`) + random jitter (60-1800s per postflow pattern). Target: ~5-7 Field Notes per weekday + 1 Sunday Failed Hypotheses Recap thread.
 
 **B9. Brain architecture via shell injection, NOT physical directory move.**
 (NEW in session 5 after second-opinion revision.) MVP1 introduces:
@@ -200,14 +200,14 @@ Hour 16-22: Bluesky publisher (compressed from 8h to 6h — it's ~70 lines)
   - src/publish/bluesky-publisher.ts   # thread orchestration (main + 2 replies)
   - tests/unit/bluesky-publisher.test.ts
 
-Hour 22-28: Robot-en persona content layer (compressed by reusing post-decider)
+Hour 22-28: Robot-en persona content layer (requires abstraction pass on post-decider — existing module hardcodes XHS prompt and CJK output language; robot-en needs either a new decider or a real abstraction of prompt generation before reuse is possible)
   - personas/robot-en/prompts.en.md    # Gemini prompts for observation + rule
   - personas/robot-en/slop-markers.json # English AI slop markers to strip
   - personas/robot-en/quality-rules.en.json
   - src/personas/robot-en/write-post.ts
-  - src/personas/robot-en/decide.ts    # THIN passthrough to existing
-                                       # post-decider with persona config,
-                                       # NOT a new decider implementation
+  - src/personas/robot-en/decide.ts    # new decider OR abstraction of
+                                       # post-decider prompt generation for
+                                       # persona-aware reuse
 
 Hour 28-44: L3 silence-aware learning skeleton (expanded from 10h to 16h)
   - src/personas/robot-en/learning/memory.ts
@@ -220,7 +220,7 @@ Hour 28-44: L3 silence-aware learning skeleton (expanded from 10h to 16h)
       writes: engagement-en.jsonl (zero-inclusive)
       handles Bluesky API transient failures with retry + circuit breaker
   - src/personas/robot-en/learning/l3-scorer.ts
-      uses scipy-stats-like Beta distribution via `@stdlib/stats-base-dists-beta`
+      uses scipy-stats-like Beta distribution via `@stdlib/stats-base-dists-beta-quantile`
       or manual implementation (~30 lines)
       per-rule Beta(alpha, beta) posterior
       per-hypothesis Beta(alpha, beta) posterior (independent tally)
@@ -245,12 +245,12 @@ Hour 44-48: Pillow single-panel case card + visual spike
       enough as a standalone panel? If no, fall back to pure-text MVP1 and
       note image is deferred.
   - If visual spike passes:
-      - src/content/case-card.ts       # wrapper for comic-compositor.py
+      - src/content/comic-card.ts       # wrapper for comic-compositor.py
       - src/content/comic-compositor.py
       - Hook into robot-en write-post.ts
 
 Hour 48-50: End-to-end build-time smoke
-  - Run `npm run tick -- --persona robot-en --dry-run` once
+  - Run `npm run tick -- --persona robot-en` (dry-run is default; `--live` flag activates live mode — `--persona` is new CLI work added in Hour 0-8)
   - Verify: Reddit signal collected, post generated, lint passed, case card
     rendered (or text-only fallback), thread builds correctly without real
     Bluesky call
@@ -260,7 +260,7 @@ Hour 48-50: End-to-end build-time smoke
     bootstrap-phase
 
 Hour 50-54: Optional live smoke (requires Q6 Bluesky handle provisioned)
-  - `npm run tick -- --persona robot-en` (live, no dry-run)
+  - `npm run tick -- --persona robot-en --live`
   - Verify single thread posted to test Bluesky handle
   - Verify editorial-memory-en.jsonl has new entry with hypothesis_id
   - Verify engagement-reader cron job can be triggered manually
@@ -359,7 +359,7 @@ When post-decider picks the next Field Note, it:
 When pivot_flag fires for a rule:
 - An entry is written to `editorial-memory-en.jsonl` with `type: "pivot_fired"`, including the stale rule id and timestamp
 - The post-decider reads recent pivot_fired entries as explicit "avoid" context
-- The operator can manually clear a pivot_flag via a CLI command (e.g., `npm run clear-pivot -- --rule-id foo`)
+- The operator can manually clear a pivot_flag via a CLI command (e.g., `npm run clear-pivot -- --rule-id foo` — this script does not exist yet and must be added to `package.json` as part of the implementation)
 - Pivot_flag has a TTL (default 30 days) after which it auto-expires and the rule re-enters the hypothesis pool with a fresh prior
 
 ## Open Questions
@@ -370,7 +370,7 @@ Q2. **P4 — Persona character visibility** (carry-over from session 4, updated)
 
 Q3. **P3 — X API pricing** (session 4): CANCELLED. Bank card constraint (B7) makes X unreachable regardless of pricing. Re-open only when payment channel is restored.
 
-Q4. **Q6 — Reddit content attribution / copyright** (carry-over from session 4): ships with conservative default (no verbatim > 5 words, no usernames, always paraphrase in robot voice, always aggregate into counts). This is enforced at `x-editor-pass.ts` runtime, not as a post-hoc check.
+Q4. **Q6 — Reddit content attribution / copyright** (carry-over from session 4): ships with conservative default (no verbatim > 5 words, no usernames, always paraphrase in robot voice, always aggregate into counts). This is enforced at `editor-pass.ts` runtime, not as a post-hoc check.
 
 Q5. **Q7 — Persona voice cold-read** (DOWNGRADED from blocker to sanity pass): before first L3 cycle, hand-write 3-5 sample English Field Notes in the robot voice, show to 1 trusted X-native reader for categorical-problem detection (is the voice offensive/cringe/generic). This is a 30-minute check, not a gate on MVP1 implementation. L3 is the real oracle for voice quality.
 
@@ -378,18 +378,18 @@ Q6. **Q8 — Bluesky test handle provisioning**: simpler than session 4's X equi
 
 Q7. **B3 Reddit signal verification (new, post-MVP1)**: after 10-15 MVP1 Field Notes are live and L3 has scored 48h engagement windows, check if Reddit-sourced observations systematically trigger pivot_flag faster than non-Reddit-sourced alternatives. If yes, revise signal mix in phase 2. This is instrumentation, not pre-validation.
 
-Q8. **Cross-persona shadow hypothesis (new, phase 3)**: when a robot-en rule pivots, fork the hypothesis into xhs-zh as a shadow A/B. Deferred to phase 3. Requires retrofitting XHS to use the same hypothesis_id schema. This is the biggest long-term differentiation unlock identified in session 5 cross-model synthesis.
+Q8. **Bootstrap phase definition**: proposed 30 posts OR 10 followers whichever first. Needs validation after MVP1 smoke — may adjust based on observed engagement arrival rate. Part of the Assignment to get sanity check before session 6.
 
-Q9. **Bootstrap phase definition**: proposed 30 posts OR 10 followers whichever first. Needs validation after MVP1 smoke — may adjust based on observed engagement arrival rate. Part of the Assignment to get sanity check before session 6.
+Q9. ~~Pillow case-card layout~~: RESOLVED in-plan. The build plan hour 44-48 includes a 30-minute visual spike gate before committing to single-panel case card. If the spike fails, MVP1 falls back to pure-text posts and Pillow case-card is deferred to phase 2. Not open anymore — decision path baked into build plan.
 
-Q10. ~~Pillow case-card layout~~: RESOLVED in-plan. The build plan hour 44-48 includes a 30-minute visual spike gate before committing to single-panel case card. If the spike fails, MVP1 falls back to pure-text posts and Pillow case-card is deferred to phase 2. Not open anymore — decision path baked into build plan.
+Q10. **Cross-persona shadow hypothesis (new, phase 3)**: when a robot-en rule pivots, fork the hypothesis into xhs-zh as a shadow A/B. Deferred to phase 3. Requires retrofitting XHS to use the same hypothesis_id schema. This is the biggest long-term differentiation unlock identified in session 5 cross-model synthesis.
 
 ## Success Criteria
 
 **MVP1 success is split into two categories: build-time verifiable and post-deploy verifiable.**
 
 **Build-time verifiable (must pass before end of hour 50):**
-- `npm run tick -- --persona robot-en --dry-run` completes end-to-end in a single command
+- `npm run tick -- --persona robot-en` (dry-run by default; `--persona` flag is new, added in Hour 0-8) completes end-to-end in a single command
 - Reddit signal pulled from 4-6 hardcoded subreddits (or PRAW fallback if RSS rate-limited)
 - One English Field Note generated, passes English editor-pass (slop markers stripped), passes English quality gate
 - Pillow single-panel case card rendered using existing yonkoma robot character (or text-only fallback if visual spike fails at hour 44)
@@ -420,7 +420,7 @@ Q10. ~~Pillow case-card layout~~: RESOLVED in-plan. The build plan hour 44-48 in
 ai-blogger-lab continues to deploy via the same model as today (local `npm run tick` for XHS line, GitHub Actions cron for English robot-en line). No new distribution artifact. No new deployment surface.
 
 For the robot-en line specifically:
-- GitHub Actions cron: hourly check, `schedule_config.json` gates actual post attempts to specific hours, random jitter 60-1800s
+- GitHub Actions cron: hourly check, `schedule_config.json` gates actual post attempts to specific hours (new file — current repo uses env-based scheduling; this config system must be introduced), random jitter 60-1800s
 - Secrets in GitHub Actions: `BSKY_ROBOT_HANDLE`, `BSKY_ROBOT_PASSWORD` (distinct from any existing `BSKY_HANDLE` used by postflow), `GEMINI_API_KEY` (shared), plus the usual XHS secrets (unaffected)
 - New repo file: `.github/workflows/post-robot-en.yml` (new) — does NOT replace or modify the existing XHS workflow
 
