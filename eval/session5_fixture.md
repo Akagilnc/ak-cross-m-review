@@ -15,7 +15,7 @@ Session 4 designed an "English robot Field Notes line" that would publish to X, 
 
 1. **X is ruled out by payment, not pricing.** The user has no available bank card, so payment-gated APIs (X's pay-per-use, Claude API, ChatGPT API) are inaccessible for an undetermined duration. This is a hard infrastructure constraint, not a strategic choice.
 
-2. **ak-ai-postflow is the reference implementation, not a sibling project.** postflow was built explicitly as a preparation project for ai-blogger-lab, running as a live client delivery for a German tattoo studio (ak-jp.bsky.social, 53+ posts, daily-cron GitHub Actions, Gemini text pipeline, multi-platform fanout, Feishu webhook bridge). Everything blogger needs on the "publishing pipeline" layer is already validated in postflow. The deltas that blogger adds are (a) a robot-observer persona instead of a tattoo-studio voice, (b) Reddit signals instead of Gemini-generated topics, and (c) a self-learning loop that postflow does not have.
+2. **ak-ai-postflow is the reference implementation, not a sibling project.** postflow was built explicitly as a preparation project for ai-blogger-lab, running as a live client delivery for a German tattoo studio (ak-jp.bsky.social, 53+ posts, hourly-cron GitHub Actions, Gemini text pipeline, multi-platform fanout, Feishu webhook bridge). Everything blogger needs on the "publishing pipeline" layer is already validated in postflow. The deltas that blogger adds are (a) a robot-observer persona instead of a tattoo-studio voice, (b) Reddit signals instead of Gemini-generated topics, and (c) a self-learning loop that postflow does not have.
 
 3. **The user explicitly reframed ai-blogger-lab from "the XHS project" to "the multi-persona editorial brain."** XHS Chinese is persona #1 running in this brain. The new English robot is persona #2. Future personas can be added as plugins without new repositories or new deployment surfaces.
 
@@ -61,7 +61,7 @@ Logged as open question Q10 for future sessions.
 - **Must reuse ai-blogger-lab editorial infrastructure** — no rewrite of editorial-memory, piece-critique, quality-rules, quality-audit, editor-pass, or run-tick. New code must fit into the existing abstraction layer via dependency injection and persona config, not structural refactor.
 - **Must not physically move existing XHS files in MVP1** — "brain shell injection" is the allowed abstraction level. Directory reorg (`personas/xhs-zh/` as a physical location) is a phase 2 chore, not MVP1 scope.
 - **Persona config is data, not code** — new persona configs live as JSON / TypeScript config files under `personas/<persona-id>/config.ts` or `config.json`. Adding a future persona should not require modifying the brain code.
-- **Language: TypeScript** — ai-blogger-lab stays TS. No Python for new code. `comic-compositor.py` stays as-is (it's a pure-function subprocess called from TS). If case-card rendering is chosen for MVP1 image source, reuse the existing `comic-card.ts` → `comic-compositor.py` bridge with `--panels=1`.
+- **Language: TypeScript** — ai-blogger-lab stays TS. No Python for new code. `comic-compositor.py` stays as-is (it's a pure-function subprocess called from TS). If case-card rendering is chosen for MVP1 image source, reuse the existing `case-card.ts` → `comic-compositor.py` bridge (single-panel already supported).
 - **SDK wrapper duplication with postflow is accepted (sized honestly)** — Bluesky and Instagram clients will exist in both ai-blogger-lab (TS, new) and postflow (Python, existing). In MVP1 the duplication is ~70 lines (Bluesky only, TS). At phase 2 steady state (Bluesky + Instagram both implemented), it grows to ~120 lines TS side plus the existing ~160 lines Python side. By phase 4 (Bluesky + IG + Mastodon + Threads all shipped in ai-blogger-lab TS), total duplicated commodity-layer surface across both projects is ~300-500 lines. This is accepted as commodity-layer duplication, not strategic debt — the editorial brain (editor-pass, piece-critique, learning loop) is NOT duplicated, and that is the part whose maintenance cost scales with project complexity.
 
 ## Premises (Session 5 locked set)
@@ -90,7 +90,7 @@ Instagram (phase 2, reusing postflow's existing Meta Graph API knowledge), Masto
 **B6. MVP1 includes an image; bake-off deferred.**
 (REVISED from session 4 "no image in MVP1" AND from session 5 earlier "three-way bake-off".) Both second-opinion subagents argue for shipping the cheapest image path and letting L3 tell us if image type matters.
 
-Session 5 revision: MVP1 uses the **Pillow single-panel case card reusing the existing yonkoma robot character assets**. This path requires zero new assets (robot expressions already at `assets/robot/*.png`), zero new dependencies (Pillow already present via `requirements.txt` from the 2026-04-05 design), and zero new rendering logic (reuse `src/content/comic-card.ts` with `--panels=1` flag added to `comic-compositor.py`).
+Session 5 revision: MVP1 uses the **Pillow single-panel case card reusing the existing yonkoma robot character assets**. This path requires zero new assets (robot expressions already at `assets/robot/*.png`), zero new dependencies (Pillow already present via `requirements.txt` from the 2026-04-05 design), and zero new rendering logic (single-panel already supported via `src/content/case-card.ts`).
 
 Gemini Imagen and Unsplash alternatives are NOT killed — they are rotated into the pool as `image_mode` variants in the L3 `hypothesis_id`. L3 will A/B/C them naturally via Thompson sampling once engagement data starts flowing.
 
@@ -246,7 +246,7 @@ Hour 44-48: Pillow single-panel case card + visual spike
       note image is deferred.
   - If visual spike passes:
       - src/content/case-card.ts       # wrapper for comic-compositor.py
-      - src/content/comic-compositor.py  # add --panels=1 flag
+      - src/content/comic-compositor.py
       - Hook into robot-en write-post.ts
 
 Hour 48-50: End-to-end build-time smoke
@@ -255,7 +255,7 @@ Hour 48-50: End-to-end build-time smoke
     rendered (or text-only fallback), thread builds correctly without real
     Bluesky call
   - Fake engagement data for 2-3 hypotheses, run l3-scorer manually, verify
-    pivot_flag fires when Beta(1, 18) upper-CI drops below 0.15
+    pivot_flag fires when Beta(1, 23) upper-CI drops below 0.15
   - Fake bootstrap-phase test: verify pivot_flag is ignored when account is
     bootstrap-phase
 
@@ -326,11 +326,11 @@ Where:
 upper_95_credible_interval = scipy.stats.beta.ppf(0.975, alpha, beta)
 ```
 
-Or, in the TypeScript implementation, via `@stdlib/stats-base-dists-beta-quantile` — the function `betaQuantile(0.975, alpha, beta)` returns the upper 0.975 quantile of the Beta posterior.
+Or, in the TypeScript implementation, via `@stdlib/stats-base-dists-beta-quantile` — the function `quantile(0.975, alpha, beta)` returns the upper 0.975 quantile of the Beta posterior.
 
 **Why two conditions:** without `min_observations`, a rule with Beta(1, 1) (uniform prior, zero observations) has an upper CI around 0.975, so it would never pivot on the CI check alone. Without `silence_threshold`, a posterior mean near 0 but with high variance means "try again," not "give up." Requiring both prevents false pivots in low-data and high-variance regimes.
 
-**Minimum observations rationale:** With Beta(1, 1) + 18 silences = Beta(1, 19), upper CI ≈ 0.158 > 0.15, does NOT pivot yet. Beta(1, 20) → upper CI ≈ 0.150 exactly. Beta(1, 21) → upper CI ≈ 0.143 < 0.15, pivots. So the first pivot for a rule with zero successes takes ~21 silence observations before firing at the default thresholds — giving the rule a fair shake of exploration. Tuning the `silence_threshold` lower (e.g., 0.10) or `min_observations` lower (e.g., 5) trades earlier pivoting for more false negatives. Defaults are tunable via persona config.
+**Minimum observations rationale:** With Beta(1, 1) + 18 silences = Beta(1, 19), upper CI ≈ 0.177 > 0.15, does NOT pivot yet. Beta(1, 20) → upper CI ≈ 0.168 > 0.15, does NOT pivot yet. Beta(1, 23) → upper CI ≈ 0.148 < 0.15, pivots. So the first pivot for a rule with zero successes takes ~22 silence observations before firing at the default thresholds — giving the rule a fair shake of exploration. Tuning the `silence_threshold` lower (e.g., 0.10) or `min_observations` lower (e.g., 5) trades earlier pivoting for more false negatives. Defaults are tunable via persona config.
 
 **Floor tuning:** both `min_observations` and `silence_threshold` live in `personas/robot-en/learning-config.json`. They should be re-tuned after MVP1 ships and real data arrives.
 
@@ -346,7 +346,7 @@ When post-decider picks the next Field Note, it:
 
 1. Filters the active hypothesis space to those not flagged as cold at the hypothesis level (a hypothesis is flagged cold when ITS hypothesis_posterior triggers pivot_flag, NOT when one of its constituent rules does). A hypothesis may contain a newly-added rule whose rule-level posterior is still exploratory even though other rules in the same hypothesis are stale — in that case the hypothesis is still playable.
 2. If bootstrap phase (first 30 posts OR first 10 followers), ignore pivot flags and sample from the full hypothesis space unrestricted.
-3. For each remaining (non-cold) hypothesis, samples a value from its hypothesis_posterior via `betaRandom(alpha, beta)`.
+3. For each remaining (non-cold) hypothesis, samples a value from its hypothesis_posterior via `random(alpha, beta)`.
 4. Picks the hypothesis with the max sample.
 5. Passes the selected hypothesis metadata and its rule_ids as context to the Gemini post-decider to generate the next Field Note body.
 
@@ -395,7 +395,7 @@ Q10. ~~Pillow case-card layout~~: RESOLVED in-plan. The build plan hour 44-48 in
 - Pillow single-panel case card rendered using existing yonkoma robot character (or text-only fallback if visual spike fails at hour 44)
 - Thread-build step produces the three-part structure (main + evidence shard + rule learned today) without posting to real Bluesky
 - `editorial-memory-en.jsonl` has a new entry with hypothesis_id, rule_ids, post_uri placeholder
-- **Fake engagement test data** proves pivot_flag fires correctly: injecting Beta(1, 21) observations (zero successes, 21 silences) should cause `upper_ci < 0.15` and flip pivot_flag. Injecting Beta(1, 5) should NOT flip the flag (insufficient observations).
+- **Fake engagement test data** proves pivot_flag fires correctly: injecting Beta(1, 23) observations (zero successes, 22 silences) should cause `upper_ci < 0.15` and flip pivot_flag. Injecting Beta(1, 5) should NOT flip the flag (insufficient observations).
 - **Fake bootstrap test** proves bootstrap-phase override works: with account tagged as bootstrap-phase, even a Beta(1, 100) rule does NOT trigger Thompson-sampling exclusion.
 
 **Post-deploy verifiable (validated in session 6, 48-96h after MVP1 lands):**
@@ -436,7 +436,7 @@ For the robot-en line specifically:
 
 - **Q5 sanity pass (30 min)** — soft blocker, catches categorical voice problems. Does NOT block implementation start; only blocks first live post.
 - **Q6 Bluesky handle creation (5 min)** — hard blocker for first live smoke test (hour 50-54 optional block). Build-time smoke (hour 48-50) does NOT need a real handle.
-- **Q7 Subreddit allowlist final selection (15 min)** — soft, operator can pick from the session 5 candidate list. Build can start without it using a hardcoded default of four subs; operator picks refine the list before hour 48-50 smoke.
+- **T7 Subreddit allowlist final selection (15 min)** — soft, operator can pick from the session 5 candidate list. Build can start without it using a hardcoded default of four subs; operator picks refine the list before hour 48-50 smoke.
 - **Bootstrap parameter sanity check (5 min)** — does the user accept the proposed "30 posts OR 10 followers" bootstrap definition?
 
 **Deferred verification, not MVP1 blockers:**
