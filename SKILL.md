@@ -264,13 +264,22 @@ echo "TARGET_CONTENT length: ${#TARGET_CONTENT}"
 ```
 
 Now dispatch the fixer as a **subagent** using the Agent tool. Use the
-Bash outputs above to compose the prompt parameter inline:
+Bash outputs above to compose the prompt parameter inline.
+
+**Important:** The fixer subagent must NOT edit the target file directly.
+It must only return JSON containing a diff. The caller (this skill)
+applies the diff via `apply_diff.py`. Add this constraint to the prompt:
 
 ```
 Agent tool call:
   description: "fixer round N"
   model: $FIXER_MODEL (from the bash output above — "sonnet" or "opus")
   prompt: |
+    IMPORTANT: Do NOT use Edit or Write tools. Do NOT modify any files.
+    Your only job is to return JSON with a "diff" field containing a
+    unified diff. The caller will apply the diff via apply_diff.py.
+    You may use Read and Grep tools to verify claim_quote locations.
+
     {FIXER_PROMPT_TEMPLATE}
 
     --- BEGIN MERGED FINDINGS ---
