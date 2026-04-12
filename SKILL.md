@@ -6,6 +6,7 @@ allowed-tools:
   - Read
   - Grep
   - Glob
+  - Agent
   - AskUserQuestion
   - TodoWrite
 ---
@@ -226,36 +227,69 @@ Otherwise proceed to fixer.
 
 ### Step 2e: Fixer pass (proposes unified diff)
 
-Compose the fixer prompt:
+Compose the fixer prompt parts via Bash, then dispatch via Agent tool
+(subagent). The subagent runs in-process so tool calls (Read, Grep for
+concept sweep) are fast — no per-call API round-trip overhead.
 
 ```bash
 MERGED_JSON="$(cat "$ROUND_DIR/merged.json")"
 TARGET_CONTENT="$(cat "$TARGET")"
+FIXER_PROMPT_TEMPLATE="$(cat "$PROTO_ROOT/prompts/fixer.md")"
 
-FIXER_PROMPT="$(
-  cat "$PROTO_ROOT/prompts/fixer.md"
-  echo
-  echo "--- BEGIN MERGED FINDINGS ---"
-  echo "$MERGED_JSON"
-  echo "--- END MERGED FINDINGS ---"
-  echo
-  echo "--- BEGIN TARGET FILE: $TARGET ---"
-  echo "$TARGET_CONTENT"
-  echo "--- END TARGET FILE ---"
-  echo
-  echo "Return JSON only. No markdown wrapper."
-)"
-
-printf '%s' "$FIXER_PROMPT" \
-  | "$PROTO_ROOT/backends/claude-headless.sh" "$MODE" fixer \
-  > "$ROUND_DIR/fixer.json" \
-  2> "$ROUND_DIR/fixer.err"
+# Determine fixer model (default sonnet, override with env var)
+FIXER_MODEL="${GROUNDED_REVIEW_FIXER_MODEL:-sonnet}"
+echo "fixer: model=$FIXER_MODEL round=$N"
+echo "FIXER_PROMPT_TEMPLATE length: ${#FIXER_PROMPT_TEMPLATE}"
+echo "MERGED_JSON length: ${#MERGED_JSON}"
+echo "TARGET_CONTENT length: ${#TARGET_CONTENT}"
 ```
 
-The fixer uses the same claude-headless.sh backend but with a different
-prompt; the output schema is different (diff instead of findings) so
-pass it through jq to inspect rather than through extract_json.py /
-merge.py.
+Now dispatch the fixer as a **subagent** using the Agent tool. Use the
+Bash outputs above to compose the prompt parameter inline:
+
+```
+Agent tool call:
+  description: "fixer round N"
+  model: $FIXER_MODEL (from the bash output above — "sonnet" or "opus")
+  prompt: |
+    {FIXER_PROMPT_TEMPLATE}
+
+    --- BEGIN MERGED FINDINGS ---
+    {MERGED_JSON}
+    --- END MERGED FINDINGS ---
+
+    --- BEGIN TARGET FILE: {TARGET} ---
+    {TARGET_CONTENT}
+    --- END TARGET FILE ---
+
+    Return JSON only. No markdown wrapper.
+```
+
+The subagent will use Read and Grep tools to verify claim_quote
+locations and sweep for related occurrences (concept sweep). It returns
+its response as text.
+
+After the subagent returns, extract the JSON and write it to the round
+directory:
+
+```bash
+# Write subagent response to a temp file for extraction.
+# Replace {SUBAGENT_RESPONSE} with the actual text returned by the
+# Agent tool call above.
+cat > "$ROUND_DIR/fixer.raw" << 'FIXER_EOF'
+{SUBAGENT_RESPONSE}
+FIXER_EOF
+
+# Extract JSON using the same pipeline as headless backend
+python3 "$PROTO_ROOT/lib/extract_json.py" claude "$MODE" \
+  < "$ROUND_DIR/fixer.raw" \
+  > "$ROUND_DIR/fixer.json"
+
+echo "fixer output: $(jq -r '"fixes_applied=\(.fixes_applied | length) fixes_skipped=\(.fixes_skipped | length) confidence=\(.confidence)"' "$ROUND_DIR/fixer.json")"
+```
+
+If the subagent fails or returns empty, treat it the same as a headless
+failure: write an empty fixer payload and report the error to the user.
 
 ### Step 2f: Check proposed diff
 
