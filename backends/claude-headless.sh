@@ -42,9 +42,9 @@ fi
 
 # Claude Code headless session. Tools available:
 #   reviewer: Read,Grep,Glob,Bash,WebFetch (needs to grep source + compute math)
-#   fixer:    Read (needs to verify claim_quote substrings; no Bash needed)
+#   fixer:    Read,Grep (verify claim_quote + grep for related occurrences)
 if [ "$ROLE" = "fixer" ]; then
-  TOOLS="Read"
+  TOOLS="Read,Grep"
 else
   TOOLS="Read,Grep,Glob,Bash,WebFetch"
 fi
