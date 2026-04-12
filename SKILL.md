@@ -139,27 +139,46 @@ For each round from 1 to ROUNDS:
 
 ### Step 2a: Dispatch 3 reviewers in parallel
 
-Create the round directory and dispatch. **Use three parallel Bash tool
-calls in a single message** so the reviewers run concurrently (not
-sequentially). Each tool call writes its stdout to a different file.
+Create the round directory and dispatch. **Use three parallel tool calls
+in a single message** (1 Agent + 2 Bash) so the reviewers run
+concurrently.
 
 ```bash
 ROUND_DIR="$RUN_DIR/round-$N"
 mkdir -p "$ROUND_DIR"
 ```
 
-Parallel dispatch (three independent Bash tool calls, no dependencies
+Parallel dispatch (three independent tool calls, no dependencies
 between them):
 
-Tool call 1 — Claude Opus headless:
-```bash
-printf '%s' "$DISPATCH_PROMPT" \
-  | "$PROTO_ROOT/backends/claude-headless.sh" "$MODE" \
-  > "$ROUND_DIR/claude.json" \
-  2> "$ROUND_DIR/claude.err"
+Tool call 1 — Claude Opus via **Agent tool** (subagent):
+
+```
+Agent tool call:
+  description: "claude reviewer round N"
+  model: opus
+  prompt: |
+    {DISPATCH_PROMPT}
+
+    Return JSON only. No markdown wrapper.
 ```
 
-Tool call 2 — Codex:
+After the subagent returns, extract its JSON response:
+
+```bash
+# Write subagent response to a temp file for extraction.
+# Replace {SUBAGENT_RESPONSE} with the actual text returned by the
+# Agent tool call above.
+cat > "$ROUND_DIR/claude.raw" << 'REVIEWER_EOF'
+{SUBAGENT_RESPONSE}
+REVIEWER_EOF
+
+python3 "$PROTO_ROOT/lib/extract_json.py" claude "$MODE" \
+  < "$ROUND_DIR/claude.raw" \
+  > "$ROUND_DIR/claude.json"
+```
+
+Tool call 2 — Codex (Bash, unchanged):
 ```bash
 printf '%s' "$DISPATCH_PROMPT" \
   | "$PROTO_ROOT/backends/codex.sh" "$MODE" "${SOURCE_REPO:-$(dirname "$TARGET")}" \
@@ -167,7 +186,7 @@ printf '%s' "$DISPATCH_PROMPT" \
   2> "$ROUND_DIR/codex.err"
 ```
 
-Tool call 3 — Gemini:
+Tool call 3 — Gemini (Bash, unchanged):
 ```bash
 printf '%s' "$DISPATCH_PROMPT" \
   | "$PROTO_ROOT/backends/gemini.sh" "$MODE" \
