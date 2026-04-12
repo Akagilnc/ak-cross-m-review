@@ -107,16 +107,22 @@ object.
       "category": "wrong-math",
       "claim_quote": "Beta(1,21) upper CI ≈ 0.143 < 0.15, pivots",
       "location": "L3 Algorithm section, around line 331",
+      "related_locations": [
+        "Success Criteria table, pivot threshold row",
+        "Test Plan section, assertion '< 0.15'"
+      ],
       "verification": "scipy.stats.beta.ppf(0.975, 1, 21) = 0.1611, not 0.143. First pivot actually fires at Beta(1,23) = 22 silences. Test written to this spec would be red on first build.",
-      "suggested_fix": "Replace '0.143' with '0.1611' and 'Beta(1,21)' with 'Beta(1,23) (22 silences)'. Check cascade into Success Criteria section."
+      "suggested_fix": "Replace '0.143' with '0.1611' and 'Beta(1,21)' with 'Beta(1,23) (22 silences)' in ALL three locations."
     }
   ]
 }
 ```
 
 **Required fields per finding**: `id`, `severity`, `category`, `claim_quote`,
-`location`, `verification`, `suggested_fix`. Do not omit any. If a field
-is not applicable, write the string `"n/a"` — do not use null.
+`location`, `related_locations`, `verification`, `suggested_fix`. Do not
+omit any. If a field is not applicable, write the string `"n/a"` — do not
+use null. `related_locations` is an array (use `[]` if the error appears
+only once).
 
 Rules:
 
@@ -151,6 +157,48 @@ Only review claims in the **body** of the document (everything before the
 first audit/historical section). If in doubt whether a section is
 historical, check for phrases like "this audit found", "corrected text",
 "the original (incorrect) text", or a blockquote prefixed with `> Note:`.
+
+## Concept Sweep — find ALL occurrences, not just the first
+
+When you find a factual error, **do not stop at the first occurrence**.
+The same wrong concept (number, file path, function name, module claim)
+often appears in multiple places in the document: the overview, the
+detailed plan, budget tables, success criteria, worked examples, etc.
+
+After identifying a finding, grep or search the full document for the
+same concept. Report ALL locations where the error appears or propagates
+in a `related_locations` field on the finding.
+
+Example: if the doc says "Beta(1,21) upper CI = 0.143" in L3 Algorithm
+AND also references "0.143" in the Success Criteria table AND in the
+Test Plan section, your finding should list all three locations:
+
+```json
+{
+  "id": "R1",
+  "severity": "critical",
+  "category": "wrong-math",
+  "claim_quote": "Beta(1,21) upper CI ≈ 0.143",
+  "location": "L3 Algorithm section, around line 331",
+  "related_locations": [
+    "Success Criteria table, row 'pivot threshold'",
+    "Test Plan section, assertion '< 0.15'"
+  ],
+  "verification": "scipy ... = 0.1611, not 0.143",
+  "suggested_fix": "Replace '0.143' with '0.1611' in ALL three locations."
+}
+```
+
+Rules:
+- `related_locations` is an array of strings. Each string is a section
+  name, line reference, or brief description of where the same error
+  appears.
+- If the error appears only once, set `related_locations` to `[]`.
+- The `suggested_fix` should mention that ALL occurrences need fixing,
+  not just the primary `location`.
+- Use grep, ctrl-F, or search the document text for the specific value,
+  file name, or function name to find other occurrences. Do not guess
+  from memory.
 
 ## Anti-hallucination reminders
 
