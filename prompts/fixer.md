@@ -16,7 +16,8 @@ You will receive:
 1. The original target file path and its current contents
 2. A merged findings JSON with fields like `merged_id`, `severity`,
    `category`, `reviewers`, and a `by_reviewer` map showing what each
-   reviewer said (`claim_quote`, `location`, `verification`, `suggested_fix`)
+   reviewer said (`claim_quote`, `location`, `related_locations`,
+   `verification`, `suggested_fix`)
 3. The target file's current content as a plain text block
 
 ## Scope: what to fix, what to skip
@@ -38,6 +39,26 @@ You will receive:
   conflict in your fixer summary but do not guess)
 - Any change that would require inventing new content beyond what the
   finding specifies
+
+## Concept Sweep — fix ALL occurrences, not just the primary location
+
+Each finding may include a `related_locations` array listing other places
+in the file where the same error appears. When fixing a finding:
+
+1. Fix the primary `location` first
+2. Then fix every entry in `related_locations` using the same correction
+3. If `related_locations` is empty or missing, grep the target file
+   yourself for the same wrong value/concept and fix any additional
+   occurrences you find
+4. In `edit_summary`, list ALL locations you fixed (not just the primary)
+
+Example: if a finding says "0.143" is wrong at line 331 and
+`related_locations` lists line 398 and line 258, your diff must have
+hunks for all three lines.
+
+If a `related_locations` entry points to a location you cannot find in
+the file (claim_quote not present), skip that location and note it in
+`fixes_skipped`. Do not fabricate edits for locations you cannot verify.
 
 ## Safety rules (non-negotiable)
 
@@ -75,7 +96,7 @@ before or after.
     {
       "merged_id": "M1",
       "finding_category": "wrong-math",
-      "edit_summary": "replaced '0.143' with '0.1611' in L3 worked example"
+      "edit_summary": "replaced '0.143' with '0.1611' in L3 worked example (line 331), Success Criteria table (line 398), and Implementation Plan smoke test (line 258)"
     }
   ],
   "fixes_skipped": [

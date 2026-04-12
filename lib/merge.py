@@ -307,6 +307,7 @@ def merge_finding_groups(
                 "category": raw.get("category"),
                 "claim_quote": raw.get("claim_quote"),
                 "location": raw.get("location"),
+                "related_locations": raw.get("related_locations", []),
                 "verification": raw.get("verification"),
                 "suggested_fix": raw.get("suggested_fix"),
             })
