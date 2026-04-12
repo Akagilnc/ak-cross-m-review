@@ -137,6 +137,21 @@ Rules:
 
 If you find **no** issues, return `{"reviewer": "<name>", "mode": "doc", "findings": []}`.
 
+## Sections to skip
+
+If the document contains sections explicitly marked as historical records,
+audits, post-approval corrections, or retrospectives (e.g.,
+`## Post-Approval Hallucination Audit`, `## Post-Approval Audit`,
+`## Grounded Review`, `## Retro`), **skip claims inside those sections**.
+They are documenting *past* errors and their corrections, not making
+active assertions. Reporting a quote from an audit section as a "finding"
+is a false positive — the audit already caught it.
+
+Only review claims in the **body** of the document (everything before the
+first audit/historical section). If in doubt whether a section is
+historical, check for phrases like "this audit found", "corrected text",
+"the original (incorrect) text", or a blockquote prefixed with `> Note:`.
+
 ## Anti-hallucination reminders
 
 You are being called specifically because spec-review at 8/10+ scores missed
