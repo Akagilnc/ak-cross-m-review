@@ -7,10 +7,10 @@
 #
 # Outputs JSON (reviewer payload) to stdout. Diagnostics to stderr.
 #
-# Uses `gemini -p --approval-mode plan`. plan mode is the gemini-cli
-# equivalent of read-only — it analyzes but does not execute anything that
-# would modify state. This is critical for running gemini in parallel with
-# other reviewers on the same source tree without risk of concurrent writes.
+# Uses `gemini -p --approval-mode auto_edit`. auto_edit lets gemini read
+# files and grep the codebase (needed for grounded verification), while
+# auto-approving edit tools. The reviewer prompt does not instruct writes,
+# so in practice gemini only reads.
 
 set -euo pipefail
 
@@ -28,7 +28,7 @@ fi
 # which we observed in session 7. Retry once with a short delay if the first
 # attempt returns empty or errors.
 attempt_gemini() {
-  gemini -p "$FULL_PROMPT" --approval-mode plan 2>/dev/null || true
+  gemini -p "$FULL_PROMPT" --approval-mode auto_edit 2>/dev/null || true
 }
 
 RAW="$(attempt_gemini)"
