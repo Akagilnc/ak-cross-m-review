@@ -146,12 +146,64 @@ def findings_match(a: dict[str, Any], b: dict[str, Any], min_shared: int = 2) ->
     return len(shared) >= min_shared + 1
 
 
-def upgrade_severity(original_severities: list[str], num_reviewers: int) -> str:
-    """Apply the consensus upgrade rule.
+# Patterns that indicate real tool invocations in the verification field.
+# Each match = one grounding point. More points = reviewer actually checked,
+# not guessed. Calibration: a finding with 3+ tool calls is well-grounded;
+# one with 0 is pure reasoning (still possibly correct but less trustworthy).
+GROUNDING_PATTERNS = re.compile(
+    r"(?:"
+    r"\brg\b"               # ripgrep
+    r"|\bgrep\b"            # grep
+    r"|\bnl -ba\b"          # nl -ba (codex favorite)
+    r"|\bsed -n\b"          # sed range
+    r"|\bcat\b"             # cat file
+    r"|\bfind\b"            # find command
+    r"|\bpython3?\b"        # python computation
+    r"|\bscipy\b"           # scipy import
+    r"|\b--help\b"          # CLI flag verification
+    r"|\bRead\b"            # Claude Read tool
+    r"|\bGrep\b"            # Claude Grep tool
+    r"|\bGlob\b"            # Claude Glob tool
+    r"|\bWebFetch\b"        # Claude WebFetch tool
+    r"|\bnpmjs\.com\b"      # npm registry lookup
+    r"|\bpypi\.org\b"       # PyPI lookup
+    r"|\breturned 0 matches\b"  # explicit null-result reporting
+    r")",
+    re.IGNORECASE,
+)
 
-    3+ reviewers → critical
-    2 reviewers → at least high (but if original max was already critical, keep it)
-    1 reviewer → original
+
+def compute_grounding_score(finding: dict[str, Any]) -> int:
+    """Count real tool invocations in a finding's verification field.
+
+    A reviewer that actually ran `rg`, `python3`, `--help`, or `Read` is
+    providing grounded evidence. A reviewer that just reasons from memory
+    gets a score of 0. The score is used to conditionally upgrade severity
+    for well-grounded single-reviewer findings.
+    """
+    verification = finding.get("verification") or ""
+    return len(GROUNDING_PATTERNS.findall(verification))
+
+
+def upgrade_severity(
+    original_severities: list[str],
+    num_reviewers: int,
+    max_grounding_score: int = 0,
+) -> str:
+    """Apply the consensus upgrade rule with grounding-aware boost.
+
+    Base rules (unchanged):
+      3+ reviewers → critical
+      2 reviewers → at least high (keep critical if original was critical)
+
+    New — single-reviewer grounding boost:
+      1 reviewer + grounding_score >= 3 → at least medium
+      1 reviewer + grounding_score >= 5 → at least high
+
+    Rationale: Codex routinely runs 5+ grep/nl/sed calls per finding.
+    A finding backed by real tool output is structurally more trustworthy
+    than one from pure reasoning, even if only one reviewer reported it.
+    The boost never downgrades — it only lifts floor.
     """
     if num_reviewers >= 3:
         return "critical"
@@ -163,10 +215,28 @@ def upgrade_severity(original_severities: list[str], num_reviewers: int) -> str:
         if max_original >= SEVERITY_RANK["critical"]:
             return "critical"
         return "high"
-    # Single reviewer — keep their original severity.
-    if original_severities:
-        return original_severities[0]
-    return "clarity"
+
+    # Single reviewer — start with their original severity, then boost
+    # based on grounding evidence density.
+    if not original_severities:
+        return "clarity"
+
+    base = original_severities[0]
+    base_rank = SEVERITY_RANK.get(base, 0)
+
+    if max_grounding_score >= 5:
+        floor_rank = SEVERITY_RANK["high"]
+    elif max_grounding_score >= 3:
+        floor_rank = SEVERITY_RANK["medium"]
+    else:
+        floor_rank = 0  # no boost
+
+    if floor_rank > base_rank:
+        # Upgrade to the floor. Find the severity name.
+        for name, rank in SEVERITY_RANK.items():
+            if rank == floor_rank:
+                return name
+    return base
 
 
 def merge_finding_groups(
@@ -214,7 +284,13 @@ def merge_finding_groups(
                 unique_reviewers.append(r)
 
         original_severities = [r.get("severity", "low") for r in raws]
-        final_severity = upgrade_severity(original_severities, len(unique_reviewers))
+
+        # Compute max grounding score across all findings in this group.
+        max_gs = max((compute_grounding_score(r) for r in raws), default=0)
+
+        final_severity = upgrade_severity(
+            original_severities, len(unique_reviewers), max_gs,
+        )
 
         # Use the first finding's category as the canonical one.
         category = raws[0].get("category", "unknown")
@@ -243,6 +319,7 @@ def merge_finding_groups(
             },
             "reviewers": unique_reviewers,
             "reviewer_count": len(unique_reviewers),
+            "grounding_score": max_gs,
             "category": category,
             "by_reviewer": by_reviewer,
         })
@@ -355,15 +432,52 @@ def selftest() -> int:
     }
     check("findings_match: no overlap means no match", not findings_match(f3, f4))
 
-    # Test 4: severity upgrade
+    # Test 4: severity upgrade (base rules)
     check("upgrade: 3 reviewers → critical",
           upgrade_severity(["low", "medium", "high"], 3) == "critical")
     check("upgrade: 2 reviewers non-critical → high",
           upgrade_severity(["medium", "low"], 2) == "high")
     check("upgrade: 2 reviewers with critical stays critical",
           upgrade_severity(["critical", "medium"], 2) == "critical")
-    check("upgrade: 1 reviewer keeps original",
-          upgrade_severity(["medium"], 1) == "medium")
+    check("upgrade: 1 reviewer keeps original (no grounding)",
+          upgrade_severity(["medium"], 1, 0) == "medium")
+
+    # Test 4b: grounding-aware severity boost
+    check("upgrade: 1 reviewer low + grounding 3 → medium",
+          upgrade_severity(["low"], 1, 3) == "medium")
+    check("upgrade: 1 reviewer low + grounding 5 → high",
+          upgrade_severity(["low"], 1, 5) == "high")
+    check("upgrade: 1 reviewer clarity + grounding 4 → medium",
+          upgrade_severity(["clarity"], 1, 4) == "medium")
+    check("upgrade: 1 reviewer high + grounding 3 → stays high (no downgrade)",
+          upgrade_severity(["high"], 1, 3) == "high")
+    check("upgrade: 1 reviewer high + grounding 0 → stays high",
+          upgrade_severity(["high"], 1, 0) == "high")
+    check("upgrade: 1 reviewer medium + grounding 6 → high",
+          upgrade_severity(["medium"], 1, 6) == "high")
+
+    # Test 4c: grounding_score computation
+    check("grounding: no verification → 0",
+          compute_grounding_score({}) == 0)
+    check("grounding: pure reasoning → 0",
+          compute_grounding_score({"verification": "I believe this is wrong"}) == 0)
+    check("grounding: one grep + null result → 2 (rg + 'returned 0 matches')",
+          compute_grounding_score({"verification": "rg -n 'foo' returned 0 matches"}) == 2)
+    check("grounding: multiple tools → count each occurrence",
+          compute_grounding_score({
+              "verification": "nl -ba src/types.ts shows only 'home_feed'. "
+              "rg -n 'reddit' returned 0 matches. "
+              "python3 -c computed the value."
+          }) == 4)
+    check("grounding: codex-style heavy verification → 5+",
+          compute_grounding_score({
+              "verification": "nl -ba package.json lists no clear-pivot. "
+              "rg -n clear-pivot src returned 0 matches. "
+              "nl -ba src/cli.ts shows the implementation. "
+              "sed -n '5,11p' shows scripts. "
+              "grep 'clear' found nothing. "
+              "Read the full file to confirm."
+          }) >= 5)
 
     # Test 5: end-to-end merge with synthetic data
     claude_payload = {
