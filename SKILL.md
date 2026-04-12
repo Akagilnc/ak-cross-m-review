@@ -247,7 +247,7 @@ FIXER_PROMPT="$(
 )"
 
 printf '%s' "$FIXER_PROMPT" \
-  | "$PROTO_ROOT/backends/claude-headless.sh" "$MODE" \
+  | "$PROTO_ROOT/backends/claude-headless.sh" "$MODE" fixer \
   > "$ROUND_DIR/fixer.json" \
   2> "$ROUND_DIR/fixer.err"
 ```

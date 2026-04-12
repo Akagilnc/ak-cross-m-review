@@ -1,21 +1,36 @@
 #!/usr/bin/env bash
-# Claude Opus headless reviewer backend.
+# Claude headless reviewer / fixer backend.
 #
 # Invocation:
-#   <stdin: full dispatch prompt including task prompt + target content + any
-#           source-repo hint> | backends/claude-headless.sh <mode>
+#   <stdin: full prompt> | backends/claude-headless.sh <mode> [<role>]
 #
-# Outputs JSON (reviewer payload) to stdout. Diagnostics to stderr.
+#   mode:  doc | code
+#   role:  reviewer (default) | fixer
 #
-# Uses `claude -p --model opus --output-format json` so each invocation
-# creates a fresh Claude Code session with zero context contamination from
-# the calling session. Tools available are explicitly enumerated to control
-# what the reviewer can use.
+# Model selection:
+#   reviewer → opus   (needs deep reasoning + judgment for fact-checking)
+#   fixer    → sonnet (structured text transform; safety-netted by git
+#                      apply --check + user approval + round 2 reviewer)
+#
+# Override: set GROUNDED_REVIEW_FIXER_MODEL=opus to force opus for fixer
+# (use on high-risk docs where round 2 verification is skipped).
+#
+# Outputs JSON to stdout. Diagnostics to stderr.
 
 set -euo pipefail
 
 PROTO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MODE="${1:-doc}"
+ROLE="${2:-reviewer}"
+
+# Model selection based on role
+if [ "$ROLE" = "fixer" ]; then
+  MODEL="${GROUNDED_REVIEW_FIXER_MODEL:-sonnet}"
+else
+  MODEL="opus"
+fi
+
+echo "claude-headless: role=$ROLE model=$MODEL mode=$MODE" >&2
 
 # Collect full prompt from stdin
 FULL_PROMPT="$(cat)"
@@ -25,34 +40,41 @@ if [ -z "$FULL_PROMPT" ]; then
   exit 1
 fi
 
-# Claude Code headless with Opus and the toolset needed for grounded review.
-# WebFetch allows first-party doc verification (npmjs, MDN, GitHub README).
-# Bash allows spawning python3 with scipy for math verification.
+# Claude Code headless session. Tools available:
+#   reviewer: Read,Grep,Glob,Bash,WebFetch (needs to grep source + compute math)
+#   fixer:    Read (needs to verify claim_quote substrings; no Bash needed)
+if [ "$ROLE" = "fixer" ]; then
+  TOOLS="Read"
+else
+  TOOLS="Read,Grep,Glob,Bash,WebFetch"
+fi
+
+START_S=$(date +%s)
+
 RAW="$(
   printf '%s' "$FULL_PROMPT" | claude \
     -p \
-    --model opus \
+    --model "$MODEL" \
     --output-format json \
-    --tools "Read,Grep,Glob,Bash,WebFetch" \
+    --tools "$TOOLS" \
     2>/dev/null || true
 )"
 
+END_S=$(date +%s)
+ELAPSED=$((END_S - START_S))
+echo "claude-headless: completed in ${ELAPSED}s (role=$ROLE model=$MODEL)" >&2
+
 if [ -z "$RAW" ]; then
   echo "claude-headless: error: claude CLI returned empty output" >&2
-  # Emit empty findings so the merge step still proceeds
   printf '{"reviewer":"claude","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
 fi
 
-# Claude Code headless JSON wrapper shape (observed 2026-04-11):
-#   {"type":"result","subtype":"success","is_error":false,"result":"<inner>",...}
-# The inner .result field is a string containing the model's textual output,
-# which we hope is our requested JSON.
+# Claude Code headless JSON wrapper shape:
+#   {"type":"result","subtype":"success","result":"<inner>",...}
 INNER="$(printf '%s' "$RAW" | jq -r '.result // empty' 2>/dev/null || true)"
 
 if [ -z "$INNER" ]; then
-  # Wrapper parse failed. Fall through with raw output — extract_json.py
-  # will do its best.
   echo "claude-headless: warn: could not extract .result field, passing raw" >&2
   printf '%s' "$RAW" | python3 "$PROTO_ROOT/lib/extract_json.py" claude "$MODE"
 else
