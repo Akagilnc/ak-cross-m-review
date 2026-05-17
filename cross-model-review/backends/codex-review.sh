@@ -156,21 +156,30 @@ case "$RC" in
   124|137|143) RAW="" ;;
 esac
 
-# Hard CLI failure (auth / login / quota / rate / usage limit): codex
-# ran but produced an error, not a review. wiki/codex-bot-conventions:
-# rate/quota/limit → degrade immediately. Without this the error text
-# feeds extract_json (0 findings) but the round is NOT flagged "本轮缺
-# codex", so a silent auth/quota failure masquerades as a clean approve.
-if [ -n "$RAW" ] && printf '%s' "$RAW" \
-   | grep -qiE 'unauthor|not logged in|codex login|invalid api key|rate.?limit|quota|usage limit|\b429\b'; then
-  echo "codex-review: hard CLI error in output — degrade, flag '本轮缺 codex'" >&2
-  RAW=""
-fi
-
 if [ -z "$RAW" ]; then
-  echo "codex-review: error: empty output / timeout / hard error (rc=$RC) — degrade, flag '本轮缺 codex'" >&2
+  echo "codex-review: error: empty output / timeout (rc=$RC) — degrade, flag '本轮缺 codex'" >&2
   printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
 fi
 
-printf '%s' "$RAW" | python3 "$EXTRACT" codex "$MODE"
+# JSON-aware hard-error detection. The previous version grepped the
+# whole review body for auth/quota/rate/429 and false-degraded ANY
+# valid review that merely discussed rate-limit/quota/auth code (among
+# the defect categories codex is explicitly asked to find — it even
+# self-degraded on this repo). Instead lean on extract_json.py's
+# documented contract: it exits non-zero ONLY when it cannot find real
+# findings JSON and fell back to a synthetic empty object — i.e. codex
+# emitted an error/banner, not a review. A valid review (including a
+# clean zero-finding approve, and one whose findings quote "429" /
+# "quota") parses cleanly → exit 0 → never degraded. Zero false
+# positives by construction.
+set +e
+EXTRACTED="$(printf '%s' "$RAW" | python3 "$EXTRACT" codex "$MODE")"
+EX_RC=$?
+set -e
+if [ "$EX_RC" -ne 0 ]; then
+  echo "codex-review: output is not a valid review (likely auth/quota/CLI error; extract_json rc=$EX_RC) — degrade, flag '本轮缺 codex'" >&2
+  printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
+  exit 1
+fi
+printf '%s\n' "$EXTRACTED"
