@@ -2,8 +2,8 @@
 # Google Gemini reviewer backend.
 #
 # Invocation:
-#   <stdin: full dispatch prompt including task prompt + target content + any
-#           source-repo hint> | backends/gemini.sh <mode>
+#   <stdin: full reviewer prompt incl. the diff to review>
+#           | backends/gemini.sh <mode>
 #
 # Outputs JSON (reviewer payload) to stdout. Diagnostics to stderr.
 #

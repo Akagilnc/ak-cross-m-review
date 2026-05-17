@@ -25,8 +25,10 @@ Or, if pytest is on PATH: `pytest`.
 Two complementary layers, both run in CI (`.github/workflows/test.yml`):
 
 1. **Unit tests (`tests/`)** — pytest tests for the deterministic core in
-   `lib/` (`merge.py`, `drift.py`, `extract_json.py`, `apply_diff.py`).
-   Real input/output assertions, no external CLIs touched.
+   `lib/` (`merge.py`, `drift.py`, `extract_json.py`). `apply_diff.py` is
+   retained for the per-slice doc path, is not used by the main v3 loop,
+   and currently has no unit test (tracked debt). Real input/output
+   assertions, no external CLIs touched.
 2. **Selftest battery** — each deterministic module ships an in-process
    `--selftest` mode that is the regression guard for its own logic:
    `python3 lib/merge.py --selftest`, `python3 lib/drift.py --selftest`,

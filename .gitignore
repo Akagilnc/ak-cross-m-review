@@ -11,7 +11,7 @@ venv/
 .coverage
 .coverage.*
 
-# Disposable scipy venvs from grounded-review verifier carve-out
+# Disposable scipy venvs from the numeric-verifier carve-out (legacy)
 /tmp/ground-review-*/
 
 # Editor / OS cruft

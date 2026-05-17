@@ -30,6 +30,9 @@ the sole skill and the repo root **is** the skill. The original
   `lib/strip_audit.py`.
 - **`eval/`** — the grounded-review fixture suite. No v3 eval replaces
   it yet (tracked as follow-up debt).
+- **`backends/codex.sh`** — the legacy uncorrected codex backend (the
+  `-C` + positional-prompt footguns SKILL.md Tier-0 rule 2 forbids);
+  superseded by `backends/codex-review.sh`, no caller after the flatten.
 
 ### Notes
 

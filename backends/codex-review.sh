@@ -2,7 +2,7 @@
 # Codex reviewer backend for /ak-cross-m-review.
 #
 # This is the DELIVERATELY-CORRECT codex invocation. It exists because the
-# legacy backends/codex.sh uses the two patterns the
+# naive/uncorrected codex invocations use the two patterns the
 # wiki marks confidence-10 footguns (D1/D2 in the analysis):
 #
 #   ❌ codex exec "$PROMPT" -C "$WORKDIR" -s read-only

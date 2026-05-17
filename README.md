@@ -121,7 +121,8 @@ into the v3 vendor-squad cross-model review skill this repo now ships.
 - [OpenAI Codex](https://github.com/openai/codex) CLI (`codex`)
 - [Google Gemini](https://github.com/google-gemini/gemini-cli) CLI (`gemini`)
 - `python3` ≥ 3.11 — `lib/merge.py`, `lib/drift.py`,
-  `lib/extract_json.py`, `lib/apply_diff.py`
+  `lib/extract_json.py` (the main loop's core; `lib/apply_diff.py` is
+  retained but intentionally not used by the v3 loop — see SKILL.md 2f)
 - `jq` — shell pipelines
 
 All three CLIs are subscription-authed in the author's setup; no API
