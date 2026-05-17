@@ -4,6 +4,40 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.2.0.0] - 2026-05-18
+
+Breaking restructure: the v3 vendor-squad `/ak-cross-m-review` becomes
+the sole skill and the repo root **is** the skill. The original
+`/grounded-review` skill is removed.
+
+### Changed
+
+- **`/ak-cross-m-review` is now the registered skill, at the repo
+  root.** The v3 files moved out of the `ak-cross-m-review/` subfolder
+  up to the repo root (`SKILL.md`, `backends/codex-review.sh`,
+  `prompts/cmr-*.md`); `backends/codex-review.sh` self-locates
+  `PROTO_ROOT` one level up instead of two. Restores the "repo root =
+  skill" registration model and kills the confusing
+  `ak-cross-m-review/ak-cross-m-review/` double-nesting.
+- README rewritten to describe v3 cross-model review as the primary
+  (and only) skill.
+
+### Removed
+
+- **The `/grounded-review` skill** — old root `SKILL.md`,
+  `backends/claude-headless.sh`,
+  `prompts/{fixer,reviewer-doc,reviewer-code}.md`,
+  `lib/strip_audit.py`.
+- **`eval/`** — the grounded-review fixture suite. No v3 eval replaces
+  it yet (tracked as follow-up debt).
+
+### Notes
+
+- Capability gap: grounded single-file fact-checking (catching
+  shared-hallucination content errors) no longer has an implementation
+  in this repo. Cross-model review cannot cover that lens — see README
+  "Limitations / boundary".
+
 ## [0.1.0.0] - 2026-05-17
 
 First versioned release. Adds a second skill alongside `/grounded-review`.

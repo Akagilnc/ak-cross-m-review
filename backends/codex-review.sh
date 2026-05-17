@@ -2,7 +2,7 @@
 # Codex reviewer backend for /ak-cross-m-review.
 #
 # This is the DELIVERATELY-CORRECT codex invocation. It exists because the
-# grounded-review prototype's backends/codex.sh uses the two patterns the
+# legacy backends/codex.sh uses the two patterns the
 # wiki marks confidence-10 footguns (D1/D2 in the analysis):
 #
 #   ❌ codex exec "$PROMPT" -C "$WORKDIR" -s read-only
@@ -36,10 +36,10 @@
 
 set -euo pipefail
 
-# Resolve the shared proto lib (this script lives at
-# cross-model-review/backends/, lib/ is two levels up).
+# Resolve the shared lib (this script lives at backends/, lib/ is one
+# level up).
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROTO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+PROTO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 EXTRACT="$PROTO_ROOT/lib/extract_json.py"
 
 MODE="${1:-code}"
