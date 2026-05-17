@@ -19,7 +19,7 @@ their findings with deterministic severity upgrade on consensus, proposes
 a unified diff via a fixer pass, asks the user to approve the diff, and
 loops until findings converge or a round budget is hit.
 
-This skill lives at `~/WorkSpace/gstack-grounded-review-proto/` (symlinked
+This skill lives at `~/WorkSpace/ak-cross-m-review/` (symlinked
 into `~/.claude/skills/grounded-review/`). Cross-reference the README.md
 in the repo for architecture and limitations.
 
@@ -54,7 +54,7 @@ Parse the arguments and derive:
 Run this bash to check binaries and compute paths:
 
 ```bash
-PROTO_ROOT="$HOME/WorkSpace/gstack-grounded-review-proto"
+PROTO_ROOT="$HOME/WorkSpace/ak-cross-m-review"
 cd "$PROTO_ROOT"
 
 for bin in claude codex gemini python3 jq; do
@@ -378,7 +378,7 @@ run:            run-20260411-231500
 rounds:         2 / 3
 outcome:        converged (no critical/high remaining)
 fixes applied:  7 across 2 rounds
-artifacts:      ~/WorkSpace/gstack-grounded-review-proto/outputs/run-20260411-231500/
+artifacts:      ~/WorkSpace/ak-cross-m-review/outputs/run-20260411-231500/
 ```
 
 If the loop ended with unresolved critical/high findings (budget

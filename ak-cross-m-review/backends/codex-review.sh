@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Codex reviewer backend for /cross-model-review.
+# Codex reviewer backend for /ak-cross-m-review.
 #
 # This is the DELIVERATELY-CORRECT codex invocation. It exists because the
 # grounded-review prototype's backends/codex.sh uses the two patterns the

@@ -1,5 +1,5 @@
 ---
-name: cross-model-review
+name: ak-cross-m-review
 description: Local pre-PR cross-model review, main-session-orchestrated. Dispatches the v3 vendor squad — N codex gpt-5.5 + 1 Claude opus Agent + 1 Gemini = N+1+1 — in a single parallel message against a diff, merges findings with consensus severity upgrade + grounding-density floor boost, runs a deterministic drift/termination check, proposes a fixer diff per round with the defer protocol, and loops to N/N concur or an architectural stop. Use every dev cycle before ship — this is wiki Step 2.4 / 2.6, the part sessions repeatedly get wrong.
 allowed-tools:
   - Bash
@@ -11,7 +11,7 @@ allowed-tools:
   - TodoWrite
 ---
 
-# /cross-model-review — v3 vendor-squad pre-PR review
+# /ak-cross-m-review — v3 vendor-squad pre-PR review
 
 This skill is the executable form of
 `~/WorkSpace/vault/ak-cc-wiki/wiki/concepts/cross-model-review.md`
@@ -20,10 +20,10 @@ truth; this file transcribes its **hard rules** into a loop so every
 session runs it the same way instead of re-deciding by feel.
 
 Shared library lives in the grounded-review proto repo:
-`PROTO_ROOT="$HOME/WorkSpace/gstack-grounded-review-proto"` — reuses
+`PROTO_ROOT="$HOME/WorkSpace/ak-cross-m-review"` — reuses
 `lib/merge.py` (consensus), `lib/extract_json.py` (robust parse),
 `lib/drift.py` (deterministic drift/termination). Codex runs through
-`cross-model-review/backends/codex-review.sh` (the corrected
+`ak-cross-m-review/backends/codex-review.sh` (the corrected
 invocation — see Tier-0 rules).
 
 ---
@@ -76,7 +76,7 @@ invocation — see Tier-0 rules).
 Invocation:
 
 ```
-/cross-model-review [--base BRANCH] [--range A..B] [--diff FILE]
+/ak-cross-m-review [--base BRANCH] [--range A..B] [--diff FILE]
                     [--mode doc|code|auto] [--rounds N]
                     [--scenario per-slice|ship-pre]
 ```
@@ -95,8 +95,8 @@ Invocation:
   only the reviewer-prompt emphasis line.
 
 ```bash
-PROTO_ROOT="$HOME/WorkSpace/gstack-grounded-review-proto"
-CMR="$PROTO_ROOT/cross-model-review"
+PROTO_ROOT="$HOME/WorkSpace/ak-cross-m-review"
+CMR="$PROTO_ROOT/ak-cross-m-review"
 for bin in claude codex gemini python3 jq git; do
   command -v "$bin" >/dev/null 2>&1 || { echo "missing: $bin" >&2; exit 2; }
 done
@@ -323,7 +323,7 @@ Agent:
     and a "deferred" array. The caller applies the diff with git apply.
     You may use Read/Grep to locate claim_quotes and sweep related sites.
 
-    {contents of cross-model-review/prompts/cmr-fixer.md}
+    {contents of ak-cross-m-review/prompts/cmr-fixer.md}
 
     --- MERGED FINDINGS ---
     {contents of $ROUND_DIR/merged.json}
@@ -440,8 +440,8 @@ file/change as still broken.
 ## Invocation examples
 
 ```
-/cross-model-review                              # ship-pre, diff vs main, 3 rounds
-/cross-model-review --range HEAD~3..HEAD --scenario per-slice
-/cross-model-review --base develop --rounds 2
-/cross-model-review --diff /tmp/change.diff --mode code
+/ak-cross-m-review                              # ship-pre, diff vs main, 3 rounds
+/ak-cross-m-review --range HEAD~3..HEAD --scenario per-slice
+/ak-cross-m-review --base develop --rounds 2
+/ak-cross-m-review --diff /tmp/change.diff --mode code
 ```

@@ -10,16 +10,16 @@ First versioned release. Adds a second skill alongside `/grounded-review`.
 
 ### Added
 
-- **`/cross-model-review` skill** — run a pre-PR cross-model review on a
+- **`/ak-cross-m-review` skill** — run a pre-PR cross-model review on a
   diff without re-deciding the regime each time. It dispatches the v3
   vendor squad (N codex `gpt-5.5` + 1 Claude opus Agent + 1 Gemini =
   **N+1+1**, codex instances scaled by diff size) in a single parallel
   message, merges with consensus + grounding-density severity, runs a
   computed drift/termination check, proposes a fixer diff per round with
   the defer protocol, and stops on N/N concur or an architectural drift.
-  Entry: `cross-model-review/SKILL.md`; prompts in
-  `cross-model-review/prompts/`.
-- **`cross-model-review/backends/codex-review.sh`** — the corrected codex
+  Entry: `ak-cross-m-review/SKILL.md`; prompts in
+  `ak-cross-m-review/prompts/`.
+- **`ak-cross-m-review/backends/codex-review.sh`** — the corrected codex
   invocation (`codex exec --model gpt-5.5 -` over a stdin pipe, no `-C`,
   always `2>&1`), with a portable hard timeout and a `--selftest`
   regression guard so the known codex footguns cannot come back.
@@ -31,7 +31,7 @@ First versioned release. Adds a second skill alongside `/grounded-review`.
 
 ### Changed
 
-- `cross-model-review/SKILL.md` aligned to the 2026-05-17 wiki capability
+- `ak-cross-m-review/SKILL.md` aligned to the 2026-05-17 wiki capability
   correction: cross-model review is always main-session-orchestrated
   (subagents cannot spawn the Claude reviewer), unified `N+1+1` notation,
   and `merge.py`'s grounding boost documented as the wiki's
