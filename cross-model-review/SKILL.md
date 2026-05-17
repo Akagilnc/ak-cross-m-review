@@ -1,6 +1,6 @@
 ---
 name: cross-model-review
-description: Local pre-PR cross-model review. Dispatches the v3 vendor squad (1 Claude opus subagent + N codex gpt-5.5 + 1 Gemini) in a single parallel message against a diff, merges findings with consensus severity upgrade, runs a deterministic drift/termination check, proposes a fixer diff per round with the defer protocol, and loops to N/N concur or an architectural stop. Use every dev cycle before ship — this is wiki Step 2.4 / 2.6, the part sessions repeatedly get wrong.
+description: Local pre-PR cross-model review, main-session-orchestrated. Dispatches the v3 vendor squad — N codex gpt-5.5 + 1 Claude opus Agent + 1 Gemini = N+1+1 — in a single parallel message against a diff, merges findings with consensus severity upgrade + grounding-density floor boost, runs a deterministic drift/termination check, proposes a fixer diff per round with the defer protocol, and loops to N/N concur or an architectural stop. Use every dev cycle before ship — this is wiki Step 2.4 / 2.6, the part sessions repeatedly get wrong.
 allowed-tools:
   - Bash
   - Read
@@ -30,6 +30,18 @@ invocation — see Tier-0 rules).
 
 ## Tier-0 hard rules (violating any of these = wrong, full stop)
 
+> **Rule 0 — main-session-orchestrated only (the capability law).**
+> This skill MUST run in the main session. Do NOT invoke it from inside
+> a subagent: Step 2a spawns the Claude reviewer via the `Agent` tool,
+> and Claude Code does not expose `Agent` to subagents (anti-recursion).
+> A slice may be *implemented* by a subagent, but its
+> post-baseline-commit per-slice review AND the all-slices-done ship-pre
+> review are BOTH run here, by the main session, as **N+1+1**. The old
+> "subagent runs its own 1+1 internally" model is **deprecated** — it
+> was based on a wrong capability assumption (nested `Agent` simply does
+> not start); do not implement or expect it.
+> (wiki cross-model-review.md §N 取值表 callout, 2026-05-17 能力修正.)
+
 1. **Single-message parallel spawn.** Every reviewer tool call for a
    round goes out in ONE assistant message. Never "send some, wait,
    send the rest". Never one tool call per message.
@@ -38,8 +50,9 @@ invocation — see Tier-0 rules).
    `printf %s "$PROMPT" | codex exec --model gpt-5.5 - 2>&1`.
    Never `-C`. Never a positional-arg prompt. Never a dev-tier model
    (`gpt-5.3-codex-spark`/`gpt-5.3-codex`) for review.
-3. **Claude reviewer = Agent subagent, model `opus`, full diff.** Never
-   the headless `claude -p` path (rate-limit + 25min timeout footgun).
+3. **Claude reviewer = Agent subagent, model `opus`, full diff, spawned
+   BY THE MAIN SESSION (Rule 0).** Never the headless `claude -p` path
+   (rate-limit + 25min timeout footgun).
 4. **Gemini = `backends/gemini.sh` (auto_edit + retry).** Never
    `--approval-mode plan` (blocks tools → weak findings).
 5. **Every external call `2>&1`. Run from the repo root. No `-C`.**
@@ -55,6 +68,10 @@ invocation — see Tier-0 rules).
 ---
 
 ## Step 0 — args + env
+
+> Precondition (Rule 0): you are the **main session**. If you are a
+> subagent, stop now and return to the orchestrator — you cannot spawn
+> the Claude reviewer, so this loop cannot run here.
 
 Invocation:
 
@@ -110,14 +127,15 @@ SECTIONS=$(grep -cE '^diff --git' "$RUN_DIR/change.diff" || echo 1)
 echo "diff: $LINES changed lines across $SECTIONS file-sections"
 ```
 
-**N table** (only codex instantiates by size; Claude & Gemini are always
-×1 on the full diff):
+**N table.** Canonical notation is **N+1+1** = N codex + 1 Claude Agent
++ 1 Gemini (wiki "统一记法 N+1+1"; N=1 ⇒ 1+1+1). Only codex instantiates
+by diff size; Claude & Gemini are always ×1 on the full diff:
 
-| changed lines | setup   | codex N | reviewer total |
-|---------------|---------|---------|----------------|
-| < 200         | 1+1+1   | 1       | 3              |
-| 200–500       | 1+2+1   | 2       | 4              |
-| 500+          | 1+3+1   | 3       | 5              |
+| changed lines | setup (N+1+1) | codex N | reviewer total |
+|---------------|---------------|---------|----------------|
+| < 200         | 1+1+1         | 1       | 3              |
+| 200–500       | 2+1+1         | 2       | 4              |
+| 500+          | 3+1+1         | 3       | 5              |
 
 > **Small-diff exception** (typo / copy, < 50 changed lines): run 1+1
 > (Claude subagent + codex only), and you MUST annotate the eventual
@@ -148,6 +166,10 @@ get `VIEW: FULL DIFF`.
 Track rounds with TodoWrite.
 
 ### 2a — Tier-0 parallel dispatch (ONE message, all reviewers)
+
+This is the **N+1+1** spawn and it happens here, in the main session
+(Rule 0). The `Agent` tool below only works because you are the main
+session — that is the whole reason this loop is not delegated.
 
 `ROUND_DIR="$RUN_DIR/round-$N"; mkdir -p "$ROUND_DIR"`
 
@@ -190,7 +212,14 @@ explicitly in the round report** (never silent-degrade):
 
 Merge every reviewer JSON that exists (variable N — `merge.py` dedups by
 vendor, so split-by-section codex correctly collapses to one "codex"
-vote, not N votes):
+vote, not N votes). `merge.py` applies two independent trust axes per the
+wiki: **concur** (horizontal — cross-vendor consensus → severity upgrade)
+and **grounding density** (vertical — count of real tool calls in a
+finding's `verification` → severity floor boost, only-up). A
+well-grounded single-vendor finding is not automatically weak. (wiki
+"grounding 密度 = 信任权重"; thresholds are proto-calibrated constants,
+not portable — the portable rule is just "grounding density is a trust
+weight".)
 
 ```bash
 python3 "$PROTO_ROOT/lib/merge.py" \
@@ -309,7 +338,7 @@ Then loop to round N+1.
 CROSS-MODEL REVIEW COMPLETE
 ===========================
 scenario:     ship-pre | per-slice
-setup:        1+N+1  (codex N=<n>)   [small-diff exception: <yes/no>]
+setup:        N+1+1  (codex N=<n>)   [small-diff exception: <yes/no>]
 rounds:       <r> / <ROUNDS>
 termination:  converged (N/N concur) | architectural_drift(<triggers>)
               | round-budget
