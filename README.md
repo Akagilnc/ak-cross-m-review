@@ -68,6 +68,21 @@ skill. This is that skill.
 /grounded-review src/billing.ts --mode code --rounds 2
 ```
 
+## Sibling skill: `/cross-model-review`
+
+This repo also ships `cross-model-review/` — the executable form of the wiki's
+`cross-model-review.md` (Step 2.4 / 2.6 of the autonomous TDD loop). It is
+**diff-based correctness/invariant review** (not single-file fact-checking),
+main-session-orchestrated, dispatching the v3 vendor squad
+(**N codex gpt-5.5 + 1 Claude opus Agent + 1 Gemini = N+1+1**) in one parallel
+message, with a deterministic drift/termination check (`lib/drift.py`) and the
+defer protocol. It reuses `lib/merge.py` (consensus + grounding-density boost)
+and `lib/extract_json.py`. Entry: `cross-model-review/SKILL.md`.
+
+```
+/cross-model-review [--base BRANCH] [--range A..B] [--scenario per-slice|ship-pre] [--rounds N]
+```
+
 ## Evaluation
 
 The `eval/` directory contains ground-truth test fixtures:
