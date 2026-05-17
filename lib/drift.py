@@ -77,31 +77,35 @@ def round_summary(merged: dict[str, Any], idx: int) -> dict[str, Any]:
     """Reduce a merged.json payload to the signals drift detection needs."""
     findings = merged.get("merged_findings", []) or []
     categories: set[str] = set()
-    locations: set[str] = set()
+    primary_locations: set[str] = set()
     crit_high = 0
     for f in findings:
         cat = (f.get("category") or "unknown").lower().strip()
         categories.add(cat)
-        if f.get("severity") in CRIT_HIGH:
+        # Severity may arrive as "High" / "HIGH" / " high " — merge.py
+        # passes a single-reviewer severity through verbatim, and
+        # extract_json does not normalize. Lower+strip before the
+        # crit/high test, otherwise crit_high undercounts and
+        # target_drift false-fires an architectural STOP on a normal
+        # high-severity round.
+        sev = (f.get("severity") or "").lower().strip()
+        if sev in CRIT_HIGH:
             crit_high += 1
-        # Pull locations from every reviewer entry in the group.
-        by_rev = f.get("by_reviewer", {}) or {}
-        for entries in by_rev.values():
-            lst = entries if isinstance(entries, list) else [entries]
-            for e in lst:
-                loc = _norm_location(e.get("location", ""))
-                if loc:
-                    locations.add(loc)
+        # Coverage-drift freshness is judged on the finding's own PRIMARY
+        # location only. Aggregating by_reviewer aux/context locations let
+        # one recurring context line defeat the coverage override's
+        # isdisjoint test, turning the 2026-04-30 v3.3 scenario into a
+        # false architectural stop.
         top_loc = _norm_location(f.get("location", ""))
         if top_loc:
-            locations.add(top_loc)
+            primary_locations.add(top_loc)
     return {
         "round": idx,
         "count": len(findings),
         "crit_high": crit_high,
         "categories": sorted(categories),
         "_cat_set": categories,
-        "_loc_set": locations,
+        "_loc_set": primary_locations,
     }
 
 
@@ -110,8 +114,24 @@ def _dominant_category(rs: dict[str, Any]) -> str | None:
     return next(iter(sorted(cats))) if len(cats) == 1 else None
 
 
-def detect(summaries: list[dict[str, Any]]) -> dict[str, Any]:
-    """Compute the drift verdict from an ordered list of round summaries."""
+def detect(
+    summaries: list[dict[str, Any]],
+    active_vendors: int | None = None,
+    min_vendors: int = 2,
+) -> dict[str, Any]:
+    """Compute the drift verdict from an ordered list of round summaries.
+
+    `active_vendors` = count of reviewer vendors that actually ran
+    (non-degraded) in the latest round, determined by the orchestrator
+    from backend exit codes. drift.py cannot infer it from merged.json
+    alone — a degraded backend emits the same `findings: []` shape as a
+    clean approve. When provided and below `min_vendors`, a zero-finding
+    latest round is NOT a valid positive termination (wiki: a positive
+    terminate needs >=2 vendors / an outside voice); it is reported as
+    `degraded_inconclusive` so the loop never silently passes a round
+    where the reviewers never actually ran. When `active_vendors` is
+    None (caller did not supply it) behaviour is unchanged.
+    """
     public_rounds = [
         {k: v for k, v in s.items() if not k.startswith("_")}
         for s in summaries
@@ -128,8 +148,23 @@ def detect(summaries: list[dict[str, Any]]) -> dict[str, Any]:
 
     latest = summaries[-1]
 
-    # Positive termination: zero findings in the latest round.
+    # Positive termination: zero findings in the latest round — but only
+    # if enough vendors actually ran. A degraded round (all backends
+    # synthetic-empty) also has 0 findings and must NOT read as concur.
     if latest["count"] == 0:
+        if active_vendors is not None and active_vendors < min_vendors:
+            return {
+                "verdict": "degraded_inconclusive",
+                "action": "need_more_rounds",
+                "triggers": ["vendor_degraded"],
+                "rounds": public_rounds,
+                "explain": (
+                    f"round {latest['round']} has 0 findings but only "
+                    f"{active_vendors} vendor(s) ran (need >={min_vendors}) "
+                    f"— not a valid concur; manual review / vendor recovery "
+                    f"required, not stop_converged"
+                ),
+            }
         return {
             "verdict": "converged",
             "action": "stop_converged",
@@ -213,21 +248,41 @@ def detect(summaries: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def detect_from_files(paths: list[str]) -> dict[str, Any]:
+def detect_from_files(
+    paths: list[str], active_vendors: int | None = None
+) -> dict[str, Any]:
     summaries: list[dict[str, Any]] = []
+    errors: list[str] = []
     for i, p in enumerate(paths, start=1):
         path = Path(p)
         if not path.is_file():
+            errors.append(f"not found: {p}")
             print(f"warning: merged file not found: {p}", file=sys.stderr)
             continue
         try:
             with path.open() as fh:
                 merged = json.load(fh)
         except json.JSONDecodeError as e:
+            errors.append(f"invalid JSON: {p} ({e})")
             print(f"warning: invalid JSON in {p}: {e}", file=sys.stderr)
             continue
         summaries.append(round_summary(merged, i))
-    return detect(summaries)
+    if paths and not summaries:
+        # Every requested round file was missing/invalid. NOT a benign
+        # "need more rounds" tick — usually a glob typo or a failed
+        # merge. Surface as an error so the orchestrator does not treat
+        # a broken pipeline as a normal loop state.
+        return {
+            "verdict": "input_error",
+            "action": "stop_reground",
+            "triggers": ["input_error"],
+            "rounds": [],
+            "explain": (
+                f"no valid merged.json among {len(paths)} requested "
+                f"path(s): {'; '.join(errors)}"
+            ),
+        }
+    return detect(summaries, active_vendors=active_vendors)
 
 
 def _mk(round_no: int, findings: list[tuple[str, str, str]]) -> dict[str, Any]:
@@ -346,6 +401,59 @@ def selftest() -> int:
     check("v3.3 R3->R4 reads as coverage_drift not architectural",
           v_mid["verdict"] == "coverage_drift", str(v_mid))
 
+    # 10. Severity normalization (F2): "HIGH" / " high " / "Critical"
+    #     must count as crit_high; otherwise target_drift false-fires.
+    rs = round_summary(
+        _mk(1, [("HIGH", "logic", "a:1"), (" high ", "x", "b:2"),
+                ("Critical", "y", "c:3"), ("low", "z", "d:4")]), 1)
+    check("severity normalized: HIGH/ high /Critical → crit_high=3",
+          rs["crit_high"] == 3, f"got {rs['crit_high']}")
+    # Two flat rounds of mixed-case HIGH on the same surface must NOT
+    # carry target_drift (crit_high>0 → reviewers still finding real
+    # issues, not polishing nitpicks).
+    v = verdict([_mk(1, [("HIGH", "logic", "a:1")]),
+                 _mk(2, [("High", "logic", "a:1")])])
+    check("mixed-case HIGH flat round: no target_drift",
+          "target_drift" not in v["triggers"], str(v))
+
+    # 11. Coverage-drift survives a shared by_reviewer aux location
+    #     (F-cov): primary locations distinct each round → still
+    #     coverage_drift even though both cite the same context file.
+    def _mk_aux(loc: str, aux: str) -> dict[str, Any]:
+        return {"merged_findings": [{
+            "severity": "medium", "category": "stale-link",
+            "location": loc,
+            "by_reviewer": {"claude": [{"location": aux}]},
+        }]}
+    v = detect([
+        round_summary(_mk_aux("page-a.md:10", "shared.md:9"), 1),
+        round_summary(_mk_aux("page-b.md:20", "shared.md:9"), 2),
+    ])
+    check("coverage_drift survives shared aux location",
+          v["verdict"] == "coverage_drift", str(v))
+
+    # 12. Degraded round must not read as concur (F4).
+    deg = [_mk(1, [("high", "logic", "a:1")]), _mk(2, [])]
+    summ = [round_summary(r, i) for i, r in enumerate(deg, 1)]
+    v = detect(summ, active_vendors=1)
+    check("0 findings + 1 vendor → degraded_inconclusive",
+          v["verdict"] == "degraded_inconclusive", str(v))
+    check("degraded action is need_more_rounds",
+          v["action"] == "need_more_rounds", str(v))
+    v = detect(summ, active_vendors=2)
+    check("0 findings + 2 vendors → converged",
+          v["verdict"] == "converged", str(v))
+    v = detect(summ)  # active_vendors unknown → backward compatible
+    check("0 findings + vendors unknown → converged (backcompat)",
+          v["verdict"] == "converged", str(v))
+
+    # 13. Broken input pipeline must not look like a benign tick (F10).
+    v = detect_from_files(["/nonexistent/cmr-does-not-exist-xyz.json"])
+    check("all-missing input → input_error",
+          v["verdict"] == "input_error", str(v))
+    check("input_error action is stop_reground",
+          v["action"] == "stop_reground", str(v))
+
     if failures:
         print(f"\n❌ {len(failures)} drift self-test(s) failed:", file=sys.stderr)
         for f in failures:
@@ -358,16 +466,31 @@ def selftest() -> int:
 def main() -> int:
     args = sys.argv[1:]
     if not args:
-        print("usage: drift.py <round-1/merged.json> [<round-2/merged.json> ...]",
+        print("usage: drift.py [--active-vendors N] "
+              "<round-1/merged.json> [<round-2/merged.json> ...]",
               file=sys.stderr)
         print("       drift.py --selftest", file=sys.stderr)
         return 1
     if args[0] == "--selftest":
         return selftest()
-    result = detect_from_files(args)
+
+    active_vendors: int | None = None
+    if args and args[0] == "--active-vendors":
+        if len(args) < 2 or not args[1].isdigit():
+            print("error: --active-vendors needs an integer", file=sys.stderr)
+            return 1
+        active_vendors = int(args[1])
+        args = args[2:]
+    if not args:
+        print("error: no merged.json paths given", file=sys.stderr)
+        return 1
+
+    result = detect_from_files(args, active_vendors=active_vendors)
     json.dump(result, sys.stdout, indent=2)
     sys.stdout.write("\n")
-    return 0
+    # Non-zero exit when the input pipeline is broken so the orchestrator
+    # cannot mistake a glob typo / failed merge for a benign loop tick.
+    return 3 if result.get("verdict") == "input_error" else 0
 
 
 if __name__ == "__main__":

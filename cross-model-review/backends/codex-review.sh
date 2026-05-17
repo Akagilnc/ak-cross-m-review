@@ -92,39 +92,62 @@ fi
 
 echo "codex-review: model=${MODEL} mode=${MODE} label=${LABEL} timeout=${TIMEOUT_S}s" >&2
 
-# Portable hard timeout: prefer timeout/gtimeout, else background+kill.
-# The wiki rule is "3min no stdout/stderr → pkill"; we apply a wall-clock
-# ceiling instead (simpler, no false kill on slow-but-progressing runs).
-run_codex() {
-  # stdin pipe + pinned model + `-` (read from stdin) + 2>&1. No -C.
-  printf '%s' "$FULL_PROMPT" | codex exec --model "$MODEL" - 2>&1
-}
+# Portable hard timeout. The prompt ALWAYS reaches codex via a temp file
+# fed to `codex exec --model "$MODEL" -` (the `-` = read stdin). An
+# earlier version fed $FULL_PROMPT as a here-string into a `bash -c`
+# that read it as an out-of-scope variable → empty prompt whenever GNU
+# timeout/gtimeout was present (the default on homebrew macOS), so codex
+# silently never ran. Fixed: one stdin path for every branch, real
+# timeout (rc 124/137/143) treated as degrade, and the no-coreutils
+# fallback kills only THIS codex + its children (never a global
+# `pkill -f 'codex exec'`, which would take down sibling parallel codex
+# reviewers and unrelated user codex runs).
+PROMPT_TMP="$(mktemp)"
+trap 'rm -f "$PROMPT_TMP"' EXIT
+printf '%s' "$FULL_PROMPT" > "$PROMPT_TMP"
 
 RAW=""
+RC=0
 if command -v timeout >/dev/null 2>&1; then
-  RAW="$(timeout "${TIMEOUT_S}s" bash -c "$(declare -f run_codex); run_codex" \
-         <<<"$FULL_PROMPT" 2>/dev/null || true)"
+  set +e
+  RAW="$(timeout "${TIMEOUT_S}s" codex exec --model "$MODEL" - < "$PROMPT_TMP" 2>&1)"
+  RC=$?
+  set -e
 elif command -v gtimeout >/dev/null 2>&1; then
-  RAW="$(gtimeout "${TIMEOUT_S}s" bash -c "$(declare -f run_codex); run_codex" \
-         <<<"$FULL_PROMPT" 2>/dev/null || true)"
+  set +e
+  RAW="$(gtimeout "${TIMEOUT_S}s" codex exec --model "$MODEL" - < "$PROMPT_TMP" 2>&1)"
+  RC=$?
+  set -e
 else
-  # Fallback: background the call, kill the process group on timeout.
+  # No coreutils timeout: background codex, scoped-kill on timeout.
   TMP_OUT="$(mktemp)"
-  ( printf '%s' "$FULL_PROMPT" | codex exec --model "$MODEL" - >"$TMP_OUT" 2>&1 ) &
+  codex exec --model "$MODEL" - < "$PROMPT_TMP" >"$TMP_OUT" 2>&1 &
   CODEX_PID=$!
-  ( sleep "$TIMEOUT_S"; kill -0 "$CODEX_PID" 2>/dev/null && \
-    { echo "codex-review: timeout ${TIMEOUT_S}s — pkill" >&2; \
-      pkill -f 'codex exec' 2>/dev/null || true; } ) &
+  ( sleep "$TIMEOUT_S"
+    if kill -0 "$CODEX_PID" 2>/dev/null; then
+      echo "codex-review: timeout ${TIMEOUT_S}s — killing pid $CODEX_PID + children (scoped, not global)" >&2
+      pkill -TERM -P "$CODEX_PID" 2>/dev/null || true
+      kill -TERM "$CODEX_PID" 2>/dev/null || true
+    fi ) &
   WATCH_PID=$!
-  wait "$CODEX_PID" 2>/dev/null || true
+  set +e
+  wait "$CODEX_PID"
+  RC=$?
+  set -e
   kill "$WATCH_PID" 2>/dev/null || true
   RAW="$(cat "$TMP_OUT" 2>/dev/null || true)"
   rm -f "$TMP_OUT"
 fi
 
+# rc 124 = timeout(1) killed it; 137/143 = SIGKILL/SIGTERM (our kill).
+# A truncated-but-brace-balanced fragment must NOT parse as real
+# findings — any timeout/kill is a degrade regardless of partial stdout.
+case "$RC" in
+  124|137|143) RAW="" ;;
+esac
+
 if [ -z "$RAW" ]; then
-  echo "codex-review: error: empty output (timeout or CLI failure) — " \
-       "degrade and flag '本轮缺 codex'" >&2
+  echo "codex-review: error: empty output / timeout (rc=$RC) — degrade, flag '本轮缺 codex'" >&2
   printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
 fi

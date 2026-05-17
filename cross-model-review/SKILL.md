@@ -114,7 +114,12 @@ on them.
 ## Step 1 — build the diff + size it
 
 ```bash
-BASE="${BASE:-main}"; git rev-parse --verify "$BASE" >/dev/null 2>&1 || BASE=master
+# Defaults FIRST — these flags are optional and the orchestrator may run
+# under `set -u`; referencing them unset would abort before the diff is
+# even built. SCENARIO default is ship-pre (wiki Step 2.6).
+BASE="${BASE:-main}"; DIFF_FILE="${DIFF_FILE:-}"; RANGE="${RANGE:-}"
+SCENARIO="${SCENARIO:-ship-pre}"
+git rev-parse --verify "$BASE" >/dev/null 2>&1 || BASE=master
 RUN_DIR="$PROTO_ROOT/outputs/cmr-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$RUN_DIR"
 
 if   [ -n "$DIFF_FILE" ]; then cp "$DIFF_FILE" "$RUN_DIR/change.diff"
@@ -122,8 +127,13 @@ elif [ -n "$RANGE" ];     then git diff "$RANGE"            > "$RUN_DIR/change.d
 else                            git diff "$BASE"...HEAD     > "$RUN_DIR/change.diff"
 fi
 
-LINES=$(grep -cE '^[+-]' "$RUN_DIR/change.diff" || echo 0)
-SECTIONS=$(grep -cE '^diff --git' "$RUN_DIR/change.diff" || echo 1)
+# `grep -c` prints "0" AND exits 1 on no match. `|| echo 0` would APPEND
+# a second line → LINES="0\n0" → the numeric N-table compare blows up on
+# an empty / binary-only / pure-rename diff. Swallow the exit, don't
+# append; then floor with parameter expansion.
+LINES=$(grep -cE '^[+-]' "$RUN_DIR/change.diff" || true);          LINES=${LINES:-0}
+SECTIONS=$(grep -cE '^diff --git' "$RUN_DIR/change.diff" || true); SECTIONS=${SECTIONS:-0}
+[ "${SECTIONS:-0}" -eq 0 ] 2>/dev/null && SECTIONS=1
 echo "diff: $LINES changed lines across $SECTIONS file-sections"
 ```
 
@@ -221,11 +231,26 @@ well-grounded single-vendor finding is not automatically weak. (wiki
 not portable — the portable rule is just "grounding density is a trust
 weight".)
 
+Each backend in 2a MUST record its exit status so degradation is
+detectable (a degraded backend emits the same `findings: []` shape as a
+clean approve — only the exit code distinguishes them). After each
+backend call write its rc, e.g. `echo $? > "$ROUND_DIR/codex-$k.rc"`
+(Claude reviewer: rc 0 only if the subagent returned parseable findings
+JSON). Then merge and compute how many distinct vendors actually ran:
+
 ```bash
 python3 "$PROTO_ROOT/lib/merge.py" \
   "$ROUND_DIR"/claude.json "$ROUND_DIR"/codex-*.json "$ROUND_DIR"/gemini.json \
   > "$ROUND_DIR/merged.json"
 jq -r '"merged: \(.merged_findings|length) (\(.stats.by_severity))"' "$ROUND_DIR/merged.json"
+
+# Active = vendors with at least one non-degraded (rc 0) run this round.
+av=0
+[ "$(cat "$ROUND_DIR/claude.rc" 2>/dev/null)" = 0 ] && av=$((av+1))
+ls "$ROUND_DIR"/codex-*.rc >/dev/null 2>&1 && grep -qx 0 "$ROUND_DIR"/codex-*.rc 2>/dev/null && av=$((av+1))
+[ "$(cat "$ROUND_DIR/gemini.rc" 2>/dev/null)" = 0 ] && av=$((av+1))
+echo "$av" > "$ROUND_DIR/active_vendors"
+echo "active vendors this round: $av"
 ```
 
 ### 2c — present findings
@@ -236,20 +261,35 @@ only for the rest. Full detail stays in `merged.json`.
 
 ### 2d — drift + termination (computed verdict drives the loop)
 
+Round dirs MUST be passed in **numeric** order — a bare `round-*` glob
+sorts lexically (`round-1, round-10, round-2`), so with ≥10 rounds
+drift.py (which treats the last argv as "latest") would judge the wrong
+round. Pass the active-vendor count so a degraded zero-finding round
+cannot read as concur (drift.py cannot infer degradation from
+merged.json — same `findings: []` shape as a clean approve):
+
 ```bash
-python3 "$PROTO_ROOT/lib/drift.py" "$RUN_DIR"/round-*/merged.json > "$ROUND_DIR/drift.json"
+mapfile -t RD < <(ls -d "$RUN_DIR"/round-*/ 2>/dev/null | sort -t- -k2 -n)
+AV=$(cat "$ROUND_DIR/active_vendors" 2>/dev/null || echo 2)
+python3 "$PROTO_ROOT/lib/drift.py" --active-vendors "$AV" \
+  "${RD[@]/%/merged.json}" > "$ROUND_DIR/drift.json"
+DRIFT_RC=$?
 jq -r '.verdict + " / " + .action + " — " + .explain' "$ROUND_DIR/drift.json"
 ```
+
+`drift.py` exits 3 on `input_error` (every round file missing/invalid —
+a glob typo or failed merge, NOT a benign tick). If `DRIFT_RC` is 3,
+STOP and report the broken pipeline; do not proceed as if converging.
 
 Act on `.action`:
 
 | action                   | do                                                                                                |
 |--------------------------|---------------------------------------------------------------------------------------------------|
 | `stop_converged`         | positive termination. Print the **concur ≠ done** reminder (rule 6). Go to Step 3.                 |
-| `need_more_rounds`       | only 1 round so far / latest non-empty — proceed to fixer (2e).                                    |
+| `need_more_rounds`       | 1 round so far / latest non-empty / **degraded round** (`degraded_inconclusive`: 0 findings but <2 vendors ran — flag "需人工补 review / 等 vendor 恢复", do NOT treat as concur). Proceed to fixer only if there are findings; if degraded, re-run reviewers next round (recover the vendor) instead. |
 | `continue`               | converging — proceed to fixer (2e).                                                               |
 | `centralize_then_continue` | coverage drift (not architectural). Tell the fixer to **centralize the repeated rule into one referenced place** rather than re-inlining; proceed to fixer. |
-| `stop_reground`          | architectural drift. STOP the loop. Report per wiki §例外 (b)/(c): which triggers fired, recommend implementation/architecture-level rework. Do NOT fix-and-retry. |
+| `stop_reground`          | architectural drift **or** `input_error` (broken input pipeline). STOP the loop. Report per wiki §例外 (b)/(c): which triggers fired, recommend implementation/architecture-level rework (or fix the pipeline). Do NOT fix-and-retry. |
 
 Also: if `N == ROUNDS` and not converged → stop after this round;
 remaining `critical`/`high` is a hard problem (report it), remaining
