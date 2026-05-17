@@ -269,10 +269,21 @@ cannot read as concur (drift.py cannot infer degradation from
 merged.json — same `findings: []` shape as a clean approve):
 
 ```bash
-mapfile -t RD < <(ls -d "$RUN_DIR"/round-*/ 2>/dev/null | sort -t- -k2 -n)
+# bash 3.2 safe (macOS /bin/bash has NO `mapfile`). Sort on the round
+# integer extracted from `round-N`, NOT on the RUN_DIR path: RUN_DIR is
+# `outputs/cmr-YYYYMMDD-HHMMSS/...`, so a path-keyed numeric sort keys
+# on the date (identical for every round) and stays lexical
+# (round-10 before round-2). Extract N, sort numeric, rebuild paths.
+RD=()
+while IFS= read -r _d; do RD+=("$_d/merged.json"); done < <(
+  for _r in "$RUN_DIR"/round-*/; do
+    _n=${_r%/}; _n=${_n##*/round-}
+    printf '%s\t%s\n' "$_n" "${_r%/}"
+  done | sort -n -k1,1 | cut -f2-
+)
 AV=$(cat "$ROUND_DIR/active_vendors" 2>/dev/null || echo 2)
 python3 "$PROTO_ROOT/lib/drift.py" --active-vendors "$AV" \
-  "${RD[@]/%/merged.json}" > "$ROUND_DIR/drift.json"
+  "${RD[@]}" > "$ROUND_DIR/drift.json"
 DRIFT_RC=$?
 jq -r '.verdict + " / " + .action + " — " + .explain' "$ROUND_DIR/drift.json"
 ```

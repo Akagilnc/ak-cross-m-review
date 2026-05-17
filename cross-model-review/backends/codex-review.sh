@@ -120,14 +120,23 @@ elif command -v gtimeout >/dev/null 2>&1; then
   set -e
 else
   # No coreutils timeout: background codex, scoped-kill on timeout.
+  # A flag file records that the watchdog fired, so a codex that traps
+  # TERM and exits 0 *after* the deadline is still treated as a timeout
+  # (not a false success). KILL escalation if TERM is ignored.
   TMP_OUT="$(mktemp)"
+  TIMED_OUT="$(mktemp)"; rm -f "$TIMED_OUT"
+  trap 'rm -f "$PROMPT_TMP" "$TMP_OUT" "$TIMED_OUT"' EXIT
   codex exec --model "$MODEL" - < "$PROMPT_TMP" >"$TMP_OUT" 2>&1 &
   CODEX_PID=$!
   ( sleep "$TIMEOUT_S"
     if kill -0 "$CODEX_PID" 2>/dev/null; then
+      : > "$TIMED_OUT"
       echo "codex-review: timeout ${TIMEOUT_S}s — killing pid $CODEX_PID + children (scoped, not global)" >&2
       pkill -TERM -P "$CODEX_PID" 2>/dev/null || true
-      kill -TERM "$CODEX_PID" 2>/dev/null || true
+      kill  -TERM "$CODEX_PID" 2>/dev/null || true
+      sleep 2
+      pkill -KILL -P "$CODEX_PID" 2>/dev/null || true
+      kill  -KILL "$CODEX_PID" 2>/dev/null || true
     fi ) &
   WATCH_PID=$!
   set +e
@@ -136,18 +145,30 @@ else
   set -e
   kill "$WATCH_PID" 2>/dev/null || true
   RAW="$(cat "$TMP_OUT" 2>/dev/null || true)"
-  rm -f "$TMP_OUT"
+  [ -f "$TIMED_OUT" ] && RC=124   # watchdog fired → force the degrade path
+  rm -f "$TMP_OUT" "$TIMED_OUT"
 fi
 
-# rc 124 = timeout(1) killed it; 137/143 = SIGKILL/SIGTERM (our kill).
-# A truncated-but-brace-balanced fragment must NOT parse as real
-# findings — any timeout/kill is a degrade regardless of partial stdout.
+# rc 124 = timeout(1) / our watchdog; 137/143 = SIGKILL/SIGTERM. A
+# truncated-but-brace-balanced fragment must NOT parse as real findings
+# — any timeout/kill is a degrade regardless of partial stdout.
 case "$RC" in
   124|137|143) RAW="" ;;
 esac
 
+# Hard CLI failure (auth / login / quota / rate / usage limit): codex
+# ran but produced an error, not a review. wiki/codex-bot-conventions:
+# rate/quota/limit → degrade immediately. Without this the error text
+# feeds extract_json (0 findings) but the round is NOT flagged "本轮缺
+# codex", so a silent auth/quota failure masquerades as a clean approve.
+if [ -n "$RAW" ] && printf '%s' "$RAW" \
+   | grep -qiE 'unauthor|not logged in|codex login|invalid api key|rate.?limit|quota|usage limit|\b429\b'; then
+  echo "codex-review: hard CLI error in output — degrade, flag '本轮缺 codex'" >&2
+  RAW=""
+fi
+
 if [ -z "$RAW" ]; then
-  echo "codex-review: error: empty output / timeout (rc=$RC) — degrade, flag '本轮缺 codex'" >&2
+  echo "codex-review: error: empty output / timeout / hard error (rc=$RC) — degrade, flag '本轮缺 codex'" >&2
   printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
 fi
