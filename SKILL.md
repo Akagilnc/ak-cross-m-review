@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: Local pre-PR cross-model review, main-session-orchestrated. Dispatches the v3 vendor squad — N codex gpt-5.5 + 1 Claude opus Agent + 1 Gemini = N+1+1 — in a single parallel message against a diff, merges findings with consensus severity upgrade + grounding-density floor boost, runs a deterministic drift/termination check, proposes a fixer diff per round with the defer protocol, and loops to N/N concur or an architectural stop. Use every dev cycle before ship — this is wiki Step 2.4 / 2.6, the part sessions repeatedly get wrong.
+description: Local pre-PR cross-model review — the executable form of the wiki's cross-model-review.md (tdd-autonomous-dev spine step 4 per-slice / step 5 ship-pre, Layer 1). Dispatches the v3 vendor squad (1 Claude opus Agent + N codex gpt-5.5 + 1 Gemini = N+1+1, N by diff size) in ONE parallel message against a diff, then merge / grade / drift-check / loop as the agent judgment the wiki prescribes. Use every dev cycle before a PR, so the agent runs the wiki step the same way instead of re-deciding by feel.
 allowed-tools:
   - Bash
   - Read
@@ -11,451 +11,228 @@ allowed-tools:
   - TodoWrite
 ---
 
-# /ak-cross-m-review — v3 vendor-squad pre-PR review
+# /ak-cross-m-review — wiki cross-model-review, executable
 
-This skill is the executable form of
+This skill is a faithful, compact transcription of the **single source
+of truth**:
 `~/WorkSpace/vault/ak-cc-wiki/wiki/concepts/cross-model-review.md`
-(Step 2.4 / 2.6 of `tdd-autonomous-dev`). The wiki is the source of
-truth; this file transcribes its **hard rules** into a loop so every
-session runs it the same way instead of re-deciding by feel.
+(setup / invocation / termination / drift live there; defer + cross-slice
+discipline in `tdd-autonomous-dev.md` §切片内纪律). The wiki frames
+merge / grade / drift / termination as **agent judgment**, not a
+deterministic engine — this file keeps it that way. If this file and the
+wiki ever disagree, the wiki wins; re-sync, do not fork behavior.
 
-Shared library lives at the repo root:
-`PROTO_ROOT="$HOME/WorkSpace/ak-cross-m-review"` — reuses
-`lib/merge.py` (consensus), `lib/extract_json.py` (robust parse),
-`lib/drift.py` (deterministic drift/termination). Codex runs through
-`backends/codex-review.sh` (the corrected
-invocation — see Tier-0 rules).
+It is **Layer 1** (local, pre-PR). It does not replace Layer 3
+(`pr-review-loop`). It does not commit / push / open a PR — the caller
+(or `gstack-ship`) does. One change set per invocation.
 
----
-
-## Tier-0 hard rules (violating any of these = wrong, full stop)
-
-> **Rule 0 — main-session-orchestrated only (the capability law).**
-> This skill MUST run in the main session. Do NOT invoke it from inside
-> a subagent: Step 2a spawns the Claude reviewer via the `Agent` tool,
-> and Claude Code does not expose `Agent` to subagents (anti-recursion).
-> A slice may be *implemented* by a subagent, but its
-> post-baseline-commit per-slice review AND the all-slices-done ship-pre
-> review are BOTH run here, by the main session, as **N+1+1**. The old
-> "subagent runs its own 1+1 internally" model is **deprecated** — it
-> was based on a wrong capability assumption (nested `Agent` simply does
-> not start); do not implement or expect it.
-> (wiki cross-model-review.md §N 取值表 callout, 2026-05-17 能力修正.)
-
-1. **Single-message parallel spawn.** Every reviewer tool call for a
-   round goes out in ONE assistant message. Never "send some, wait,
-   send the rest". Never one tool call per message.
-2. **Codex only via `backends/codex-review.sh`.** Never call `codex exec`
-   directly from this loop. The backend pins the correct form:
-   `printf %s "$PROMPT" | codex exec --model gpt-5.5 - 2>&1`.
-   Never `-C`. Never a positional-arg prompt. Never a dev-tier model
-   (`gpt-5.3-codex-spark`/`gpt-5.3-codex`) for review.
-3. **Claude reviewer = Agent subagent, model `opus`, full diff, spawned
-   BY THE MAIN SESSION (Rule 0).** Never the headless `claude -p` path
-   (rate-limit + 25min timeout footgun).
-4. **Gemini = `backends/gemini.sh` (auto_edit + retry).** Never
-   `--approval-mode plan` (blocks tools → weak findings).
-5. **Every external call `2>&1`. Run from the repo root. No `-C`.**
-6. **`concur ≠ done`.** N/N concur means "the correctness lens is
-   exhausted, proceed to the next gate" — NOT "ship-ready". Coverage
-   audit / specialist / ship Red Team are different lenses and are not
-   skippable downstream. (`gate-lens-heterogeneity`.)
-7. **Defer protocol is mandatory.** A finding is either fixed or
-   deferred-with-all-three-parts. Never re-rank P1→P2 to escape the loop.
-8. **Drift verdict is computed, not felt.** Use `lib/drift.py`. When it
-   says `stop_reground`, stop — do not "try one more round".
-
----
-
-## Step 0 — args + env
-
-> Precondition (Rule 0): you are the **main session**. If you are a
-> subagent, stop now and return to the orchestrator — you cannot spawn
-> the Claude reviewer, so this loop cannot run here.
+## Step 0 — scenario, scope, pre-flight
 
 Invocation:
 
 ```
 /ak-cross-m-review [--base BRANCH] [--range A..B] [--diff FILE]
-                    [--mode doc|code|auto] [--rounds N]
                     [--scenario per-slice|ship-pre]
 ```
 
-- `--base` — base branch for the cumulative diff. Default: `main`
-  (fallback `master`).
-- `--range` — explicit `A..B` commit range (e.g. a single slice's
-  commits). Overrides `--base`.
-- `--diff` — review a pre-computed diff file instead of computing one.
-- `--mode` — `auto` (default): `doc` if the diff is >70% `.md`, else
-  `code`.
-- `--rounds` — max reviewer→fixer iterations. Default `3` (the wiki
-  3-round cap; round 4 is reviewer-taste, not value).
-- `--scenario` — `ship-pre` (default; cross-slice cumulative diff vs
-  base) or `per-slice` (one slice's range, within-slice lens). Affects
-  only the reviewer-prompt emphasis line.
+- **`per-slice`** (tdd spine step 4, after a slice's baseline commit) —
+  within-slice lens: local logic / naming / test coverage / single-slice
+  spec-impl consistency. Scope = that slice's commit range.
+- **`ship-pre`** (tdd spine step 5, all slices done) — cross-slice lens:
+  cross-slice spec-impl contradictions / shared type & interface
+  invariants / global logic after merge. Scope = whole-PR cumulative
+  diff vs base (default `main`, fallback `master`).
 
-```bash
-PROTO_ROOT="$HOME/WorkSpace/ak-cross-m-review"
-for bin in claude codex gemini python3 jq git; do
-  command -v "$bin" >/dev/null 2>&1 || { echo "missing: $bin" >&2; exit 2; }
-done
-python3 "$PROTO_ROOT/lib/merge.py" --selftest >/dev/null && \
-python3 "$PROTO_ROOT/lib/drift.py" --selftest >/dev/null && \
-bash "$PROTO_ROOT/backends/codex-review.sh" --selftest >/dev/null && \
-echo "env + lib selftests OK"
-```
+Build the reviewed diff with plain git (`git diff <base>...HEAD`, or
+`git diff <range>`, or the `--diff` file). No diff state machine — it is
+just the change under review for this round.
 
-If any selftest fails, stop and report — the loop's determinism depends
-on them.
+Pre-flight gates (wiki §操作规程 / §边界):
 
----
+- **Content PR with user-facing fact claims** (dates / names / orgs /
+  stats / security): run `content-fact-gate` FIRST. Cross-model
+  reviewers share training-data bias and rubber-stamp shared
+  hallucinations; this lens cannot catch that.
+- **Small diff** (typo / copy, < 50 changed lines): explicit exception —
+  run **1+1** (Claude Agent + codex, cross-family) instead of the v3
+  default, and you MUST annotate the eventual commit message
+  `"小 diff 例外，跑 1+1 不跑 v3 default"`. Silent degrade is an
+  anti-pattern.
 
-## Step 1 — build the diff + size it
+## Step 1 — setup (v3 N+1+1) + the N table
 
-```bash
-# Defaults FIRST — these flags are optional and the orchestrator may run
-# under `set -u`; referencing them unset would abort before the diff is
-# even built. SCENARIO default is ship-pre (wiki Step 2.6).
-BASE="${BASE:-main}"; DIFF_FILE="${DIFF_FILE:-}"; RANGE="${RANGE:-}"
-SCENARIO="${SCENARIO:-ship-pre}"
-git rev-parse --verify "$BASE" >/dev/null 2>&1 || BASE=master
-RUN_DIR="$PROTO_ROOT/outputs/cmr-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$RUN_DIR"
+Default **1+1+1**: 1 × Claude opus-4.7 (Agent subagent, full diff) +
+1 × codex `gpt-5.5` + 1 × Gemini strongest review model, **all full
+diff**. Only codex instantiates by diff size; Claude & Gemini are always
+×1 on the full diff.
 
-if   [ -n "$DIFF_FILE" ]; then cp "$DIFF_FILE" "$RUN_DIR/change.diff"
-elif [ -n "$RANGE" ];     then git diff "$RANGE"            > "$RUN_DIR/change.diff"
-else                            git diff "$BASE"...HEAD     > "$RUN_DIR/change.diff"
-fi
+| Diff size | codex N | total reviewers | lens split |
+|---|---|---|---|
+| Small/Tiny (< 200 lines / 1 section) | 1 | 3 (1+1+1) | all three full diff |
+| Medium (200–500 / 2 sections) | 2 | 4 (1+2+1) | 2 codex split 1/2 within-section; Claude+Gemini full |
+| Large (500+ / 3+ sections) | 3 | 5 (1+3+1) | 3 codex split 1/3 within-section; Claude+Gemini full |
 
-# `grep -c` prints "0" AND exits 1 on no match. `|| echo 0` would APPEND
-# a second line → LINES="0\n0" → the numeric N-table compare blows up on
-# an empty / binary-only / pure-rename diff. Swallow the exit, don't
-# append; then floor with parameter expansion.
-LINES=$(grep -cE '^[+-]' "$RUN_DIR/change.diff" || true);          LINES=${LINES:-0}
-SECTIONS=$(grep -cE '^diff --git' "$RUN_DIR/change.diff" || true); SECTIONS=${SECTIONS:-0}
-[ "${SECTIONS:-0}" -eq 0 ] 2>/dev/null && SECTIONS=1
-echo "diff: $LINES changed lines across $SECTIONS file-sections"
-```
+**Strongest review model only** — Anthropic `claude opus-4.7`, OpenAI
+`gpt-5.5`, Google strongest review Gemini. **Never** dev-tier
+`gpt-5.3-codex-spark` / `claude sonnet-4.6` as a reviewer (coding-tier
+model choice is a separate matter; do not carry it into review).
 
-**N table.** Canonical notation is **N+1+1** = N codex + 1 Claude Agent
-+ 1 Gemini (wiki "统一记法 N+1+1"; N=1 ⇒ 1+1+1). Only codex instantiates
-by diff size; Claude & Gemini are always ×1 on the full diff:
+> Orchestration law: cross-model review is ALWAYS run by the **main
+> session**. There is no "subagent runs review internally" — a subagent
+> cannot spawn the Claude reviewer (Claude Code does not expose `Agent`
+> to subagents). A slice may be *implemented* by a subagent, but its
+> per-slice review and the ship-pre review are both run here, by the
+> main session, as N+1+1.
 
-| changed lines | setup (N+1+1) | codex N | reviewer total |
-|---------------|---------------|---------|----------------|
-| < 200         | 1+1+1         | 1       | 3              |
-| 200–500       | 2+1+1         | 2       | 4              |
-| 500+          | 3+1+1         | 3       | 5              |
+## Step 2 — parallel launch (operational HARD RULE)
 
-> **Small-diff exception** (typo / copy, < 50 changed lines): run 1+1
-> (Claude subagent + codex only), and you MUST annotate the eventual
-> commit message `"小 diff 例外，跑 1+1 不跑 v3 default"`. Silent
-> degrade is an anti-pattern.
+Emit **every reviewer tool call in ONE assistant message**:
 
-Compose the reviewer prompt once:
+- Default 1+1+1 → 3 tool calls: 1 × `Agent` (Claude opus, full diff) +
+  1 × `Bash` (`backends/codex-review.sh`) + 1 × `Bash`
+  (`backends/gemini.sh`).
+- Upgraded N codex → N+2 tool calls: 1 × `Agent` + N × `Bash` codex
+  (section k/N, non-overlapping diff slices) + 1 × `Bash` gemini (full).
 
-```bash
-EMPHASIS="FULL DIFF — prioritize cross-section / cross-slice consistency."
-[ "$SCENARIO" = "per-slice" ] && EMPHASIS="FULL DIFF — within-slice lens: local logic, edge cases, test coverage of changed branches."
-build_prompt() {  # $1 = view header
-  printf '%s\n\nVIEW: %s\n\n--- BEGIN DIFF ---\n' "$(cat "$PROTO_ROOT/prompts/cmr-reviewer.md")" "$1"
-  cat "$RUN_DIR/change.diff"
-  printf '\n--- END DIFF ---\nReturn JSON only. No markdown wrapper.\n'
-}
-```
+**Forbidden:** sending some and awaiting before sending the rest; one
+tool call per message. Serial launch defeats the entire point.
 
-For N≥2, codex section k gets `VIEW: SECTION k/N` and a diff sliced to
-its file-sections (split `change.diff` on `^diff --git` into N roughly
-equal groups, write `$RUN_DIR/codex-sec-k.diff`). Claude & Gemini always
-get `VIEW: FULL DIFF`.
+Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
 
----
+- **Codex** — only via `backends/codex-review.sh` (pins
+  `printf %s "$PROMPT" | codex exec --model gpt-5.5 - 2>&1`). Never
+  `codex exec "$(...)"` (hangs → pkill), never `-C <dir>` (wrong
+  workdir), never `codex review --base B "PROMPT"` (can't pass both).
+- **Gemini** — only via `backends/gemini.sh` (`gemini --approval-mode
+  auto_edit`, never `--approval-mode plan` — plan blocks tools → weak
+  findings).
+- **Claude reviewer** — the `Agent` tool, model `opus`, full-diff
+  reviewer prompt. Never the headless `claude -p` path here.
+- Always `2>&1`. Run from the repo root, no `-C`. Hang = >3min no
+  output → `pkill -f codex` → next priority. rate / quota / limit →
+  degrade immediately, do not retry.
 
-## Step 2 — round loop (1..ROUNDS)
+`backends/codex-review.sh` salvages the findings JSON from noisy CLI
+stdout via `lib/extract_json.py` and degrades cleanly (synthetic empty
+findings + nonzero exit) on timeout / auth / quota so a failed vendor
+is detectable, never a silent zero-finding pass.
 
-Track rounds with TodoWrite.
+Prompt templates: feed every reviewer `prompts/cmr-reviewer.md` + the
+diff; the fixer (Step 7) uses `prompts/cmr-fixer.md` (the 3-part defer
+protocol). They are templates, not control logic — adjust the lens line
+per scenario (per-slice vs ship-pre).
 
-### 2a — Tier-0 parallel dispatch (ONE message, all reviewers)
+## Step 3 — degradation (never silent)
 
-This is the **N+1+1** spawn and it happens here, in the main session
-(Rule 0). The `Agent` tool below only works because you are the main
-session — that is the whole reason this loop is not delegated.
+v3 requires all 3 vendors. If one is unavailable, run with the rest and
+**flag explicitly in the round report** — never silent-degrade to 1+1.
 
-`ROUND_DIR="$RUN_DIR/round-$N"; mkdir -p "$ROUND_DIR"`
+| Down (main = Claude) | Continue with | Flag |
+|---|---|---|
+| codex (all) | Claude + Gemini | "本轮缺 codex" |
+| gemini | Claude + codex | "本轮缺 gemini" |
+| 1 of N codex | Claude + (N−1) codex + Gemini | "codex 实例 N→N−1" |
+| codex + gemini both | Claude only (fallback, no outside voice) | "本轮无 outside voice — 需人工补 review" |
 
-In a **single assistant message**, emit all of:
+(Main = Codex variant + the Claude-auth live-smoke rule:
+`printf 'Return exactly: CLAUDE_OK\n' | claude -p --output-format json
+--disable-slash-commands --tools ""` — never file/env auth checks. See
+wiki §降级链.)
 
-- **1 × Agent tool** — Claude reviewer:
-  - `description`: `"cmr claude reviewer round N"`
-  - `model`: `opus`
-  - `prompt`: full-diff reviewer prompt (`build_prompt "FULL DIFF ..."`).
-  - After it returns, write its text to `$ROUND_DIR/claude.raw` and:
-    `python3 "$PROTO_ROOT/lib/extract_json.py" claude "$MODE" < "$ROUND_DIR/claude.raw" > "$ROUND_DIR/claude.json"`
-- **N × Bash tool** — codex reviewer(s), one per section (N=1 → full):
-  ```bash
-  printf '%s' "$CODEX_PROMPT_k" \
-    | "$PROTO_ROOT/backends/codex-review.sh" "$MODE" "section-$k-of-$NCODEX" \
-    > "$ROUND_DIR/codex-$k.json" 2> "$ROUND_DIR/codex-$k.err"
-  ```
-- **1 × Bash tool** — Gemini reviewer (full diff):
-  ```bash
-  printf '%s' "$GEMINI_PROMPT" \
-    | "$PROTO_ROOT/backends/gemini.sh" "$MODE" \
-    > "$ROUND_DIR/gemini.json" 2> "$ROUND_DIR/gemini.err"
-  ```
+## Step 4 — merge + grade (agent judgment, not a deterministic engine)
 
-Total tool calls = `1 (Agent) + N (codex Bash) + 1 (gemini Bash)`. Do
-NOT split across messages. Do NOT await one before sending the next.
+Collect every reviewer's findings (use `lib/extract_json.py` to pull the
+JSON out of each CLI's stdout). Then, as judgment:
 
-### 2b — vendor-degradation check, then merge
+- Group findings that describe the same issue across reviewers.
+- Grade each P0 / P1 / P2 / P3 / P4.
+- **Concurrence = horizontal trust**: the more independent vendors
+  raised it, the higher confidence → severity upgrade.
+- **Grounding density = vertical trust**: a finding whose `verification`
+  shows real tool calls (rg / python / Read / `--help` …) is
+  structurally more credible than pure reasoning; give a well-grounded
+  single-reviewer finding a severity floor boost (only up). Two
+  independent axes — do not read concurrence alone.
 
-A backend that emits the synthetic `{"...","findings":[]}` + nonzero
-exit = that vendor is **down this round**. Apply the matrix and **flag
-explicitly in the round report** (never silent-degrade):
+The wiki is explicit that any numeric thresholds are proto-calibrated
+constants, **not portable**. The portable rules are exactly the two
+sentences above. Do not re-import a deterministic merge engine.
 
-| down            | continue with         | flag                                  |
-|-----------------|-----------------------|----------------------------------------|
-| codex (all)     | Claude + Gemini       | "本轮缺 codex"                          |
-| gemini          | Claude + Codex        | "本轮缺 gemini"                         |
-| 1 of N codex    | Claude + (N-1) + Gem  | "codex 实例 N→N-1"                      |
-| 2 vendors down  | single vendor         | "本轮无 outside voice — 需人工补 review" |
+Present ≤30 lines: total + by-severity; enumerate only P0/P1 (id,
+category, reviewer count, first claim quote); count the rest.
 
-Merge every reviewer JSON that exists (variable N — `merge.py` dedups by
-vendor, so split-by-section codex correctly collapses to one "codex"
-vote, not N votes). `merge.py` applies two independent trust axes per the
-wiki: **concur** (horizontal — cross-vendor consensus → severity upgrade)
-and **grounding density** (vertical — count of real tool calls in a
-finding's `verification` → severity floor boost, only-up). A
-well-grounded single-vendor finding is not automatically weak. (wiki
-"grounding 密度 = 信任权重"; thresholds are proto-calibrated constants,
-not portable — the portable rule is just "grounding density is a trust
-weight".)
+## Step 5 — termination signals (wiki §终止信号)
 
-Each backend in 2a MUST record its exit status so degradation is
-detectable (a degraded backend emits the same `findings: []` shape as a
-clean approve — only the exit code distinguishes them). After each
-backend call write its rc, e.g. `echo $? > "$ROUND_DIR/codex-$k.rc"`
-(Claude reviewer: rc 0 only if the subagent returned parseable findings
-JSON). Then merge and compute how many distinct vendors actually ran:
+> **concur ≠ done.** The concur thresholds below mean "the
+> code+spec-correctness lens is exhausted, proceed to the next gate" —
+> NOT "ship-ready". Downstream ship gates (coverage / specialist / Red
+> Team) are different lenses and are not skippable. Reading concur as
+> ship-ready is a category error.
 
-```bash
-python3 "$PROTO_ROOT/lib/merge.py" \
-  "$ROUND_DIR"/claude.json "$ROUND_DIR"/codex-*.json "$ROUND_DIR"/gemini.json \
-  > "$ROUND_DIR/merged.json"
-jq -r '"merged: \(.merged_findings|length) (\(.stats.by_severity))"' "$ROUND_DIR/merged.json"
+**Positive termination (may proceed to next step):**
+- v3 default: **3/3 concur** (all reviewers approve).
+- Upgraded 1+N+1, 3 vendors present: **(N+2)/(N+2) concur**.
+- One vendor degraded (1+1+1 → 2 reviewers): **2/2 concur + flag**.
+- Only 1 vendor ran (no outside voice): **NOT positive** — needs human
+  review or wait for vendor recovery.
 
-# Active = vendors with at least one non-degraded (rc 0) run this round.
-av=0
-[ "$(cat "$ROUND_DIR/claude.rc" 2>/dev/null)" = 0 ] && av=$((av+1))
-ls "$ROUND_DIR"/codex-*.rc >/dev/null 2>&1 && grep -qx 0 "$ROUND_DIR"/codex-*.rc 2>/dev/null && av=$((av+1))
-[ "$(cat "$ROUND_DIR/gemini.rc" 2>/dev/null)" = 0 ] && av=$((av+1))
-echo "$av" > "$ROUND_DIR/active_vendors"
-echo "active vendors this round: $av"
-```
+**Hard stop (do not continue):** bug count not converging → the
+implementation method or architecture needs rework, not another patch.
 
-### 2c — present findings
+## Step 6 — drift triple-detection (agent judgment, wiki §drift)
 
-≤30 lines: total + by-severity; enumerate only `critical`/`high`
-(`merged_id`, `category`, `reviewer_count`, first `claim_quote`); count
-only for the rest. Full detail stays in `merged.json`.
+Hit any one → **STOP, rework at implementation/architecture level, do
+NOT keep patching**:
 
-### 2d — drift + termination (computed verdict drives the loop)
+| Drift | Trigger | Meaning |
+|---|---|---|
+| Quantity | this round's findings count not decreasing (flat/up) | patch introduces bugs ≥ rate it fixes → wrong direction |
+| Class | a new class of finding not seen last round | not converging, exposing new surface → re-examine architecture |
+| Target | reviewers polishing secondary output, not fixing core | drifted off core scope → reground |
 
-Round dirs MUST be passed in **numeric** order — a bare `round-*` glob
-sorts lexically (`round-1, round-10, round-2`), so with ≥10 rounds
-drift.py (which treats the last argv as "latest") would judge the wrong
-round. Pass the active-vendor count so a degraded zero-finding round
-cannot read as concur (drift.py cannot infer degradation from
-merged.json — same `findings: []` shape as a clean approve):
+> **Coverage drift ≠ architectural drift.** Same rule-class recurring
+> across rounds but each round on a NEW surface (the rule is right, it
+> just wasn't propagated) → this is *fix-coverage drift*: respond by
+> **centralizing the rule** (write once, reference elsewhere), not by
+> hard-stopping and not by inlining the same fix again. Signal: finding
+> count flat (not down, not up) + file/line each round non-repeating +
+> same rule class.
 
-```bash
-# bash 3.2 safe (macOS /bin/bash has NO `mapfile`). Sort on the round
-# integer extracted from `round-N`, NOT on the RUN_DIR path: RUN_DIR is
-# `outputs/cmr-YYYYMMDD-HHMMSS/...`, so a path-keyed numeric sort keys
-# on the date (identical for every round) and stays lexical
-# (round-10 before round-2). Extract N, sort numeric, rebuild paths.
-RD=()
-while IFS= read -r _d; do RD+=("$_d/merged.json"); done < <(
-  for _r in "$RUN_DIR"/round-*/; do
-    _n=${_r%/}; _n=${_n##*/round-}
-    printf '%s\t%s\n' "$_n" "${_r%/}"
-  done | sort -n -k1,1 | cut -f2-
-)
-AV=$(cat "$ROUND_DIR/active_vendors" 2>/dev/null || echo 2)
-python3 "$PROTO_ROOT/lib/drift.py" --active-vendors "$AV" \
-  "${RD[@]}" > "$ROUND_DIR/drift.json"
-DRIFT_RC=$?
-jq -r '.verdict + " / " + .action + " — " + .explain' "$ROUND_DIR/drift.json"
-```
+`3 rounds is not a hard cap` — drift detection decides when to stop, not
+a round counter (no-3-cap, see `iterative-adversarial-review`).
 
-`drift.py` exits 3 on `input_error` (every round file missing/invalid —
-a glob typo or failed merge, NOT a benign tick). If `DRIFT_RC` is 3,
-STOP and report the broken pipeline; do not proceed as if converging.
-
-Act on `.action`:
-
-| action                   | do                                                                                                |
-|--------------------------|---------------------------------------------------------------------------------------------------|
-| `stop_converged`         | positive termination. Print the **concur ≠ done** reminder (rule 6). Go to Step 3.                 |
-| `need_more_rounds`       | 1 round so far / latest non-empty / **degraded round** (`degraded_inconclusive`: 0 findings but <2 vendors ran — flag "需人工补 review / 等 vendor 恢复", do NOT treat as concur). Proceed to fixer only if there are findings; if degraded, re-run reviewers next round (recover the vendor) instead. |
-| `continue`               | converging — proceed to fixer (2e).                                                               |
-| `centralize_then_continue` | coverage drift (not architectural). Tell the fixer to **centralize the repeated rule into one referenced place** rather than re-inlining; proceed to fixer. |
-| `stop_reground`          | architectural drift **or** `input_error` (broken input pipeline). STOP the loop. Report per wiki §例外 (b)/(c): which triggers fired, recommend implementation/architecture-level rework (or fix the pipeline). Do NOT fix-and-retry. |
-
-Also: if `N == ROUNDS` and not converged → stop after this round;
-remaining `critical`/`high` is a hard problem (report it), remaining
-`medium`/`low`/`clarity` → defer protocol.
-
-Single-vendor-only rounds never count as `stop_converged` even if
-findings hit zero — flag "需人工补 review / 等 vendor 恢复".
-
-### 2e — fixer (subagent, proposes a diff + deferrals)
-
-Dispatch via **Agent tool**, `model` = `${CMR_FIXER_MODEL:-sonnet}`.
-The fixer MUST NOT use Edit/Write — it only returns JSON.
+## Step 7 — the loop
 
 ```
-Agent:
-  description: "cmr fixer round N"
-  model: <sonnet|opus from env>
-  prompt: |
-    IMPORTANT: Do NOT use Edit or Write. Return JSON only with a "diff"
-    and a "deferred" array. The caller applies the diff with git apply.
-    You may use Read/Grep to locate claim_quotes and sweep related sites.
-
-    {contents of prompts/cmr-fixer.md}
-
-    --- MERGED FINDINGS ---
-    {contents of $ROUND_DIR/merged.json}
-    --- END ---
-
-    Diff target root: <repo root>. Findings reference real files in the
-    working tree — Read them to produce a correct unified diff.
+findings present
+  → P0/P1 exist → fix → narrow self-check (same-pattern bug elsewhere?
+                  fix introduced a new bug?) → commit → next round
+  → no P0/P1     → STOP (normal convergence)
+  → not converging / drift hit → STOP, architectural/implementation
+                  rework (Step 6), not "one more round"
 ```
 
-`python3 "$PROTO_ROOT/lib/extract_json.py" claude "$MODE" < fixer.raw > "$ROUND_DIR/fixer.json"`
+Self-check is mandatory and is NOT review — they are not
+interchangeable (anti-pattern #3). The author scanning their own change
+misses far more than an independent reviewer; the self-check only adds
+the narrow "did my own fix regress / repeat a pattern" pass on top of
+review, never instead of it.
 
-### 2f — check the diff (git apply, multi-file safe)
-
-Do **not** use `lib/apply_diff.py` here — it basename-normalizes paths
-(correct for single-file doc review, wrong for a multi-file
-cross-slice diff). Apply with git directly; git itself is the backup
-(reversible on a branch):
-
-```bash
-jq -r '.diff' "$ROUND_DIR/fixer.json" > "$ROUND_DIR/fixer.diff"
-DIFF_BODY="$(cat "$ROUND_DIR/fixer.diff")"
-# `jq -r '.diff'` on {"diff":""} writes a lone newline (size 1, so `-s`
-# is true) and $(cat) strips it to "" (not "null"). Without the
-# emptiness check this falls through to `git apply --check` on an empty
-# file → "No valid patches in input". Treat empty / "null" as no-op.
-if [ ! -s "$ROUND_DIR/fixer.diff" ] || [ -z "$DIFF_BODY" ] || [ "$DIFF_BODY" = "null" ]; then
-  echo "fixer produced no diff this round"
-else
-  git apply --check "$ROUND_DIR/fixer.diff" 2>"$ROUND_DIR/apply.err" \
-    && echo "diff applies cleanly" \
-    || { echo "diff does NOT apply:"; cat "$ROUND_DIR/apply.err"; }
-fi
-```
-
-### 2g — approve (AskUserQuestion)
-
-Show: fixes_applied / fixes_skipped / deferred counts, the diff, and the
-`git apply --check` result. Options:
-
-- **A) apply + continue** to round N+1
-- **B) skip apply, continue** (re-review same content next round)
-- **C) stop here** (leave tree unchanged)
-
-### 2h — apply + persist deferrals
-
-If A and the diff checked clean:
-
-```bash
-git apply "$ROUND_DIR/fixer.diff"
-echo "applied round $N — reversible via: git checkout -- . / git stash"
-# The fixer mutated the WORKING TREE, not HEAD. change.diff was built
-# once in Step 1, so without this rebuild round N+1 would re-review the
-# PRE-fix diff and could re-report already-fixed findings or misjudge
-# drift. Rebuild from the post-fix working tree — but ONLY in the
-# default base scenario. --range / --diff are explicitly bounded
-# inputs; re-diffing vs base would widen a per-slice review to the
-# whole branch, so their Step-1 change.diff is preserved as-is.
-if [ -z "$DIFF_FILE" ] && [ -z "$RANGE" ]; then
-  git diff "$BASE" > "$RUN_DIR/change.diff"
-fi
-```
-
-Persist every `deferred[]` entry (defer protocol). If a PR exists
-(`gh pr view` succeeds) append/update its body's `## Deferred Findings`
-section; else write/append `DEFERRED.md` at the repo root:
-
-```
-- [ ] [<severity>] <summary> — <rationale> — <expected_timing>
-```
-
-Then loop to round N+1.
-
----
-
-## Step 3 — final report
-
-```
-CROSS-MODEL REVIEW COMPLETE
-===========================
-scenario:     ship-pre | per-slice
-setup:        N+1+1  (codex N=<n>)   [small-diff exception: <yes/no>]
-rounds:       <r> / <ROUNDS>
-termination:  converged (N/N concur) | architectural_drift(<triggers>)
-              | round-budget
-vendor flags: <none | 本轮缺 codex | ...>
-fixes:        <applied> across <r> rounds
-deferred:     <count>  (see PR ## Deferred Findings / DEFERRED.md)
-artifacts:    <RUN_DIR>
-```
-
-If converged, end with the gate-lens reminder verbatim:
-
-> concur ≠ done. The correctness lens is exhausted. Coverage audit,
-> domain specialist, and ship Red Team are different lenses and are
-> still required downstream — do not read this as ship-ready.
-
-If `architectural_drift`: do not present a tidy "done" — present the
-drift triggers and the implementation/architecture rework recommendation
-(wiki §例外 (b)/(c)). If `critical`/`high` remain at budget: flag the
-file/change as still broken.
-
----
+**Defer protocol** (tdd-autonomous-dev §切片内纪律, three parts, none
+optional): ① explicit P2/P3/P4 (not "minor") ② a specific 1–2 sentence
+reason (not generic) ③ accumulate to deferred staging; `gstack-ship`
+lands it into the PR body `## Deferred Findings`
+(`- [ ] [P2] <summary> — <reason> — <expected timing>`).
 
 ## Anti-patterns (wiki §反模式 — refuse these)
 
-1. Serial reviewer launch (send some, await, send rest) — defeats parallelism.
-2. N codex all on the full diff — duplicate findings, no coverage gain (N≥2 ⇒ split sections).
-3. Self-scan instead of an independent subagent — author bias, high miss rate.
-4. Same-family different-size as "outside voice" (Opus main + Sonnet outside) — not cross-vendor.
-5. Hardcoded N=3 ignoring diff size — tiny wastes, large under-covers.
-6. Drift hit → "one more round" rationalize — that is the infinite-loop entrance.
-7. Silent vendor degrade — always flag "本轮缺 X".
-8. Dev-tier model as reviewer — review must be `opus` / `gpt-5.5` / strongest Gemini.
-9. Reading `~/.claude/.credentials.json` / `ANTHROPIC_API_KEY` to judge Claude — false negative; only the Agent subagent path is used here so this does not arise.
-10. Treating N/N concur as ship-ready — category error (rule 6).
-
-## Non-goals / boundary
-
-- This is **Layer 1** (local, pre-PR). It does not replace Layer 3
-  (`pr-review-loop`, the post-push bot review) or the ship Red Team.
-- It does not commit, push, or open a PR (the caller / `gstack-ship`
-  does). It only edits the working tree on the current branch.
-- Content PRs with user-facing fact claims (dates/names/stats/security
-  claims) need an independent grounded fact-check FIRST —
-  cross-model reviewers share training bias and rubber-stamp shared
-  hallucinations; this lens cannot catch that.
-- One change set per invocation.
-
-## Invocation examples
-
-```
-/ak-cross-m-review                              # ship-pre, diff vs main, 3 rounds
-/ak-cross-m-review --range HEAD~3..HEAD --scenario per-slice
-/ak-cross-m-review --base develop --rounds 2
-/ak-cross-m-review --diff /tmp/change.diff --mode code
-```
+1. N codex all on the full diff (N>1 must split sections — duplicate findings, no coverage gain).
+2. No cross-family reviewer (only Claude / only codex) — single family cannot break section silos.
+3. Self-scan instead of an independent subagent — author bias, high miss rate. Self-check ≠ review.
+4. Same-family different-size as "outside voice" (Opus + Sonnet) — not cross-vendor.
+5. Hardcoded N=3 ignoring diff size.
+6. Serial launch (send some, await, send rest).
+7. Drift hit → rationalize "one more round" — the infinite-loop entrance.
+8. Silent vendor degrade — always flag "本轮缺 X".
+9. v2 N × Claude opus split sections — violates current quota allocation.
+10. Treating N/N concur as ship-ready — category error (Step 5).

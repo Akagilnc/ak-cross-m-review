@@ -17,10 +17,7 @@ jobs:
           python-version: "3.12"
       - name: Install test deps
         run: python -m pip install --upgrade pip pytest pytest-cov
-      - name: pytest (lib unit tests)
+      - name: pytest (extract_json + codex-review degrade)
         run: pytest
-      - name: selftest battery (deterministic core)
-        run: |
-          python3 lib/merge.py --selftest
-          python3 lib/drift.py --selftest
-          bash backends/codex-review.sh --selftest
+      - name: codex-review.sh selftest (invocation-form regression guard)
+        run: bash backends/codex-review.sh --selftest

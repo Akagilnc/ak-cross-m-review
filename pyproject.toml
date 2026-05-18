@@ -1,7 +1,6 @@
 [tool.pytest.ini_options]
-# lib/ holds the deterministic core (merge.py, drift.py, extract_json.py,
-# apply_diff.py). pythonpath lets tests `import merge` etc. without packaging
-# this prototype repo.
+# lib/ holds the one deterministic helper (extract_json.py). pythonpath
+# lets tests `import extract_json` without packaging this prototype repo.
 pythonpath = ["lib"]
 testpaths = ["tests"]
 addopts = "-q"

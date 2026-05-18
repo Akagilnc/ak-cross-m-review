@@ -18,9 +18,8 @@ Test expectations:
 - 100% coverage is the goal — tests make vibe coding safe, not yolo.
 - New function → write a corresponding test in `tests/test_<module>.py`.
 - Bug fix → write a regression test that fails before, passes after.
-- New error path / `--selftest` case → cover it; keep the selftest
-  battery (`lib/merge.py`, `lib/drift.py`, `backends/codex-review.sh`
-  `--selftest`) green.
+- New error path → cover it; keep `bash backends/codex-review.sh
+  --selftest` (the invocation-form regression guard) green.
 - New conditional (if/else, branch) → test BOTH paths.
 - Assert real computed values, never existence/smoke checks.
 - Never commit code that makes existing tests or the selftest battery

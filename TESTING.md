@@ -24,19 +24,22 @@ Or, if pytest is on PATH: `pytest`.
 
 Two complementary layers, both run in CI (`.github/workflows/test.yml`):
 
-1. **Unit tests (`tests/`)** — pytest tests for the deterministic core in
-   `lib/` (`merge.py`, `drift.py`, `extract_json.py`). `apply_diff.py` is
-   retained for the per-slice doc path, is not used by the main v3 loop,
-   and currently has no unit test (tracked debt). Real input/output
-   assertions, no external CLIs touched.
-2. **Selftest battery** — each deterministic module ships an in-process
-   `--selftest` mode that is the regression guard for its own logic:
-   `python3 lib/merge.py --selftest`, `python3 lib/drift.py --selftest`,
-   `bash backends/codex-review.sh --selftest` (dry-run, never calls codex).
+1. **Unit tests (`tests/`)** — pytest. `test_extract_json.py` covers
+   `lib/extract_json.py` (the only deterministic helper: salvage findings
+   JSON from noisy CLI stdout). `test_codex_review.py` is a subprocess
+   regression test for `backends/codex-review.sh`'s degrade path (a
+   non-zero codex exit must degrade even when its error body is
+   salvageable). Real assertions, no real CLI calls.
+2. **codex-review.sh selftest** — `bash backends/codex-review.sh
+   --selftest` validates the pinned invocation form (no `-C`, stdin
+   pipe, `--model gpt-5.5`, `2>&1`); it is the regression guard for the
+   codex footguns the wiki lists as hard rules. Never calls codex.
 
-E2E / integration of the full N+1+1 reviewer loop is exercised by running
-the skill itself against a real diff — not unit-tested (it shells out to
-`claude` / `codex` / `gemini`).
+Merge / grade / drift / termination are **agent judgment** per the wiki
+(`cross-model-review.md`), not deterministic code — there is no
+`merge.py` / `drift.py` to unit-test (removed in 0.2.0.0). The full
+N+1+1 reviewer loop is exercised by running the skill itself against a
+real diff (it shells out to `claude` / `codex` / `gemini`).
 
 ## Conventions
 

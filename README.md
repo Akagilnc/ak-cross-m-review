@@ -1,115 +1,103 @@
 # ak-cross-m-review
 
-Local, pre-PR **cross-model review** skill. Dispatches an independent
-multi-vendor reviewer squad against a diff, merges findings with
-consensus + grounding-density weighting, runs a deterministic
-drift/termination check, and loops a fixer pass until the correctness
-lens is exhausted — before code reaches a PR / `main`.
+Local, pre-PR **cross-model review** skill — the executable form of the
+wiki's `cross-model-review.md`. Dispatches an independent multi-vendor
+reviewer squad against a diff in one parallel message, then merges,
+grades, drift-checks and loops **as the agent judgment the wiki
+prescribes** — before code reaches a PR / `main`.
 
 **Status**: v0 prototype. Evolving.
 
 ## Why this exists
 
-In-session subagent review and `gstack-review` / `gstack-codex`
-single-pass review miss a distinct class of defect: **claims that
-contradict the actual source, math that was never computed, CLI flags
-that do not exist, APIs guessed from memory, and cross-slice
-inconsistencies that no single-pass reviewer sees.**
+The agent following the wiki's cross-model-review prose by hand drifts:
+it serializes the parallel launch, picks a dev-tier reviewer model,
+silently degrades when a vendor is down, or rationalizes "one more
+round" past a drift signal. This skill is a tight, faithful transcription
+of that wiki step so the agent runs it the **same way every time**
+instead of re-deciding by feel.
 
-A single reviewer — even a strong one — shares the author's blind spots.
-The fix is *heterogeneous outside voices*: different model families,
-each able to grep source, run `python3` for math, and shell out
-`<tool> --help`, reviewing the same diff in parallel, with consensus
-driving severity and a computed (not felt) termination verdict.
-
-This skill is the executable form of the wiki's
+It is **not** a re-implementation of the wiki as a program. The wiki
+explicitly frames merge / grade / drift / termination as agent
+*judgment* (any numeric thresholds are proto-calibrated, non-portable).
+The skill keeps it that way: prose procedure + thin invocation guards
+for the real CLI footguns, nothing more. Single source of truth:
 `~/WorkSpace/vault/ak-cc-wiki/wiki/concepts/cross-model-review.md`
-(Step 2.4 / 2.6 of the autonomous TDD loop). The wiki is the source of
-truth; `SKILL.md` transcribes its hard rules into a loop so every
-session runs it the same way instead of re-deciding by feel.
+(defer + cross-slice discipline in `tdd-autonomous-dev.md`). If skill
+and wiki disagree, the wiki wins.
 
 ## The vendor squad — N+1+1
 
-In one parallel message, against the same diff:
+In one parallel message, against the same diff (wiki §setup):
 
+- **1 × Claude Opus** — via the `Agent` tool as an independent subagent
+  (zero context contamination). This is why the skill MUST run in the
+  **main session**: Claude Code does not expose `Agent` to subagents.
 - **N × Codex** (`gpt-5.5`, via `backends/codex-review.sh`) — N scales
-  with diff size (1 / 2 / 3 for `<200` / `200–500` / `500+` changed
-  lines); for N≥2 each codex gets a distinct file-section slice.
-- **1 × Claude Opus** — spawned via the `Agent` tool as an independent
-  subagent (zero context contamination). This is why the skill MUST run
-  in the **main session**: Claude Code does not expose `Agent` to
-  subagents, so the loop cannot be delegated.
-- **1 × Gemini** (via `backends/gemini.sh`, `auto_edit` + retry) — full
-  diff.
+  with diff size (1 / 2 / 3 for `<200` / `200–500` / `500+` lines); for
+  N≥2 each codex takes a distinct file-section slice.
+- **1 × Gemini** (via `backends/gemini.sh`, `--approval-mode auto_edit`)
+  — full diff.
 
-Findings from every reviewer merge via `lib/merge.py` on two independent
-trust axes: **concur** (cross-vendor consensus → severity upgrade) and
-**grounding density** (count of real verification tool calls in a
-finding → severity floor boost). `lib/drift.py` then computes a
-deterministic drift/termination verdict that drives the loop; a fixer
-subagent proposes a unified diff per round, which the user approves
-before it is applied with `git apply`.
+The agent then **merges + grades** (group same issue across reviewers;
+concurrence → severity up; grounding density → trust weight, only up),
+checks the **drift triple** (count not decreasing / new class / off-core
+→ STOP and rework, not patch), and loops fix → narrow self-check →
+commit until `concur` or a drift stop. `concur ≠ done` — it means the
+correctness lens is exhausted, not ship-ready. No deterministic merge or
+drift engine: that was the over-formalization this skill deliberately
+does not carry.
 
 ## Usage
 
 ```
 /ak-cross-m-review [--base BRANCH] [--range A..B] [--diff FILE]
-                   [--mode doc|code|auto] [--rounds N]
                    [--scenario per-slice|ship-pre]
 ```
 
 - `--base` — base branch for the cumulative diff (default `main`,
   fallback `master`).
-- `--range` — explicit `A..B` commit range (e.g. one slice's commits);
-  overrides `--base`.
-- `--diff` — review a pre-computed diff file instead of computing one.
-- `--mode` — `auto` (default): `doc` if the diff is >70% `.md`, else
-  `code`.
-- `--rounds` — max reviewer→fixer iterations (default `3`; the wiki
-  3-round cap).
-- `--scenario` — `ship-pre` (default; cumulative diff vs base) or
-  `per-slice` (one slice's range, within-slice lens).
+- `--range` — explicit `A..B` commit range (one slice's commits).
+- `--diff` — review a pre-computed diff file.
+- `--scenario` — `per-slice` (tdd spine step 4, within-slice lens) or
+  `ship-pre` (step 5, cross-slice cumulative diff vs base).
 
-### Examples
+There is no `--rounds` cap: the wiki's drift detection decides when to
+stop, not a round counter.
 
 ```bash
-/ak-cross-m-review                                   # ship-pre, diff vs main, 3 rounds
+/ak-cross-m-review --scenario ship-pre
 /ak-cross-m-review --range HEAD~3..HEAD --scenario per-slice
-/ak-cross-m-review --base develop --rounds 2
-/ak-cross-m-review --diff /tmp/change.diff --mode code
+/ak-cross-m-review --diff /tmp/change.diff
 ```
 
-## Architecture
+## What ships in this repo
 
 ```
-/ak-cross-m-review entry (SKILL.md, main session only)
-  │
-  ├─ Step 0: arg/env check + lib & backend selftests
-  ├─ Step 1: build diff vs base/range, size it → N table (N+1+1)
-  ├─ Step 2 (per round, ONE parallel message):
-  │   ├─ 1 × Agent (Claude opus reviewer)  ── independent subagent
-  │   ├─ N × backends/codex-review.sh       ── corrected codex invocation
-  │   ├─ 1 × backends/gemini.sh             ── gemini auto_edit
-  │   ├─ lib/extract_json.py → per-vendor findings JSON
-  │   ├─ lib/merge.py        → merged.json (concur + grounding boost)
-  │   ├─ lib/drift.py        → computed drift/termination verdict
-  │   ├─ fixer subagent (prompts/cmr-fixer.md) → unified diff + deferrals
-  │   └─ user approves → git apply; deferrals persisted (PR body / DEFERRED.md)
-  └─ Step 3: final report (+ "concur ≠ done" gate-lens reminder)
+SKILL.md                  the executable wiki transcription (the skill)
+backends/codex-review.sh  pins the correct `codex exec` invocation
+                          (no -C, stdin pipe, 2>&1) + clean degrade;
+                          --selftest is its regression guard
+backends/gemini.sh        pins `gemini --approval-mode auto_edit`
+lib/extract_json.py       salvage findings JSON from noisy CLI stdout
+prompts/cmr-reviewer.md   reviewer prompt template
+prompts/cmr-fixer.md      fixer prompt template (3-part defer protocol)
 ```
 
-Prompts: `prompts/cmr-reviewer.md`, `prompts/cmr-fixer.md`.
-Run artifacts: `outputs/cmr-<timestamp>/round-<N>/`.
+That is the whole surface. Merge / drift / termination are performed by
+the agent per the wiki signals — there is intentionally no `merge.py` /
+`drift.py` deterministic engine (removed in 0.2.0.0; it was the source
+of the recurring orchestration bugs and contradicted the wiki's
+"this is judgment, thresholds are non-portable").
 
 ## Origin
 
 This repo began as a *grounded-review* prototype:
-[Akagilnc/ai-blogger-lab#50][i50] and [garrytan/gstack#973][i973] —
-an attempt to add a Grounded Review rule to `CLAUDE.md` as prose. The
-rule failed adversarial review three times with structural findings; the
-meta-conclusion was that prose rules cannot enforce machine-verifiable
-artifacts, and the correct form is a scriptable skill. That work evolved
-into the v3 vendor-squad cross-model review skill this repo now ships.
+[Akagilnc/ai-blogger-lab#50][i50] and [garrytan/gstack#973][i973] — an
+attempt to add a Grounded Review rule to `CLAUDE.md` as prose. It
+evolved, over-built into a deterministic review engine, then was cut
+back to what it should always have been: a faithful, compact executable
+of the wiki's cross-model-review step.
 
 [i50]: https://github.com/Akagilnc/ai-blogger-lab/issues/50
 [i973]: https://github.com/garrytan/gstack/issues/973
@@ -117,33 +105,26 @@ into the v3 vendor-squad cross-model review skill this repo now ships.
 ## Dependencies
 
 - [Claude Code](https://claude.com/claude-code) CLI (`claude`) — the
-  Claude reviewer/fixer run via the `Agent` tool
+  Claude reviewer runs via the `Agent` tool
 - [OpenAI Codex](https://github.com/openai/codex) CLI (`codex`)
 - [Google Gemini](https://github.com/google-gemini/gemini-cli) CLI (`gemini`)
-- `python3` ≥ 3.11 — `lib/merge.py`, `lib/drift.py`,
-  `lib/extract_json.py` (the main loop's core; `lib/apply_diff.py` is
-  retained but intentionally not used by the v3 loop — see SKILL.md 2f)
+- `python3` ≥ 3.11 — `lib/extract_json.py`
 - `jq` — shell pipelines
 
 All three CLIs are subscription-authed in the author's setup; no API
 keys needed.
 
-## Limitations / boundary (v0)
+## Limitations / boundary
 
-- **Layer 1 only** (local, pre-PR). It does not replace Layer 3
-  (`pr-review-loop`, the post-push bot review) or the ship Red Team.
-  `concur ≠ done` — N/N concurrence means the correctness lens is
-  exhausted, not "ship-ready".
+- **Layer 1 only** (local, pre-PR). Does not replace Layer 3
+  (`pr-review-loop`) or the ship Red Team. `concur ≠ done`.
 - **No grounded single-file fact-gate.** Cross-model reviewers share
-  training bias and can rubber-stamp shared hallucinations; this lens
-  cannot catch that. Content PRs with user-facing fact claims
-  (dates/names/stats/security) still need an independent grounded
-  fact-check first — that gate is **not** implemented in this repo.
-- **Gemini output skews lighter** than Codex (≈10:1 grounding
-  verification-call ratio observed); it still runs as a squad member but
-  weight its findings accordingly.
-- It does not commit, push, or open a PR — it only edits the working
-  tree on the current branch. One change set per invocation.
+  training bias and rubber-stamp shared hallucinations. Content PRs with
+  user-facing fact claims (dates/names/stats/security) need an
+  independent grounded fact-check FIRST — that gate is **not** in this
+  repo.
+- Does not commit / push / open a PR — the caller (or `gstack-ship`)
+  does. One change set per invocation.
 
 ## License
 

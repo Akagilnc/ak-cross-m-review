@@ -6,40 +6,67 @@ All notable changes to this project are documented here. Format follows
 
 ## [0.2.0.0] - 2026-05-18
 
-Breaking restructure: the v3 vendor-squad `/ak-cross-m-review` becomes
-the sole skill and the repo root **is** the skill. The original
-`/grounded-review` skill is removed.
+`/ak-cross-m-review` becomes the sole skill (the original
+`/grounded-review` is removed) and is rebuilt as a **faithful, compact
+transcription of the wiki's `cross-model-review.md`** instead of a
+deterministic review engine.
+
+### Why
+
+Three rounds of cross-model review of this branch kept surfacing new
+bugs, every one in the self-invented orchestration/merge/drift
+machinery — never in the procedure the wiki actually prescribes. The
+wiki explicitly frames merge / grade / drift / termination as agent
+*judgment* (numeric thresholds are proto-calibrated, non-portable). The
+skill had over-formalized that judgment into brittle code; that code
+was the entire bug reservoir. Fix = match the wiki, not re-engineer it.
 
 ### Changed
 
-- **`/ak-cross-m-review` is now the registered skill, at the repo
-  root.** The v3 files moved out of the `ak-cross-m-review/` subfolder
-  up to the repo root (`SKILL.md`, `backends/codex-review.sh`,
-  `prompts/cmr-*.md`); `backends/codex-review.sh` self-locates
-  `PROTO_ROOT` one level up instead of two. Restores the "repo root =
-  skill" registration model and kills the confusing
-  `ak-cross-m-review/ak-cross-m-review/` double-nesting.
-- README rewritten to describe v3 cross-model review as the primary
-  (and only) skill.
+- **`SKILL.md` rewritten** as a tight executable transcription of the
+  wiki step (setup / parallel-launch / invocation forms / degradation /
+  merge+grade / termination / drift triple / loop), 461 → 238 lines.
+  Merge / grade / drift / termination are now performed as the agent
+  judgment the wiki describes — no deterministic engine.
+- **`/ak-cross-m-review` is the registered skill at the repo root**
+  (flattened out of the `ak-cross-m-review/ak-cross-m-review/`
+  double-nesting; `backends/codex-review.sh` self-locates one level up).
+- `backends/codex-review.sh` hardened: degrades when the codex process
+  exits non-zero even if its error body was salvageable (an auth/quota
+  failure no longer counts as a valid zero-finding reviewer).
 
 ### Removed
 
+- **The deterministic review engine** — `lib/merge.py`, `lib/drift.py`,
+  `lib/apply_diff.py` and their tests. This machinery contradicted the
+  wiki ("this is judgment; thresholds are non-portable") and was the
+  source of the recurring orchestration bugs.
 - **The `/grounded-review` skill** — old root `SKILL.md`,
   `backends/claude-headless.sh`,
-  `prompts/{fixer,reviewer-doc,reviewer-code}.md`,
-  `lib/strip_audit.py`.
-- **`eval/`** — the grounded-review fixture suite. No v3 eval replaces
-  it yet (tracked as follow-up debt).
-- **`backends/codex.sh`** — the legacy uncorrected codex backend (the
-  `-C` + positional-prompt footguns SKILL.md Tier-0 rule 2 forbids);
-  superseded by `backends/codex-review.sh`, no caller after the flatten.
+  `prompts/{fixer,reviewer-doc,reviewer-code}.md`, `lib/strip_audit.py`.
+- **`backends/codex.sh`** — legacy uncorrected codex backend (the
+  `-C` + positional-prompt footguns), superseded, no caller.
+- **`eval/`** — the grounded-review fixture suite (follow-up debt).
+
+### Kept / tested
+
+- `SKILL.md`, `backends/codex-review.sh`, `backends/gemini.sh`,
+  `lib/extract_json.py`, `prompts/cmr-{reviewer,fixer}.md`.
+- pytest scoped to `lib/extract_json.py` + a `codex-review.sh` degrade
+  subprocess regression test; `bash backends/codex-review.sh --selftest`
+  is the invocation-form regression guard. CI runs both on push / PR
+  with least-privilege `permissions`.
 
 ### Notes
 
 - Capability gap: grounded single-file fact-checking (catching
-  shared-hallucination content errors) no longer has an implementation
-  in this repo. Cross-model review cannot cover that lens — see README
+  shared-hallucination content errors) has no implementation here.
+  Cross-model review cannot cover that lens — see README
   "Limitations / boundary".
+- Architecture follow-up: the skill is still LLM-orchestrated prose by
+  design (the wiki step is judgment, not a program). Faithfulness to
+  the wiki is enforced by review, not tests — keep it re-synced when
+  `cross-model-review.md` changes.
 
 ## [0.1.0.0] - 2026-05-17
 
