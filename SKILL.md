@@ -368,6 +368,12 @@ If A and the diff checked clean:
 ```bash
 git apply "$ROUND_DIR/fixer.diff"
 echo "applied round $N — reversible via: git checkout -- . / git stash"
+# The fixer mutated the WORKING TREE, not HEAD. change.diff was built
+# once in Step 1 from "$BASE"...HEAD, so without this rebuild round N+1
+# would re-review the PRE-fix diff and could re-report already-fixed
+# findings or misjudge drift. Recompute the reviewed diff from the
+# current working tree so the next round sees the post-fix state.
+git diff "$BASE" > "$RUN_DIR/change.diff"
 ```
 
 Persist every `deferred[]` entry (defer protocol). If a PR exists

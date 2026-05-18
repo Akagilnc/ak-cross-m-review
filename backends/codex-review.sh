@@ -177,8 +177,15 @@ set +e
 EXTRACTED="$(printf '%s' "$RAW" | python3 "$EXTRACT" codex "$MODE")"
 EX_RC=$?
 set -e
-if [ "$EX_RC" -ne 0 ]; then
-  echo "codex-review: output is not a valid review (likely auth/quota/CLI error; extract_json rc=$EX_RC) — degrade, flag '本轮缺 codex'" >&2
+if [ "$EX_RC" -ne 0 ] || [ "$RC" -ne 0 ]; then
+  # EX_RC!=0: extract_json found no real findings JSON (codex emitted an
+  # error/banner). RC!=0: codex itself exited non-zero — even when it
+  # printed a JSON error body that extract_json salvaged into findings:[]
+  # (pass-5) and exited 0. Without the RC guard, an auth/quota-failed
+  # codex would count as a valid zero-finding reviewer and could help a
+  # single real reviewer look like a converged round. A clean review
+  # always exits 0, so this stays zero-false-positive.
+  echo "codex-review: not a valid review — degrade, flag '本轮缺 codex' (extract_json rc=$EX_RC, codex exit rc=$RC)" >&2
   printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
 fi

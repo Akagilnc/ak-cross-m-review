@@ -267,19 +267,22 @@ def detect_from_files(
             print(f"warning: invalid JSON in {p}: {e}", file=sys.stderr)
             continue
         summaries.append(round_summary(merged, i))
-    if paths and not summaries:
-        # Every requested round file was missing/invalid. NOT a benign
-        # "need more rounds" tick — usually a glob typo or a failed
-        # merge. Surface as an error so the orchestrator does not treat
-        # a broken pipeline as a normal loop state.
+    if errors:
+        # ANY requested round artifact missing/invalid = broken pipeline,
+        # NOT a benign "need more rounds" tick. Critically: if the LATEST
+        # round's merged.json is the missing/invalid one but an earlier
+        # round loaded fine, silently dropping it would let detect()
+        # evaluate the earlier round as "latest" and can false-return
+        # stop_converged — a green review gate on a broken pipeline.
+        # Surface input_error whenever any requested artifact failed.
         return {
             "verdict": "input_error",
             "action": "stop_reground",
             "triggers": ["input_error"],
             "rounds": [],
             "explain": (
-                f"no valid merged.json among {len(paths)} requested "
-                f"path(s): {'; '.join(errors)}"
+                f"{len(errors)} of {len(paths)} requested merged.json "
+                f"path(s) missing/invalid: {'; '.join(errors)}"
             ),
         }
     return detect(summaries, active_vendors=active_vendors)
