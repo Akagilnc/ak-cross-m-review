@@ -59,17 +59,28 @@ def extract(text: str) -> tuple[Any, int]:
     if is_findings_shape(obj):
         return obj, 1
 
-    # Pass 2: ```json ... ``` fenced block
+    # Pass 2/3: prefer the LAST findings-shaped fenced block. A reviewer
+    # that echoes the prompt's ```json schema example emits that
+    # PLACEHOLDER block first and its real findings last; returning the
+    # FIRST match silently substituted the template for the entire
+    # review — a false "0 findings = concur" generator (codex hit this
+    # against prompts/cmr-reviewer.md's embedded ```json example).
+    # Last-wins is correct: reviewers state the schema early, answer late.
+    last2 = None
     for match in FENCE_JSON_RE.finditer(text):
         obj = try_parse(match.group(1))
         if is_findings_shape(obj):
-            return obj, 2
+            last2 = obj
+    if last2 is not None:
+        return last2, 2
 
-    # Pass 3: any ``` ... ``` fenced block
+    last3 = None
     for match in FENCE_ANY_RE.finditer(text):
         obj = try_parse(match.group(1))
         if is_findings_shape(obj):
-            return obj, 3
+            last3 = obj
+    if last3 is not None:
+        return last3, 3
 
     # Pass 4: widest {...} span
     match = BRACES_RE.search(text)

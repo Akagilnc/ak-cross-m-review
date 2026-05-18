@@ -1,8 +1,10 @@
 # ak-cross-m-review
 
 Local, pre-PR cross-model review skill (v3 vendor squad: N codex + 1
-Claude opus Agent + 1 Gemini). `SKILL.md` is the entry; `lib/` holds the
-deterministic core; `backends/` the corrected reviewer invocations;
+Claude opus Agent + 1 Gemini). `SKILL.md` is the entry — a faithful
+transcription of the wiki; merge / grade / drift / termination are agent
+**judgment**, NOT a deterministic engine. `lib/` holds the single helper
+`extract_json.py`; `backends/` the corrected reviewer invocations;
 `prompts/` the reviewer/fixer prompts. See `README.md` for architecture
 and `~/WorkSpace/vault/ak-cc-wiki/wiki/concepts/cross-model-review.md`
 for the source-of-truth spec.

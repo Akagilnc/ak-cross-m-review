@@ -43,6 +43,9 @@ Invocation:
   invariants / global logic after merge. Scope = whole-PR cumulative
   diff vs base (default `main`, fallback `master`).
 
+If `--scenario` is omitted, default to **ship-pre** (the wider, safer
+lens — reviewing more than a slice is fail-safe; reviewing less is not).
+
 Build the reviewed diff with plain git (`git diff <base>...HEAD`, or
 `git diff <range>`, or the `--diff` file). No diff state machine — it is
 just the change under review for this round.
@@ -52,7 +55,9 @@ Pre-flight gates (wiki §操作规程 / §边界):
 - **Content PR with user-facing fact claims** (dates / names / orgs /
   stats / security): run `content-fact-gate` FIRST. Cross-model
   reviewers share training-data bias and rubber-stamp shared
-  hallucinations; this lens cannot catch that.
+  hallucinations; this lens cannot catch that. (`content-fact-gate` is
+  the upstream wiki gate `content-fact-gate.md` — a caller precondition,
+  not a script bundled in this repo.)
 - **Small diff** (typo / copy, < 50 changed lines): explicit exception —
   run **1+1** (Claude Agent + codex, cross-family) instead of the v3
   default, and you MUST annotate the eventual commit message
@@ -145,7 +150,10 @@ Collect every reviewer's findings (use `lib/extract_json.py` to pull the
 JSON out of each CLI's stdout). Then, as judgment:
 
 - Group findings that describe the same issue across reviewers.
-- Grade each P0 / P1 / P2 / P3 / P4.
+- Grade each P0 / P1 / P2 / P3 / P4. Reviewers emit
+  `critical|high|medium|low|clarity` (the `prompts/cmr-reviewer.md`
+  schema) — map critical→P0, high→P1, medium→P2, low→P3, clarity→P4.
+  P0–P4 is the wiki's grade scale; keep that vocabulary downstream.
 - **Concurrence = horizontal trust**: the more independent vendors
   raised it, the higher confidence → severity upgrade.
 - **Grounding density = vertical trust**: a finding whose `verification`

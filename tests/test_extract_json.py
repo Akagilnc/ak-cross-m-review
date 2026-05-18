@@ -59,3 +59,28 @@ def test_extract_no_json_returns_none_pass5():
     obj, p = ej.extract("absolutely no json here, just words")
     assert obj is None
     assert p == 5
+
+
+def test_extract_prefers_last_json_fence_over_echoed_template():
+    # Regression for the codex template-echo trap (dogfood round-1): a
+    # reviewer that echoes the prompt's ```json schema example emits the
+    # PLACEHOLDER block FIRST and its real findings LAST. extract() must
+    # return the LAST findings-shaped fenced block — returning the first
+    # silently substituted the template for the whole review (a false
+    # "0 findings = concur" generator).
+    text = (
+        "I will follow this schema:\n"
+        '```json\n'
+        '{"findings": [{"id": "R1", "claim_quote": "the exact line/phrase '
+        'from the diff that is wrong"}]}\n'
+        '```\n'
+        "Now my actual review:\n"
+        '```json\n'
+        '{"findings": [{"id": "REAL", "severity": "P1", '
+        '"claim_quote": "real defect"}]}\n'
+        '```\n'
+    )
+    obj, p = ej.extract(text)
+    assert p == 2
+    assert obj["findings"][0]["id"] == "REAL"
+    assert obj["findings"][0]["claim_quote"] == "real defect"

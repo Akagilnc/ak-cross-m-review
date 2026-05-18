@@ -28,7 +28,11 @@ fi
 # which we observed in session 7. Retry once with a short delay if the first
 # attempt returns empty or errors.
 attempt_gemini() {
-  gemini -p "$FULL_PROMPT" --approval-mode auto_edit 2>/dev/null || true
+  # 2>&1 (wiki hard rule "始终 2>&1：出错要看到原因"): gemini's own
+  # diagnostics/429 reason must NOT be silenced — extract_json salvages
+  # the findings JSON from the combined noise, same model as
+  # codex-review.sh. 2>/dev/null here made a degraded round undiagnosable.
+  gemini -p "$FULL_PROMPT" --approval-mode auto_edit 2>&1 || true
 }
 
 RAW="$(attempt_gemini)"
@@ -40,9 +44,22 @@ if [ -z "$RAW" ]; then
 fi
 
 if [ -z "$RAW" ]; then
-  echo "gemini: error: gemini CLI returned empty output after retry" >&2
+  echo "gemini: degrade — flag '本轮缺 gemini' (empty output after retry)" >&2
   printf '{"reviewer":"gemini","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
 fi
 
-printf '%s' "$RAW" | python3 "$PROTO_ROOT/lib/extract_json.py" gemini "$MODE"
+# RAW carries gemini's diagnostics mixed with the findings JSON (2>&1);
+# extract_json salvages the JSON. If it can't (gemini emitted an
+# error/banner, not a review — e.g. 429), degrade with the visible flag,
+# never silent. Mirrors codex-review.sh's degrade discipline.
+set +e
+EXTRACTED="$(printf '%s' "$RAW" | python3 "$PROTO_ROOT/lib/extract_json.py" gemini "$MODE")"
+EX_RC=$?
+set -e
+if [ "$EX_RC" -ne 0 ]; then
+  echo "gemini: degrade — flag '本轮缺 gemini' (no valid review JSON; gemini's error is in the captured output per 2>&1, extract_json rc=$EX_RC)" >&2
+  printf '{"reviewer":"gemini","mode":"%s","findings":[]}\n' "$MODE"
+  exit 1
+fi
+printf '%s\n' "$EXTRACTED"
