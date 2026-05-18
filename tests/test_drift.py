@@ -4,6 +4,7 @@ round_summary reducer that feeds drift/termination detection."""
 import json
 
 import drift
+import merge
 
 
 def test_norm_location_lower_collapse_and_none():
@@ -71,3 +72,26 @@ def test_detect_from_files_all_valid_not_input_error(tmp_path):
         paths.append(str(p))
     result = drift.detect_from_files(paths)
     assert result["verdict"] != "input_error"
+
+
+def test_round_summary_reads_real_merge_py_location_shape():
+    # Contract/integration regression for Codex [P2]: feed REAL merge.py
+    # output (not the hand-built _mk fixture) into round_summary. A real
+    # merged finding has NO top-level `location` — it lives under
+    # by_reviewer[r][i].location. round_summary must still populate
+    # _loc_set, else the coverage-drift override is silently dead. This
+    # is the merge.py->drift.py contract check the old fixture masked.
+    payloads = [
+        {"reviewer": "claude", "mode": "code", "findings": [
+            {"severity": "high", "category": "bug",
+             "claim_quote": "x", "location": "pkg/a.py:10"}]},
+        {"reviewer": "codex", "mode": "code", "findings": [
+            {"severity": "high", "category": "bug",
+             "claim_quote": "x", "location": "pkg/a.py:10"}]},
+    ]
+    merged = merge.merge(payloads)
+    # Pin the architectural fact: if merge.py ever grows a top-level
+    # location this assertion flips and we revisit the contract.
+    assert "location" not in merged["merged_findings"][0]
+    rs = drift.round_summary(merged, 1)
+    assert rs["_loc_set"] == {"pkg/a.py:10"}

@@ -343,7 +343,12 @@ cross-slice diff). Apply with git directly; git itself is the backup
 
 ```bash
 jq -r '.diff' "$ROUND_DIR/fixer.json" > "$ROUND_DIR/fixer.diff"
-if [ ! -s "$ROUND_DIR/fixer.diff" ] || [ "$(cat "$ROUND_DIR/fixer.diff")" = "null" ]; then
+DIFF_BODY="$(cat "$ROUND_DIR/fixer.diff")"
+# `jq -r '.diff'` on {"diff":""} writes a lone newline (size 1, so `-s`
+# is true) and $(cat) strips it to "" (not "null"). Without the
+# emptiness check this falls through to `git apply --check` on an empty
+# file → "No valid patches in input". Treat empty / "null" as no-op.
+if [ ! -s "$ROUND_DIR/fixer.diff" ] || [ -z "$DIFF_BODY" ] || [ "$DIFF_BODY" = "null" ]; then
   echo "fixer produced no diff this round"
 else
   git apply --check "$ROUND_DIR/fixer.diff" 2>"$ROUND_DIR/apply.err" \
@@ -369,11 +374,15 @@ If A and the diff checked clean:
 git apply "$ROUND_DIR/fixer.diff"
 echo "applied round $N — reversible via: git checkout -- . / git stash"
 # The fixer mutated the WORKING TREE, not HEAD. change.diff was built
-# once in Step 1 from "$BASE"...HEAD, so without this rebuild round N+1
-# would re-review the PRE-fix diff and could re-report already-fixed
-# findings or misjudge drift. Recompute the reviewed diff from the
-# current working tree so the next round sees the post-fix state.
-git diff "$BASE" > "$RUN_DIR/change.diff"
+# once in Step 1, so without this rebuild round N+1 would re-review the
+# PRE-fix diff and could re-report already-fixed findings or misjudge
+# drift. Rebuild from the post-fix working tree — but ONLY in the
+# default base scenario. --range / --diff are explicitly bounded
+# inputs; re-diffing vs base would widen a per-slice review to the
+# whole branch, so their Step-1 change.diff is preserved as-is.
+if [ -z "$DIFF_FILE" ] && [ -z "$RANGE" ]; then
+  git diff "$BASE" > "$RUN_DIR/change.diff"
+fi
 ```
 
 Persist every `deferred[]` entry (defer protocol). If a PR exists

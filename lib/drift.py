@@ -73,6 +73,29 @@ def _norm_location(s: str) -> str:
     return " ".join((s or "").lower().split())
 
 
+def _finding_primary_location(f: dict[str, Any]) -> str:
+    """The finding's single PRIMARY location.
+
+    Real merge.py merged findings have NO top-level `location` — it lives
+    under by_reviewer[reviewer][i].location. Mirror merge.py's "first
+    finding is canonical" rule: take the first reviewer entry's first
+    location. A top-level `location`, if a caller supplies one, wins
+    (back-compat). Deliberately ONE location, not an aggregate of every
+    by_reviewer entry — the coverage-drift isdisjoint test needs the
+    finding's own primary surface, not every context line it cited.
+    """
+    loc = f.get("location")
+    if loc:
+        return loc
+    for entries in (f.get("by_reviewer") or {}).values():
+        if isinstance(entries, list):
+            for e in entries:
+                el = (e or {}).get("location")
+                if el:
+                    return el
+    return ""
+
+
 def round_summary(merged: dict[str, Any], idx: int) -> dict[str, Any]:
     """Reduce a merged.json payload to the signals drift detection needs."""
     findings = merged.get("merged_findings", []) or []
@@ -96,7 +119,7 @@ def round_summary(merged: dict[str, Any], idx: int) -> dict[str, Any]:
         # one recurring context line defeat the coverage override's
         # isdisjoint test, turning the 2026-04-30 v3.3 scenario into a
         # false architectural stop.
-        top_loc = _norm_location(f.get("location", ""))
+        top_loc = _norm_location(_finding_primary_location(f))
         if top_loc:
             primary_locations.add(top_loc)
     return {
@@ -289,7 +312,12 @@ def detect_from_files(
 
 
 def _mk(round_no: int, findings: list[tuple[str, str, str]]) -> dict[str, Any]:
-    """Test helper: build a merged.json-shaped payload.
+    """Test helper: build a merged.json-shaped payload that MIRRORS the
+    real merge.py output — a merged finding has NO top-level `location`;
+    locations live only under by_reviewer[r][i].location. Emitting a
+    top-level `location` here was the fixture lie that kept
+    `drift.py --selftest` green while the coverage-drift override was
+    dead on real merge.py output (Codex [P2]).
 
     findings = list of (severity, category, location).
     """
@@ -298,7 +326,6 @@ def _mk(round_no: int, findings: list[tuple[str, str, str]]) -> dict[str, Any]:
             {
                 "severity": sev,
                 "category": cat,
-                "location": loc,
                 "by_reviewer": {"claude": [{"location": loc}]},
             }
             for sev, cat, loc in findings
