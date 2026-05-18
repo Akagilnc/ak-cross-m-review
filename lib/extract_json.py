@@ -34,6 +34,16 @@ from typing import Any
 FENCE_JSON_RE = re.compile(r"```json\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
 FENCE_ANY_RE = re.compile(r"```[a-zA-Z]*\s*(.*?)\s*```", re.DOTALL)
 BRACES_RE = re.compile(r"\{.*\}", re.DOTALL)
+# Authoritative channel: the reviewer is contracted (prompts/cmr-reviewer.md)
+# to wrap its findings ONCE between these line-anchored sentinels. Robust
+# by construction — a schema echoed from the prompt, or JSON quoted from
+# the diff under review, is NOT sentinel-wrapped, so it can never be
+# mistaken for the review (the failure that silently degraded codex twice
+# in dogfood; heuristic salvage cannot tell findings from quoted JSON).
+SENTINEL_RE = re.compile(
+    r"^===CMR-FINDINGS-BEGIN===[^\n]*\n(.*?)\n===CMR-FINDINGS-END===",
+    re.DOTALL | re.MULTILINE,
+)
 
 
 def try_parse(text: str) -> Any:
@@ -53,7 +63,27 @@ def is_findings_shape(obj: Any) -> bool:
 
 
 def extract(text: str) -> tuple[Any, int]:
-    """Return (parsed_json, pass_number). pass_number indicates strategy."""
+    """Return (parsed_json, pass_number). pass_number indicates strategy.
+
+    Pass 0 (sentinel) is authoritative. Passes 1-5 are the legacy
+    heuristic fallback for output that ignored the sentinel contract;
+    it is inherently fuzzy (it cannot tell the reviewer's findings from
+    JSON the reviewer quoted) — which is exactly why the sentinel
+    channel exists.
+    """
+    # Pass 0: content of the LAST sentinel pair (the real answer comes
+    # last; an earlier echo of the schema-in-sentinels loses).
+    sent = SENTINEL_RE.findall(text)
+    if sent:
+        obj = try_parse(sent[-1].strip())
+        if is_findings_shape(obj):
+            return obj, 0
+        # Sentinels present but content is not parseable findings: a
+        # contracted reviewer that emitted garbage. Do NOT fall through
+        # to heuristic salvage (that reintroduces the mis-grab). Signal
+        # nothing-found so the caller degrades and flags the vendor.
+        return None, 0
+
     # Pass 1: whole input
     obj = try_parse(text)
     if is_findings_shape(obj):

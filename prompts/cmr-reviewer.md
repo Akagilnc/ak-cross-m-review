@@ -110,7 +110,17 @@ independent call, not to pre-guess what others will say.
 
 ---
 
-## Output — strict JSON only, no markdown wrapper
+## Output — sentinel-wrapped JSON
+
+Emit your findings **exactly once**, as a single JSON object, between a
+line that is exactly `===CMR-FINDINGS-BEGIN===` and a line that is
+exactly `===CMR-FINDINGS-END===`. Put nothing else between those two
+lines. Everything outside them is ignored by the orchestrator.
+
+The block below is a **format reference only** — do NOT wrap it in the
+sentinels; only your real findings go between them. (This contract
+exists because JSON echoed from this schema, or quoted from the diff
+under review, was otherwise mistaken for the review itself.)
 
 ```json
 {
@@ -129,6 +139,15 @@ independent call, not to pre-guess what others will say.
     }
   ]
 }
+```
+
+Your entire answer therefore ends exactly like this (sentinels each
+alone on their own line, real findings — not this schema — between):
+
+```
+===CMR-FINDINGS-BEGIN===
+{"reviewer":"codex","mode":"code","findings":[]}
+===CMR-FINDINGS-END===
 ```
 
 - `findings: []` (empty) is a valid, expected answer. If the change is

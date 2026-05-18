@@ -113,14 +113,25 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   findings).
 - **Claude reviewer** — the `Agent` tool, model `opus`, full-diff
   reviewer prompt. Never the headless `claude -p` path here.
-- Always `2>&1`. Run from the repo root, no `-C`. Hang = >3min no
-  output → `pkill -f codex` → next priority. rate / quota / limit →
-  degrade immediately, do not retry.
+- Always `2>&1`. Run from the repo root, no `-C`. The backends
+  self-time-out (`backends/codex-review.sh`: `CMR_CODEX_TIMEOUT`,
+  default 600s, scoped kill of its own pid tree) and degrade
+  automatically — you rarely need to intervene. If you must kill a hung
+  reviewer, kill ONLY its specific pid; **never a global `pkill -f
+  codex`** (Step 2 launched N parallel codex reviewers — a global pkill
+  takes the siblings down too). rate / quota / limit → the backend
+  degrades and flags "本轮缺 X"; do not retry by hand.
 
-`backends/codex-review.sh` salvages the findings JSON from noisy CLI
-stdout via `lib/extract_json.py` and degrades cleanly (synthetic empty
-findings + nonzero exit) on timeout / auth / quota so a failed vendor
-is detectable, never a silent zero-finding pass.
+Findings channel: reviewers wrap their JSON between
+`===CMR-FINDINGS-BEGIN===` / `===CMR-FINDINGS-END===` sentinels
+(`prompts/cmr-reviewer.md` enforces this); `lib/extract_json.py` takes
+**only** the sentinel block — schema echoed from the prompt or JSON
+quoted from the diff under review is structurally ignored, never
+mistaken for the review. `backends/codex-review.sh` / `gemini.sh`
+degrade cleanly (synthetic empty findings + nonzero exit + visible
+"本轮缺 X" flag) on timeout / auth / quota / no-sentinel, so a failed or
+non-compliant vendor is always detectable, never a silent zero-finding
+pass.
 
 Prompt templates: feed every reviewer `prompts/cmr-reviewer.md` + the
 diff; the fixer (Step 7) uses `prompts/cmr-fixer.md` (the 3-part defer
