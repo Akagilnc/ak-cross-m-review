@@ -17,6 +17,7 @@ Two pinned behaviors:
    retries up to 4 attempts (initial 1 + 3 retries), then degrades
    with the auth-race-specific flag. Never silent."""
 
+import json
 import os
 import stat
 import subprocess
@@ -93,6 +94,36 @@ def test_retries_on_auth_race_then_degrades_after_4_attempts(tmp_path):
     assert r.stderr.count("agy auth-race on attempt") == 3
 
 
+def test_does_not_false_degrade_when_model_output_contains_auth_string(tmp_path):
+    # If agy exits 0, even if the model output contains "Authentication required"
+    # (because the reviewed diff touches auth logic), it should NOT be treated
+    # as an auth race. It should parse and pass successfully.
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'echo "===CMR-FINDINGS-BEGIN==="\n'
+        'echo \'{"reviewer":"gemini","mode":"code","findings":[]}\'\n'
+        'echo "===CMR-FINDINGS-END==="\n'
+        'echo "The reviewed diff added: echo Authentication required"\n'
+        'exit 0\n'
+    ))
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+ echo \"Authentication required\"\n--- END DIFF ---\n",
+        capture_output=True, text=True,
+        env=_env_with_stub(tmp_path / "bin"),
+        timeout=60,
+    )
+    assert r.returncode == 0, (
+        f"expected exit 0, got {r.returncode}\n"
+        f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    )
+    # extract_json pretty-prints (json.dump indent=2), so assert on the
+    # parsed value, not a compact substring (the degrade path emits
+    # compact JSON; the success path does not).
+    assert json.loads(r.stdout)["findings"] == []
+    assert "auth race" not in r.stderr
+
+
 def test_degrades_with_clear_flag_when_agy_not_installed(tmp_path):
     # Empty stub dir → no `agy` on PATH → degrade up-front with the
     # post-EOL explanation, never silent / never crash.
@@ -113,3 +144,43 @@ def test_degrades_with_clear_flag_when_agy_not_installed(tmp_path):
     assert '"findings":[]' in r.stdout
     assert "agy not installed" in r.stderr
     assert "本轮缺 gemini" in r.stderr
+
+
+def test_injects_read_only_instruction_into_agy_prompt(tmp_path):
+    # First-run finding: agy (agentic CLI) edited tracked files + ran
+    # pytest during a review because nothing told it to stay read-only;
+    # `--sandbox` alone does not block workspace writes. gemini.sh must
+    # prepend an explicit "REVIEW ONLY / do not modify" instruction to
+    # the prompt it sends agy. We can't force the real agy to obey, but
+    # we CAN pin that the backend actually gives the instruction: the
+    # stub echoes back, inside sentinels, whether the marker reached it.
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'prompt="$(cat)"\n'
+        'echo "===CMR-FINDINGS-BEGIN==="\n'
+        'if echo "$prompt" | grep -qi "REVIEW ONLY"; then\n'
+        '  echo \'{"reviewer":"gemini","mode":"code","findings":['
+        '{"id":"RO_MARKER_PRESENT"}]}\'\n'
+        'else\n'
+        '  echo \'{"reviewer":"gemini","mode":"code","findings":['
+        '{"id":"RO_MARKER_ABSENT"}]}\'\n'
+        'fi\n'
+        'echo "===CMR-FINDINGS-END==="\n'
+        'exit 0\n'
+    ))
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True,
+        env=_env_with_stub(tmp_path / "bin"),
+        timeout=60,
+    )
+    assert r.returncode == 0, (
+        f"expected exit 0, got {r.returncode}\n"
+        f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    )
+    assert "RO_MARKER_PRESENT" in r.stdout, (
+        "gemini.sh did not prepend the read-only instruction to the agy "
+        f"prompt. stdout={r.stdout!r}"
+    )
+    assert "RO_MARKER_ABSENT" not in r.stdout
