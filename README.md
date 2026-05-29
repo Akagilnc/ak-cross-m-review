@@ -145,6 +145,17 @@ keys needed.
   repo.
 - Does not commit / push / open a PR — the caller (or `gstack-ship`)
   does. One change set per invocation.
+- **Reviewer read-only is prompt-enforced, not sandbox-hard.** Reviewers
+  are told (in `cmr-reviewer.md` + the agy prompt preamble) not to modify
+  files or run commands, but `agy --sandbox` does not actually block
+  workspace writes — agy is agentic. First run (before the preamble) it
+  rewrote tracked files + ran pytest mid-review. The preamble lowers the
+  odds but cannot guarantee it (same ceiling as the two-phase no-peek
+  invariant — prompt discipline, not a hard lock). Observed since: a
+  couple of clean runs with no stray writes — a positive signal, not
+  proof. Practical guard: glance at `git status` after a review; an
+  unexpected tracked change is the preamble failing, and the real fix
+  would be an upstream agy write-blocking sandbox (out of skill scope).
 
 ## License
 
