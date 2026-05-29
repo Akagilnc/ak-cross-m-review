@@ -39,7 +39,9 @@ Merge / grade / drift / termination are **agent judgment** per the wiki
 (`cross-model-review.md`), not deterministic code — there is no
 `merge.py` / `drift.py` to unit-test (removed in 0.2.0.0). The full
 N+1+1 reviewer loop is exercised by running the skill itself against a
-real diff (it shells out to `claude` / `codex` / `gemini`).
+real diff (it shells out to `claude` / `codex` / `agy` — the last is the
+post-EOL replacement for the original `gemini` CLI; see SKILL.md Step 2
+invocation forms).
 
 ## Conventions
 

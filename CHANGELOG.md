@@ -4,6 +4,67 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.0.0] - 2026-05-19
+
+Sync to the wiki's 2026-05-18+ revision: **two-phase 顺机理 dispatch**
+becomes the rule (replacing the old "all reviewers in one message"
+form), and the Gemini reviewer leg switches from the EOL'd `gemini`
+CLI to **`agy` 1.0.0** (Antigravity, locked to Gemini 3.5 Flash) with
+the wiki's keychain warm + retry × 4 recipe around its auth-race.
+
+### Changed
+
+- **`SKILL.md` Step 2 rewritten** to the **two-phase dispatch contract**:
+  - msg1 = ONE assistant message containing every Bash CLI reviewer
+    tool call, ALL with `run_in_background: true` (N codex + 1 agy).
+  - msg2 = the very next message; first content MUST be the Claude
+    `Agent` call (foreground).
+  - **no-peek invariant** between msg1 and msg2 (no CLI output read,
+    no other tool call) — this is the one piece of discipline prose
+    still has to enforce. Peek = silent serialization = drift.
+  Both wiki goals (concurrency + independence) preserved by
+  construction; the old "all in one message" rule fought the Agent /
+  Bash tool asymmetry and kept silently serializing in practice.
+- **`backends/gemini.sh` switched to `agy -p --sandbox`** (Antigravity
+  CLI 1.0.0, the in-kind replacement after `gemini` CLI's 2026-06-18
+  EOL). Implements the wiki's auth-race recipe: each attempt pre-warms
+  the `Antigravity Safe Storage` keychain item (no-op on non-macOS via
+  `|| true`), then runs `agy`; if the output matches
+  `Authentication required|authentication timed out`, retry up to 4
+  attempts total; after 4 failures flag `本轮缺 gemini (auth race
+  after retry×3)` and degrade. `AGY_PRINT_TIMEOUT` (default 15m;
+  agy's 5m default is too short for large diffs) and
+  `GEMINI_RETRY_WARM_SLEEP` (default 0; tests-only) are honored.
+  Never `--dangerously-skip-permissions` (anti-pattern #11).
+- Anti-pattern #6 generalized to **two-phase dispatch violations**
+  (peeking between msg1 and msg2 / msg2 first content not the Agent /
+  the old single-message Agent+Bash mix). #11 added: dead `gemini -p`
+  + forbidden `agy --dangerously-skip-permissions`.
+- README / CLAUDE.md / TESTING.md synced (`agy` mentions, two-phase
+  framing, dependency list).
+
+### Added
+
+- **`tests/test_gemini.py`** updated to stub `agy` (was `gemini`). Now
+  pins three behaviors:
+  1. agy non-zero exit + JSON-ish salvageable body → still degrade
+     (the G_RC half of the gate);
+  2. persistent auth-race signature → script retries up to 4 attempts
+     then degrades with `auth race after retry×3` (verified by warn
+     line count, not by sleep timing);
+  3. `agy` missing on PATH → degrade up-front with the post-EOL
+     explanation, never silent / never crash.
+
+### Notes
+
+- Gemini 3.5 Flash is weaker than the codex `gpt-5.5` review tier;
+  documented in SKILL.md as an explicit exception to the strongest-
+  review-model rule, accepted to keep 3-vendor cross-family coverage.
+- The upstream agy keychain auth-race is tracked at
+  `google-antigravity/antigravity-cli#51`. Workaround (warm + retry)
+  is non-root cause but empirically effective; cleanly reflagged on
+  exhaustion.
+
 ## [0.2.0.0] - 2026-05-18
 
 `/ak-cross-m-review` becomes the sole skill (the original
