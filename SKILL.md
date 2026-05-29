@@ -273,12 +273,28 @@ a round counter (no-3-cap, see `iterative-adversarial-review`).
 
 ```
 findings present
-  → P0/P1 exist → fix → narrow self-check (same-pattern bug elsewhere?
-                  fix introduced a new bug?) → commit → next round
+  → P0/P1 exist → FIX (see fix-loop discipline below) → narrow self-check
+                  (same-pattern bug elsewhere? fix introduced a new bug?)
+                  → commit → next round
   → no P0/P1     → STOP (normal convergence)
   → not converging / drift hit → STOP, architectural/implementation
                   rework (Step 6), not "one more round"
 ```
+
+**Fix-loop discipline (wiki §修复).** The fix step splits by kind — the
+wiki's ground truth is "findings are stable, the fix loop is the
+bottleneck (agent fixes by feel, breaks neighbors, skips repro / the
+regression test)":
+
+| Fix kind | Route |
+|---|---|
+| **Mechanical** (typo / dead anchor / stale label / frontmatter date / obvious slip) | edit directly, no protocol |
+| **Non-trivial** (behavioral bug / runtime regression / change may hit neighbors / current state not fully understood) | the **first tool call MUST be `Skill` invoke `/diagnose`** — not first grep, not first guess, not first write a patch, not first read a file. /diagnose's 6 phases (feedback loop → reproduce → ranked falsifiable hypotheses → one-probe-at-a-time instrument → fix + regression test → cleanup, with a HITL fallback) are an iterative, possibly human-in-the-loop investigation the **main session** drives — it does not collapse into a single fixer-subagent return. Canonical: wiki §修复 + `matt-pocock-skills#/diagnose`. |
+
+A fresh-context subagent told to "fix a non-trivial bug" guesses and
+breaks neighbors — exactly what /diagnose exists to prevent. The
+`cmr-fixer.md` subagent therefore produces **mechanical** diffs only;
+non-trivial defects go back to the main session for /diagnose.
 
 Self-check is mandatory and is NOT review — they are not
 interchangeable (anti-pattern #3). The author scanning their own change
