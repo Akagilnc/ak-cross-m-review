@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: Local pre-PR cross-model review — the executable form of the wiki's cross-model-review.md (tdd-autonomous-dev spine step 4 per-slice / step 5 ship-pre, Layer 1). Dispatches the v3 vendor squad (1 Claude opus Agent + N codex gpt-5.5 + 1 Gemini = N+1+1, N by diff size) in ONE parallel message against a diff, then merge / grade / drift-check / loop as the agent judgment the wiki prescribes. Use every dev cycle before a PR, so the agent runs the wiki step the same way instead of re-deciding by feel.
+description: Local pre-PR cross-model review — the executable form of the wiki's cross-model-review.md (tdd-autonomous-dev spine step 4 per-slice / step 5 ship-pre, Layer 1). Dispatches the v3 vendor squad (1 Claude opus Agent + N codex gpt-5.5 + 1 Gemini via agy 1.0.0 = N+1+1, N by diff size) in a two-phase 顺机理 dispatch (msg1 = all CLI Bash run-in-background, msg2 = Claude Agent, no-peek invariant between), then merge / grade / drift-check / loop as the agent judgment the wiki prescribes. Use every dev cycle before a PR, so the agent runs the wiki step the same way instead of re-deciding by feel.
 allowed-tools:
   - Bash
   - Read
@@ -67,9 +67,12 @@ Pre-flight gates (wiki §操作规程 / §边界):
 ## Step 1 — setup (v3 N+1+1) + the N table
 
 Default **1+1+1**: 1 × Claude opus-4.7 (Agent subagent, full diff) +
-1 × codex `gpt-5.5` + 1 × Gemini strongest review model, **all full
-diff**. Only codex instantiates by diff size; Claude & Gemini are always
-×1 on the full diff.
+1 × codex `gpt-5.5` + 1 × Gemini (via `agy` 1.0.0, locked to **3.5
+Flash** — the explicit exception to "strongest review model", since
+the original `gemini` CLI stopped serving 2026-06-18 and `agy` is the
+only in-kind in-place replacement), **all full diff**. Only codex
+instantiates by diff size; Claude & Gemini are always ×1 on the full
+diff.
 
 | Diff size | codex N | total reviewers | lens split |
 |---|---|---|---|
@@ -78,9 +81,12 @@ diff**. Only codex instantiates by diff size; Claude & Gemini are always
 | Large (500+ / 3+ sections) | 3 | 5 (1+3+1) | 3 codex split 1/3 within-section; Claude+Gemini full |
 
 **Strongest review model only** — Anthropic `claude opus-4.7`, OpenAI
-`gpt-5.5`, Google strongest review Gemini. **Never** dev-tier
-`gpt-5.3-codex-spark` / `claude sonnet-4.6` as a reviewer (coding-tier
-model choice is a separate matter; do not carry it into review).
+`gpt-5.5`; **Gemini is the documented exception** (locked to 3.5 Flash
+via `agy` 1.0.0 — wiki trade-off: keep 3-vendor cross-family coverage
+over dropping the Gemini leg entirely after the `gemini` CLI EOL).
+**Never** dev-tier `gpt-5.3-codex-spark` / `claude sonnet-4.6` as a
+reviewer (coding-tier model choice is a separate matter; do not carry
+it into review).
 
 > Orchestration law: cross-model review is ALWAYS run by the **main
 > session**. There is no "subagent runs review internally" — a subagent
@@ -89,18 +95,42 @@ model choice is a separate matter; do not carry it into review).
 > per-slice review and the ship-pre review are both run here, by the
 > main session, as N+1+1.
 
-## Step 2 — parallel launch (operational HARD RULE)
+## Step 2 — two-phase dispatch (wiki §并行启动, 2026-05-18 顺机理 reorder)
 
-Emit **every reviewer tool call in ONE assistant message**:
+The old "all reviewers in ONE assistant message" rule **fights the tool
+mechanics** — Agent is synchronous foreground, Bash + `run_in_background:
+true` is async background; mixing both in one message kept failing
+(missed Gemini, accidental serialization, bg-Bash not actually
+dispatched). Replaced with **two-phase 顺机理** that flows WITH the
+mechanics:
 
-- Default 1+1+1 → 3 tool calls: 1 × `Agent` (Claude opus, full diff) +
-  1 × `Bash` (`backends/codex-review.sh`) + 1 × `Bash`
-  (`backends/gemini.sh`).
-- Upgraded N codex → N+2 tool calls: 1 × `Agent` + N × `Bash` codex
-  (section k/N, non-overlapping diff slices) + 1 × `Bash` gemini (full).
+**msg1 — homogeneous async batch.** ONE assistant message containing
+every Bash CLI reviewer tool call, ALL with `run_in_background: true`:
 
-**Forbidden:** sending some and awaiting before sending the rest; one
-tool call per message. Serial launch defeats the entire point.
+- Default (N=1): 1 × `Bash` (`backends/codex-review.sh`) + 1 × `Bash`
+  (`backends/gemini.sh` — which calls `agy -p --sandbox` internally,
+  see invocation forms) = **2 bg jobs**.
+- Upgraded (N codex): N × `Bash` codex (section k/N, non-overlapping
+  diff slices) + 1 × `Bash` `gemini.sh` (full diff) = **N+1 bg jobs**.
+
+**msg2 — the very next message; first content MUST be the Agent call.**
+1 × `Agent` tool call (Claude opus subagent, full-diff reviewer prompt).
+The Agent runs foreground (the turn blocks here) while msg1's bg CLIs
+continue running.
+
+**no-peek invariant** (the one thing prose still has to enforce):
+between msg1 and msg2, do NOT read any CLI output, do NOT make any
+other tool call. msg2's first content IS the Agent call, full stop.
+Peeking at a background notification or doing anything else between
+the two messages = silent serialization = drift back to the old failure
+mode.
+
+Both wiki goals are preserved by construction:
+
+- **Concurrency**: msg1's CLIs run in the background while msg2's Agent
+  runs foreground → wall-clock ≈ max(cli, agent).
+- **Independence**: Agent is dispatched with ZERO CLI results in hand
+  (you have not read them) → no cross-vendor contamination.
 
 Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
 
@@ -108,17 +138,28 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   `printf %s "$PROMPT" | codex exec --model gpt-5.5 - 2>&1`). Never
   `codex exec "$(...)"` (hangs → pkill), never `-C <dir>` (wrong
   workdir), never `codex review --base B "PROMPT"` (can't pass both).
-- **Gemini** — only via `backends/gemini.sh` (`gemini --approval-mode
-  auto_edit`, never `--approval-mode plan` — plan blocks tools → weak
-  findings).
+- **Gemini** — only via `backends/gemini.sh`, which calls
+  `agy -p --sandbox` (Antigravity CLI 1.0.0, the in-kind replacement
+  after `gemini` CLI's 2026-06-18 EOL; locked to 3.5 Flash, no
+  `--model` flag). cwd = repo root (agy auto-enters the workspace);
+  large diff → `AGY_PRINT_TIMEOUT=15m` (default 5m is short). Never
+  `agy --dangerously-skip-permissions` (re-consents high scope, breaks
+  headless auth); never the deprecated `gemini --approval-mode plan`.
+  The backend handles agy's keychain auth-race with warm + retry × 4
+  (initial 1 + 3 retries; each attempt pre-warms `Antigravity Safe
+  Storage` keychain item). 4 failed attempts → flag `本轮缺 gemini
+  (auth race)`, do not block (§降级链).
 - **Claude reviewer** — the `Agent` tool, model `opus`, full-diff
-  reviewer prompt. Never the headless `claude -p` path here.
+  reviewer prompt. Never the headless `claude -p` path here
+  (rate-limit + 25min timeout footgun, plus 2026-05-17 capability
+  correction: subagents cannot spawn subagents, so the Claude reviewer
+  MUST be spawned by the main session via `Agent`).
 - Always `2>&1`. Run from the repo root, no `-C`. The backends
   self-time-out (`backends/codex-review.sh`: `CMR_CODEX_TIMEOUT`,
   default 600s, scoped kill of its own pid tree) and degrade
   automatically — you rarely need to intervene. If you must kill a hung
   reviewer, kill ONLY its specific pid; **never a global `pkill -f
-  codex`** (Step 2 launched N parallel codex reviewers — a global pkill
+  codex`** (msg1 launched N parallel codex reviewers — a global pkill
   takes the siblings down too). rate / quota / limit → the backend
   degrades and flags "本轮缺 X"; do not retry by hand.
 
@@ -129,9 +170,9 @@ Findings channel: reviewers wrap their JSON between
 quoted from the diff under review is structurally ignored, never
 mistaken for the review. `backends/codex-review.sh` / `gemini.sh`
 degrade cleanly (synthetic empty findings + nonzero exit + visible
-"本轮缺 X" flag) on timeout / auth / quota / no-sentinel, so a failed or
-non-compliant vendor is always detectable, never a silent zero-finding
-pass.
+"本轮缺 X" flag) on timeout / auth / quota / no-sentinel / agy keychain
+auth-race-after-retry-4, so a failed or non-compliant vendor is always
+detectable, never a silent zero-finding pass.
 
 Prompt templates: feed every reviewer `prompts/cmr-reviewer.md` + the
 diff; the fixer (Step 7) uses `prompts/cmr-fixer.md` (the 3-part defer
@@ -145,10 +186,10 @@ v3 requires all 3 vendors. If one is unavailable, run with the rest and
 
 | Down (main = Claude) | Continue with | Flag |
 |---|---|---|
-| codex (all) | Claude + Gemini | "本轮缺 codex" |
-| gemini | Claude + codex | "本轮缺 gemini" |
-| 1 of N codex | Claude + (N−1) codex + Gemini | "codex 实例 N→N−1" |
-| codex + gemini both | Claude only (fallback, no outside voice) | "本轮无 outside voice — 需人工补 review" |
+| codex (all) | Claude + Gemini | `本轮缺 codex` |
+| gemini | Claude + codex | `本轮缺 gemini` (reason: rate / quota / agy auth-race after retry×4 / sandbox write denied) |
+| 1 of N codex | Claude + (N−1) codex + Gemini | `codex 实例 N→N−1` |
+| codex + gemini both | Claude only (fallback, no outside voice) | `本轮无 outside voice — 需人工补 review` |
 
 (Main = Codex variant + the Claude-auth live-smoke rule:
 `printf 'Return exactly: CLAUDE_OK\n' | claude -p --output-format json
@@ -250,8 +291,9 @@ lands it into the PR body `## Deferred Findings`
 3. Self-scan instead of an independent subagent — author bias, high miss rate. Self-check ≠ review.
 4. Same-family different-size as "outside voice" (Opus + Sonnet) — not cross-vendor.
 5. Hardcoded N=3 ignoring diff size.
-6. Serial launch (send some, await, send rest).
+6. **Two-phase dispatch violations** — peeking at any CLI output between msg1 and msg2, or emitting anything other than the Agent call as msg2's first content, or mixing Agent + Bash in a single message (the old 逆机理 rule the two-phase replaced). All collapse to silent serialization.
 7. Drift hit → rationalize "one more round" — the infinite-loop entrance.
 8. Silent vendor degrade — always flag "本轮缺 X".
 9. v2 N × Claude opus split sections — violates current quota allocation.
 10. Treating N/N concur as ship-ready — category error (Step 5).
+11. `gemini -p` headless (CLI stopped serving 2026-06-18) or `agy --dangerously-skip-permissions` (re-consents high scope, breaks headless auth) — use `backends/gemini.sh`, which pins `agy -p --sandbox` + the warm-retry recipe.

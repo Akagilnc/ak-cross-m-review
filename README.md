@@ -2,8 +2,9 @@
 
 Local, pre-PR **cross-model review** skill — the executable form of the
 wiki's `cross-model-review.md`. Dispatches an independent multi-vendor
-reviewer squad against a diff in one parallel message, then merges,
-grades, drift-checks and loops **as the agent judgment the wiki
+reviewer squad against a diff in a **two-phase 顺机理 dispatch** (msg1 =
+all CLI Bash reviewers in the background; msg2 = the Claude Agent), then
+merges, grades, drift-checks and loops **as the agent judgment the wiki
 prescribes** — before code reaches a PR / `main`.
 
 **Status**: v0 prototype. Evolving.
@@ -28,7 +29,8 @@ and wiki disagree, the wiki wins.
 
 ## The vendor squad — N+1+1
 
-In one parallel message, against the same diff (wiki §setup):
+Dispatched **two-phase** (wiki §并行启动, 2026-05-18 顺机理 reorder),
+against the same diff:
 
 - **1 × Claude Opus** — via the `Agent` tool as an independent subagent
   (zero context contamination). This is why the skill MUST run in the
@@ -36,8 +38,20 @@ In one parallel message, against the same diff (wiki §setup):
 - **N × Codex** (`gpt-5.5`, via `backends/codex-review.sh`) — N scales
   with diff size (1 / 2 / 3 for `<200` / `200–500` / `500+` lines); for
   N≥2 each codex takes a distinct file-section slice.
-- **1 × Gemini** (via `backends/gemini.sh`, `--approval-mode auto_edit`)
-  — full diff.
+- **1 × Gemini** (via `backends/gemini.sh`, which internally calls
+  `agy -p --sandbox` — Antigravity CLI 1.0.0, the in-kind replacement
+  after the original `gemini` CLI's 2026-06-18 EOL; locked to Gemini
+  3.5 Flash, the explicit exception to "strongest review model") —
+  full diff.
+
+The dispatch is **two-phase**: msg1 sends every CLI Bash reviewer in one
+assistant message, all `run_in_background: true`; msg2 (immediately,
+first content) sends the Claude `Agent`. No peeking at CLI output
+between — the orchestrating session has zero results in hand when the
+Claude reviewer is dispatched, preserving both concurrency and
+independence. The older "all reviewers in one message" rule fought the
+Agent / Bash tool asymmetry (Agent is foreground / blocking, Bash with
+`run_in_background` is async) and kept silently serializing in practice.
 
 The agent then **merges + grades** (group same issue across reviewers;
 concurrence → severity up; grounding density → trust weight, only up),
@@ -78,7 +92,9 @@ SKILL.md                  the executable wiki transcription (the skill)
 backends/codex-review.sh  pins the correct `codex exec` invocation
                           (no -C, stdin pipe, 2>&1) + clean degrade;
                           --selftest is its regression guard
-backends/gemini.sh        pins `gemini --approval-mode auto_edit`
+backends/gemini.sh        calls `agy -p --sandbox` (post-EOL gemini
+                          replacement) + warm + retry × 4 around agy's
+                          keychain auth-race; visible degrade flag
 lib/extract_json.py       salvage findings JSON from noisy CLI stdout
 prompts/cmr-reviewer.md   reviewer prompt template
 prompts/cmr-fixer.md      fixer prompt template (3-part defer protocol)
@@ -107,7 +123,11 @@ of the wiki's cross-model-review step.
 - [Claude Code](https://claude.com/claude-code) CLI (`claude`) — the
   Claude reviewer runs via the `Agent` tool
 - [OpenAI Codex](https://github.com/openai/codex) CLI (`codex`)
-- [Google Gemini](https://github.com/google-gemini/gemini-cli) CLI (`gemini`)
+- [Google Antigravity](https://github.com/google-antigravity/antigravity-cli)
+  CLI (`agy` 1.0.0) — Gemini leg, the in-kind replacement after Google's
+  `gemini` CLI 2026-06-18 EOL. Locked to Gemini 3.5 Flash; has a
+  documented keychain auth-race the backend works around with warm +
+  retry × 4 (upstream issue google-antigravity/antigravity-cli#51).
 - `python3` ≥ 3.11 — `lib/extract_json.py`
 - `jq` — shell pipelines
 
