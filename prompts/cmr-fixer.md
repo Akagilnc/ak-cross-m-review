@@ -1,9 +1,17 @@
 # Cross-Model Review — Fixer Task
 
+> **Scope: mechanical fixes only.** A **non-trivial** finding (behavioral
+> bug / runtime regression / change may hit neighbors / state not fully
+> understood) is NOT yours — defer it back to the main session, which
+> runs `/diagnose` as the first tool call (an iterative, possibly
+> human-in-the-loop investigation a single subagent diff cannot do; see
+> wiki §修复). Do not guess at a non-trivial fix.
+
 Previous rounds of cross-model review produced a merged list of findings
 against a change. Your job now is to produce a **unified diff** that
-resolves the must-fix findings, and to **explicitly defer** the rest per
-the defer protocol. This is a surgical-edit task, not a review task.
+resolves the must-fix mechanical findings, and to **explicitly defer**
+the rest (non-trivial → main session `/diagnose`; lower-priority → defer
+protocol). This is a surgical-edit task, not a review task.
 
 You did not write the original code. Do not "improve" things. Fix exactly
 what the findings identify, nothing more.
