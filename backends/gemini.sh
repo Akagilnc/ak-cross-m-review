@@ -50,6 +50,21 @@ if ! command -v agy >/dev/null 2>&1; then
   exit 1
 fi
 
+# Read-only contract (wiki §调用规范, line 185). agy (Antigravity) is an
+# agentic CLI: `--sandbox` alone does NOT stop it editing files in the
+# workspace or running commands. Observed first-run failure: an agy
+# review rewrote tracked files (gemini.sh, a test) and ran pytest instead
+# of just reviewing. The prompt ITSELF must forbid this. Prepend an
+# explicit read-only instruction to every agy prompt; --sandbox is
+# defense-in-depth, not the primary guard.
+AGY_PROMPT="REVIEW ONLY — HARD CONSTRAINT. Do NOT modify, create, rename,
+or delete ANY file. Do NOT run any shell command, test, build, git, or
+edit operation. You are a read-only reviewer: your ONLY output is review
+findings in the required sentinel-wrapped JSON. Touching the filesystem
+or running commands is a contract violation, not help.
+
+$FULL_PROMPT"
+
 # agy keychain auth-race: per-attempt keychain warm + retry. The
 # `security find-generic-password` warms the macOS Keychain item path
 # so agy's 1s keyringAuth doesn't time out; redirect both streams and
@@ -63,11 +78,11 @@ for attempt in 1 2 3 4; do
     >/dev/null 2>&1 || true
 
   set +e
-  RAW="$(cd "$PROTO_ROOT" && agy -p --sandbox --print-timeout "$PRINT_TIMEOUT" 2>&1 <<<"$FULL_PROMPT")"
+  RAW="$(cd "$PROTO_ROOT" && agy -p --sandbox --print-timeout "$PRINT_TIMEOUT" 2>&1 <<<"$AGY_PROMPT")"
   G_RC=$?
   set -e
 
-  if echo "$RAW" | grep -qE "Authentication required|authentication timed out"; then
+  if [ "$G_RC" -ne 0 ] && echo "$RAW" | grep -qE "Authentication required|authentication timed out"; then
     if [ "$attempt" -lt 4 ]; then
       echo "gemini: warn: agy auth-race on attempt $attempt/4, retrying..." >&2
       [ "${GEMINI_RETRY_WARM_SLEEP:-0}" != "0" ] && sleep "${GEMINI_RETRY_WARM_SLEEP}"

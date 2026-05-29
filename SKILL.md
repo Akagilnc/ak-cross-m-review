@@ -145,10 +145,18 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   large diff → `AGY_PRINT_TIMEOUT=15m` (default 5m is short). Never
   `agy --dangerously-skip-permissions` (re-consents high scope, breaks
   headless auth); never the deprecated `gemini --approval-mode plan`.
-  The backend handles agy's keychain auth-race with warm + retry × 4
-  (initial 1 + 3 retries; each attempt pre-warms `Antigravity Safe
-  Storage` keychain item). 4 failed attempts → flag `本轮缺 gemini
-  (auth race)`, do not block (§降级链).
+  **agy is agentic — `--sandbox` does NOT stop it editing files / running
+  commands** (first-run: an agy review rewrote tracked files + ran
+  pytest). `gemini.sh` therefore prepends an explicit "REVIEW ONLY, do
+  not modify any file, do not run commands" preamble to every agy prompt
+  (wiki §调用规范 line 185); the preamble is the real read-only guard,
+  `--sandbox` is defense-in-depth. cmr-reviewer.md carries the same
+  read-only hard-constraint for all vendors.
+  The backend handles agy's keychain auth-race with warm + retry (4
+  attempts total = initial 1 + 3 retries; each attempt pre-warms
+  `Antigravity Safe Storage` keychain item). All 4 failing → emit the
+  exact flag `本轮缺 gemini (auth race after retry×3)`, do not block
+  (§降级链).
 - **Claude reviewer** — the `Agent` tool, model `opus`, full-diff
   reviewer prompt. Never the headless `claude -p` path here
   (rate-limit + 25min timeout footgun, plus 2026-05-17 capability
@@ -171,8 +179,8 @@ quoted from the diff under review is structurally ignored, never
 mistaken for the review. `backends/codex-review.sh` / `gemini.sh`
 degrade cleanly (synthetic empty findings + nonzero exit + visible
 "本轮缺 X" flag) on timeout / auth / quota / no-sentinel / agy keychain
-auth-race-after-retry-4, so a failed or non-compliant vendor is always
-detectable, never a silent zero-finding pass.
+auth-race (after 4 attempts), so a failed or non-compliant vendor is
+always detectable, never a silent zero-finding pass.
 
 Prompt templates: feed every reviewer `prompts/cmr-reviewer.md` + the
 diff; the fixer (Step 7) uses `prompts/cmr-fixer.md` (the 3-part defer
@@ -187,7 +195,7 @@ v3 requires all 3 vendors. If one is unavailable, run with the rest and
 | Down (main = Claude) | Continue with | Flag |
 |---|---|---|
 | codex (all) | Claude + Gemini | `本轮缺 codex` |
-| gemini | Claude + codex | `本轮缺 gemini` (reason: rate / quota / agy auth-race after retry×4 / sandbox write denied) |
+| gemini | Claude + codex | `本轮缺 gemini` (reason: rate / quota / agy auth-race after retry×3 / sandbox write denied) |
 | 1 of N codex | Claude + (N−1) codex + Gemini | `codex 实例 N→N−1` |
 | codex + gemini both | Claude only (fallback, no outside voice) | `本轮无 outside voice — 需人工补 review` |
 
@@ -297,3 +305,4 @@ lands it into the PR body `## Deferred Findings`
 9. v2 N × Claude opus split sections — violates current quota allocation.
 10. Treating N/N concur as ship-ready — category error (Step 5).
 11. `gemini -p` headless (CLI stopped serving 2026-06-18) or `agy --dangerously-skip-permissions` (re-consents high scope, breaks headless auth) — use `backends/gemini.sh`, which pins `agy -p --sandbox` + the warm-retry recipe.
+12. **A reviewer that writes** — relying on `--sandbox` alone to keep an agentic CLI (agy) read-only. It edits files / runs commands anyway (first-run: rewrote tracked files + ran pytest mid-review). The prompt MUST forbid writes ("REVIEW ONLY, do not modify any file, do not run commands"); a review that mutates the repo under review is the defect, even when the mutation is correct.
