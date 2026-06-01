@@ -1,75 +1,34 @@
 #!/usr/bin/env bash
-# cmr-gate :: installer
+# cmr-gate :: installer (L1 audit only)
 #
-# 干两件事:
-#   1. 把 PreToolUse hook 加进 .claude/settings.local.json (L2 真闸 wiring)
-#      —— .claude/ 是 .gitignored,所以这一步是 per-machine
-#   2. 把 .githooks/post-commit chmod +x (L1 audit)
-#   3. 在 .gitignore 里加 .cmr-gate/ 和 .review-unconverged.log
-#   4. 验装可用
+# L2(harness PreToolUse 真闸)已移除——复杂度收益不划算,bootstrap 麻烦,
+# Claude Code session 加载语义模糊。改成单层 L1:post-commit 写
+# .review-unconverged.log 留痕,永不阻断。看 .log 累积频次即知现状。
 #
-# 重复跑安全(idempotent)。
+# 本 installer 做的事:
+#   1. chmod .githooks/post-commit
+#   2. 给 hooksPath 状态提示
+#   3. .gitignore 加 .review-unconverged.log
+#   4. 跑 postcommit_audit 自检
+#
+# 幂等。
 set -e
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
-echo "==> cmr-gate installer (idempotent)"
+echo "==> cmr-gate L1 audit installer (idempotent)"
 echo "  repo root: $REPO_ROOT"
 
-# --- 1. PreToolUse hook 写入 .claude/settings.local.json ---
-SETTINGS=".claude/settings.local.json"
-mkdir -p .claude
-if [ ! -f "$SETTINGS" ]; then
-  echo "{}" > "$SETTINGS"
-  echo "  created empty $SETTINGS"
-fi
-
-python3 - "$SETTINGS" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-settings_path = Path(sys.argv[1])
-data = json.loads(settings_path.read_text() or "{}")
-hooks = data.setdefault("hooks", {})
-pre = hooks.setdefault("PreToolUse", [])
-
-# 检查是否已装 (按 command substring)
-marker_str = "scripts/cmr-gate/harness_precommit_hook.py"
-already = any(
-    any(marker_str in h.get("command", "") for h in entry.get("hooks", []))
-    for entry in pre
-)
-if already:
-    print("  PreToolUse hook 已存在,跳过")
-else:
-    pre.append({
-        "matcher": "Bash",
-        "hooks": [
-            {
-                "type": "command",
-                "command": 'python3 "$CLAUDE_PROJECT_DIR/scripts/cmr-gate/harness_precommit_hook.py"',
-                "timeout": 10,
-                "statusMessage": "cmr-gate checking...",
-            }
-        ],
-    })
-    settings_path.write_text(
-        json.dumps(data, indent=2, ensure_ascii=False) + "\n"
-    )
-    print(f"  PreToolUse hook 装到 {settings_path}")
-PY
-
-# --- 2. post-commit hook chmod (鲁棒:文件不在不 abort) ---
+# --- 1. post-commit hook chmod (鲁棒) ---
 if [ -f .githooks/post-commit ]; then
   chmod +x .githooks/post-commit
   echo "  .githooks/post-commit +x"
 else
-  echo "  ⚠ .githooks/post-commit 不存在(跳过 chmod)"
+  echo "  ⚠ .githooks/post-commit 不存在(跳过)"
 fi
 
-# 也验 core.hooksPath 状态。不一致就 warn 不阻断
+# --- 2. hooksPath 状态 ---
 HP=$(git config core.hooksPath || echo "")
 case "$HP" in
   .githooks)
@@ -80,14 +39,14 @@ case "$HP" in
     echo "      git config core.hooksPath .githooks"
     ;;
   *)
-    echo "  ⚠ core.hooksPath = $HP (不是 .githooks)。L1 audit 经 .githooks/post-commit 不会触发。"
+    echo "  ⚠ core.hooksPath = $HP (不是 .githooks)。L1 audit 不会经 .githooks/post-commit 触发。"
     echo "    选项:"
     echo "      A) 切到 .githooks:git config core.hooksPath .githooks"
-    echo "      B) chain cmr-gate L1 到现有 post-commit(见 README §Vela-like 既有 hook)"
+    echo "      B) chain cmr-gate L1 到现有 post-commit(见 README §既有 hook 共存)"
     ;;
 esac
 
-# --- 3. .gitignore 追加(idempotent) ---
+# --- 3. .gitignore (idempotent) ---
 add_ignore() {
   local entry="$1"
   if ! grep -qxF "$entry" .gitignore 2>/dev/null; then
@@ -95,19 +54,13 @@ add_ignore() {
     echo "  .gitignore += $entry"
   fi
 }
-add_ignore ".cmr-gate/"
 add_ignore ".review-unconverged.log"
 
-# --- 4. 跑 verifier 测试 ---
-echo "==> verifier 自检"
-if python3 scripts/cmr-gate/test_verify_report.py 2>&1 | tail -3; then
-  echo "  ✓ verifier 测试通过"
-else
-  echo "  ✗ verifier 测试失败,装机失败"
-  exit 1
-fi
+# --- 4. 自检 ---
+echo "==> postcommit_audit 自检"
+python3 -c "import sys; sys.path.insert(0, 'scripts/cmr-gate'); import postcommit_audit; print('  ✓ import OK')"
 
 echo ""
-echo "==> 完成。"
-echo "下次 Claude Code 在本仓里跑 \`git commit\` 含非文档改动时,会先过 cmr-gate。"
-echo "看 scripts/cmr-gate/README.md 了解协议。"
+echo "==> 完成。下次非文档 commit 没带 cmr review 报告(.md 文件名含"
+echo "    cross-model-review / *.cmr-review.md / *.review.md)时,post-commit 会写一行到"
+echo "    .review-unconverged.log。永不阻断,只留痕。"
