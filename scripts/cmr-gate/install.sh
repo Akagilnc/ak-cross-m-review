@@ -61,16 +61,31 @@ else:
     print(f"  PreToolUse hook 装到 {settings_path}")
 PY
 
-# --- 2. post-commit hook chmod ---
-chmod +x .githooks/post-commit
-echo "  .githooks/post-commit +x (active via package.json postinstall: git config core.hooksPath .githooks)"
-
-# 也验 core.hooksPath 是不是指向 .githooks
-HP=$(git config core.hooksPath || echo "")
-if [ "$HP" != ".githooks" ]; then
-  echo "  WARNING: git config core.hooksPath = $HP (期望 .githooks)。跑 \`npm install\` 或手动:"
-  echo "    git config core.hooksPath .githooks"
+# --- 2. post-commit hook chmod (鲁棒:文件不在不 abort) ---
+if [ -f .githooks/post-commit ]; then
+  chmod +x .githooks/post-commit
+  echo "  .githooks/post-commit +x"
+else
+  echo "  ⚠ .githooks/post-commit 不存在(跳过 chmod)"
 fi
+
+# 也验 core.hooksPath 状态。不一致就 warn 不阻断
+HP=$(git config core.hooksPath || echo "")
+case "$HP" in
+  .githooks)
+    echo "  core.hooksPath = .githooks ✓"
+    ;;
+  "")
+    echo "  ⚠ core.hooksPath 未设(默认 .git/hooks)。要让 .githooks/post-commit 生效:"
+    echo "      git config core.hooksPath .githooks"
+    ;;
+  *)
+    echo "  ⚠ core.hooksPath = $HP (不是 .githooks)。L1 audit 经 .githooks/post-commit 不会触发。"
+    echo "    选项:"
+    echo "      A) 切到 .githooks:git config core.hooksPath .githooks"
+    echo "      B) chain cmr-gate L1 到现有 post-commit(见 README §Vela-like 既有 hook)"
+    ;;
+esac
 
 # --- 3. .gitignore 追加(idempotent) ---
 add_ignore() {
