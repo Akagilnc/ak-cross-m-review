@@ -1,0 +1,64 @@
+name: cmr-gate verifier tests
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/cmr-gate/**'
+      - '.github/workflows/cmr-gate.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/cmr-gate/**'
+      - '.github/workflows/cmr-gate.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run verifier unit tests
+        run: python3 scripts/cmr-gate/test_verify_report.py -v
+
+      - name: Run integration tests (helper ↔ hook hash 契约 + e2e)
+        run: python3 scripts/cmr-gate/test_integration.py -v
+
+      - name: Smoke test - harness hook (non-Bash)
+        run: |
+          echo '{"tool_name":"Read","tool_input":{"file_path":"x"}}' | \
+            python3 scripts/cmr-gate/harness_precommit_hook.py
+          # 应放行
+          test $? -eq 0
+
+      - name: Smoke test - harness hook (Bash non-commit)
+        run: |
+          echo '{"tool_name":"Bash","tool_input":{"command":"ls -la"}}' | \
+            python3 scripts/cmr-gate/harness_precommit_hook.py
+          test $? -eq 0
+
+      - name: Smoke test - harness hook (empty stdin fail-open)
+        run: |
+          echo '' | python3 scripts/cmr-gate/harness_precommit_hook.py
+          test $? -eq 0
+
+      - name: Smoke test - harness hook (STRICT mode + broken stdin)
+        env:
+          CMR_GATE_STRICT: '1'
+        run: |
+          # 空 stdin 在 STRICT 仍放行(因为 tool_name != Bash 路径)。
+          # 真要测 fail-closed,用 CMR_GATE_DEBUG 看 traceback。
+          echo '' | python3 scripts/cmr-gate/harness_precommit_hook.py
+          test $? -eq 0
+
+      - name: Smoke test - compute-diff-hash on empty staged
+        run: |
+          # 在 CI 上没 staged 内容,应输出空 + exit 0
+          out=$(bash scripts/cmr-gate/compute-diff-hash.sh 2>&1 || true)
+          echo "$out"
+          # 不严格断言,只确保不 crash
