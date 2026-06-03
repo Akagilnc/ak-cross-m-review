@@ -116,8 +116,16 @@ def main() -> int:
     if not non_doc:
         return 0
 
-    reports = [f for f in files if is_review_report(f)]
     meta = head_meta(root)
+
+    # 跳过自动化心跳 commits(blogger-style routine-fire publishing 每小时一条,
+    # touch jsonl/audit 日志,不需要 cmr review,只会刷 audit log)。
+    # 模式:subject 以 "chore: [routine]" 开头。env CMR_GATE_AUDIT_ALL=1 反开。
+    if (not os.environ.get("CMR_GATE_AUDIT_ALL")
+            and re.match(r"^chore: \[routine\]", meta["subj"])):
+        return 0
+
+    reports = [f for f in files if is_review_report(f)]
     ts = datetime.now().astimezone().isoformat(timespec="seconds")
     log_path = root / ".review-unconverged.log"
 
