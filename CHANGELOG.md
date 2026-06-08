@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.1.0] - 2026-06-08
+
+Sync to wiki §额外硬规则 #6 (`3b05d34`): concurrent `codex exec` must
+pass **`--ephemeral`**. Without it, parallel codex instances collide on
+`~/.codex/session` and cross-contaminate (a prompt from one instance
+surfaces in another's context) — a latent silent-corruption footgun on
+cmr's default 1+N+1 parallel path (N≥2). `backends/codex-review.sh` now
+passes `--ephemeral` on all call sites; `--selftest` asserts its
+presence (reverse-tested). `SKILL.md` Step 2 marks it mandatory. See
+`openai/codex#11435`.
+
 ## [0.3.0.0] - 2026-05-19
 
 Sync to the wiki's 2026-05-18+ revision: **two-phase 顺机理 dispatch**
