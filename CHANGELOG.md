@@ -13,7 +13,11 @@ surfaces in another's context) — a latent silent-corruption footgun on
 cmr's default 1+N+1 parallel path (N≥2). `backends/codex-review.sh` now
 passes `--ephemeral` on all call sites; `--selftest` asserts its
 presence (reverse-tested). `SKILL.md` Step 2 marks it mandatory. See
-`openai/codex#11435`.
+`openai/codex#11435`. Online review (gemini-code-assist + sourcery,
+2-bot concur) flagged the invocation string was duplicated across 5
+sites — extracted a single-source `CODEX_CMD` array; every call site and
+the `--selftest` validation now derive from it, so the selftest checks
+the live command instead of a hand-copied mirror.
 
 ## [0.3.0.0] - 2026-05-19
 

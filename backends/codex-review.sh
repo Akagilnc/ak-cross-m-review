@@ -51,10 +51,21 @@ LABEL="${2:-full}"
 MODEL="${CMR_CODEX_MODEL:-gpt-5.5}"
 TIMEOUT_S="${CMR_CODEX_TIMEOUT:-600}"
 
-# --selftest: build the command, assert it is on-convention, never call
-# codex. This is the regression guard for D1/D2.
+# Single source of truth for the codex invocation. Every real call site
+# (timeout / gtimeout / background) AND the --selftest validation derive
+# from this one array, so adding or changing a flag — e.g. --ephemeral —
+# touches ONE place, not five. (bot-flagged DRY: the duplicated command
+# string was what made the --ephemeral add error-prone, and let the
+# selftest validate a hand-copied mirror instead of the live command.)
+# Expand as "${CODEX_CMD[@]}" at call sites; the `2>&1` redirection is
+# added per-call (it is shell redirection, not part of the command).
+CODEX_CMD=(codex exec --ephemeral --model "$MODEL" -)
+
+# --selftest: validate the REAL invocation array (not a hand-copied
+# mirror), assert it is on-convention, never call codex. Regression
+# guard for D1/D2 + the --ephemeral parallel-session rule.
 if [ "${1:-}" = "--selftest" ]; then
-  CMD="codex exec --ephemeral --model ${MODEL} - 2>&1"
+  CMD="${CODEX_CMD[*]} 2>&1"
   fail=0
   case "$CMD" in
     *" -C "*) echo "FAIL: command contains -C (wrong-workdir footgun)" >&2; fail=1 ;;
@@ -95,7 +106,7 @@ if [ -z "$FULL_PROMPT" ]; then
 fi
 
 if [ "${CMR_DRY_RUN:-0}" = "1" ]; then
-  echo "DRY_RUN cmd: printf %s \"\$PROMPT\" | codex exec --ephemeral --model ${MODEL} - 2>&1" >&2
+  echo "DRY_RUN cmd: printf %s \"\$PROMPT\" | ${CODEX_CMD[*]} 2>&1" >&2
   printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
   exit 0
 fi
@@ -120,12 +131,12 @@ RAW=""
 RC=0
 if command -v timeout >/dev/null 2>&1; then
   set +e
-  RAW="$(timeout "${TIMEOUT_S}s" codex exec --ephemeral --model "$MODEL" - < "$PROMPT_TMP" 2>&1)"
+  RAW="$(timeout "${TIMEOUT_S}s" "${CODEX_CMD[@]}" < "$PROMPT_TMP" 2>&1)"
   RC=$?
   set -e
 elif command -v gtimeout >/dev/null 2>&1; then
   set +e
-  RAW="$(gtimeout "${TIMEOUT_S}s" codex exec --ephemeral --model "$MODEL" - < "$PROMPT_TMP" 2>&1)"
+  RAW="$(gtimeout "${TIMEOUT_S}s" "${CODEX_CMD[@]}" < "$PROMPT_TMP" 2>&1)"
   RC=$?
   set -e
 else
@@ -136,7 +147,7 @@ else
   TMP_OUT="$(mktemp)"
   TIMED_OUT="$(mktemp)"; rm -f "$TIMED_OUT"
   trap 'rm -f "$PROMPT_TMP" "$TMP_OUT" "$TIMED_OUT"' EXIT
-  codex exec --ephemeral --model "$MODEL" - < "$PROMPT_TMP" >"$TMP_OUT" 2>&1 &
+  "${CODEX_CMD[@]}" < "$PROMPT_TMP" >"$TMP_OUT" 2>&1 &
   CODEX_PID=$!
   ( sleep "$TIMEOUT_S"
     if kill -0 "$CODEX_PID" 2>/dev/null; then
