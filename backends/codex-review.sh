@@ -88,10 +88,19 @@ if [ "${1:-}" = "--selftest" ]; then
     *"2>&1"*) ;;
     *) echo "FAIL: command missing 2>&1" >&2; fail=1 ;;
   esac
-  # Positional-arg form must never appear.
-  case "$CMD" in
-    *'codex exec "'*) echo "FAIL: positional-arg prompt form present" >&2; fail=1 ;;
-  esac
+  # Positional-arg form must never appear. With CODEX_CMD now an array,
+  # a quote-based string match on "$CMD" is DEAD — array expansion
+  # (${CODEX_CMD[*]}) strips the quotes, so a reintroduced positional
+  # prompt (CODEX_CMD=(codex exec "$PROMPT" ...)) would slip through.
+  # Validate the array STRUCTURE instead (gemini R3 HIGH): exactly the
+  # canonical 6 tokens, `codex exec` first, stdin `-` last. Explicit
+  # index [5] (not negative) keeps this bash-3.2 safe (macOS default).
+  if [ "${#CODEX_CMD[@]}" -ne 6 ] \
+     || [ "${CODEX_CMD[0]} ${CODEX_CMD[1]}" != "codex exec" ] \
+     || [ "${CODEX_CMD[5]}" != "-" ]; then
+    echo "FAIL: codex command array shape off (positional-arg / stray flag / missing stdin '-'; update this guard if a flag was intentionally added)" >&2
+    fail=1
+  fi
   if [ "$fail" -eq 0 ]; then
     echo "✓ codex-review.sh invocation is on-convention: ${CMD}"
     exit 0
