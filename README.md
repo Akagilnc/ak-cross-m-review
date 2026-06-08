@@ -90,7 +90,8 @@ stop, not a round counter.
 ```
 SKILL.md                  the executable wiki transcription (the skill)
 backends/codex-review.sh  pins the correct `codex exec` invocation
-                          (no -C, stdin pipe, 2>&1) + clean degrade;
+                          (--ephemeral, no -C, stdin pipe, 2>&1) via a
+                          single CODEX_CMD array + clean degrade;
                           --selftest is its regression guard
 backends/gemini.sh        calls `agy -p --sandbox` (post-EOL gemini
                           replacement) + warm + retry × 4 around agy's

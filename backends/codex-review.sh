@@ -10,8 +10,12 @@
 #      - `-C` flag → runs in the wrong workdir (codex-wrong-repo-cwd)
 #      - no `--model` → review quality drifts to the CLI default
 #
-#   ✅ cat <<'PROMPT' | codex exec --model gpt-5.5 - 2>&1
+#   ✅ cat <<'PROMPT' | codex exec --ephemeral --model gpt-5.5 - 2>&1
 #      - stdin pipe (the `-` means "read prompt from stdin")
+#      - `--ephemeral`: do NOT persist a session rollout file. cmr runs
+#        N codex in parallel (1+N+1); without it concurrent instances
+#        collide on ~/.codex/session → cross-talk (prompt A surfaces in
+#        instance B's context). Wiki §额外硬规则 #6 / codex#11435.
 #      - `--model gpt-5.5` pinned: review-tier, never dev-tier spark/5.3
 #      - NO `-C`: codex runs from the current dir (the repo root)
 #      - always 2>&1 so failures are visible
@@ -47,10 +51,21 @@ LABEL="${2:-full}"
 MODEL="${CMR_CODEX_MODEL:-gpt-5.5}"
 TIMEOUT_S="${CMR_CODEX_TIMEOUT:-600}"
 
-# --selftest: build the command, assert it is on-convention, never call
-# codex. This is the regression guard for D1/D2.
+# Single source of truth for the codex invocation. Every real call site
+# (timeout / gtimeout / background) AND the --selftest validation derive
+# from this one array, so adding or changing a flag — e.g. --ephemeral —
+# touches ONE place, not five. (bot-flagged DRY: the duplicated command
+# string was what made the --ephemeral add error-prone, and let the
+# selftest validate a hand-copied mirror instead of the live command.)
+# Expand as "${CODEX_CMD[@]}" at call sites; the `2>&1` redirection is
+# added per-call (it is shell redirection, not part of the command).
+CODEX_CMD=(codex exec --ephemeral --model "$MODEL" -)
+
+# --selftest: validate the REAL invocation array (not a hand-copied
+# mirror), assert it is on-convention, never call codex. Regression
+# guard for D1/D2 + the --ephemeral parallel-session rule.
 if [ "${1:-}" = "--selftest" ]; then
-  CMD="codex exec --model ${MODEL} - 2>&1"
+  CMD="${CODEX_CMD[*]} 2>&1"
   fail=0
   case "$CMD" in
     *" -C "*) echo "FAIL: command contains -C (wrong-workdir footgun)" >&2; fail=1 ;;
@@ -60,17 +75,32 @@ if [ "${1:-}" = "--selftest" ]; then
     *) echo "FAIL: command missing --model pin" >&2; fail=1 ;;
   esac
   case "$CMD" in
-    *"codex exec --model ${MODEL} -"*) ;;
-    *) echo "FAIL: command not stdin-pipe form ('codex exec --model X -')" >&2; fail=1 ;;
+    *"codex exec --ephemeral --model ${MODEL} -"*) ;;
+    *) echo "FAIL: command not stdin-pipe form ('codex exec --ephemeral --model X -')" >&2; fail=1 ;;
+  esac
+  # --ephemeral mandatory: parallel codex instances collide on
+  # ~/.codex/session without it (wiki §额外硬规则 #6 / codex#11435).
+  case "$CMD" in
+    *"--ephemeral"*) ;;
+    *) echo "FAIL: command missing --ephemeral (parallel session-collision guard)" >&2; fail=1 ;;
   esac
   case "$CMD" in
     *"2>&1"*) ;;
     *) echo "FAIL: command missing 2>&1" >&2; fail=1 ;;
   esac
-  # Positional-arg form must never appear.
-  case "$CMD" in
-    *'codex exec "'*) echo "FAIL: positional-arg prompt form present" >&2; fail=1 ;;
-  esac
+  # Positional-arg form must never appear. With CODEX_CMD now an array,
+  # a quote-based string match on "$CMD" is DEAD — array expansion
+  # (${CODEX_CMD[*]}) strips the quotes, so a reintroduced positional
+  # prompt (CODEX_CMD=(codex exec "$PROMPT" ...)) would slip through.
+  # Validate the array STRUCTURE instead (gemini R3 HIGH): exactly the
+  # canonical 6 tokens, `codex exec` first, stdin `-` last. Explicit
+  # index [5] (not negative) keeps this bash-3.2 safe (macOS default).
+  if [ "${#CODEX_CMD[@]}" -ne 6 ] \
+     || [ "${CODEX_CMD[0]} ${CODEX_CMD[1]}" != "codex exec" ] \
+     || [ "${CODEX_CMD[5]}" != "-" ]; then
+    echo "FAIL: codex command array shape off (positional-arg / stray flag / missing stdin '-'; update this guard if a flag was intentionally added)" >&2
+    fail=1
+  fi
   if [ "$fail" -eq 0 ]; then
     echo "✓ codex-review.sh invocation is on-convention: ${CMD}"
     exit 0
@@ -85,7 +115,7 @@ if [ -z "$FULL_PROMPT" ]; then
 fi
 
 if [ "${CMR_DRY_RUN:-0}" = "1" ]; then
-  echo "DRY_RUN cmd: printf %s \"\$PROMPT\" | codex exec --model ${MODEL} - 2>&1" >&2
+  echo "DRY_RUN cmd: printf %s \"\$PROMPT\" | ${CODEX_CMD[*]} 2>&1" >&2
   printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
   exit 0
 fi
@@ -93,7 +123,7 @@ fi
 echo "codex-review: model=${MODEL} mode=${MODE} label=${LABEL} timeout=${TIMEOUT_S}s" >&2
 
 # Portable hard timeout. The prompt ALWAYS reaches codex via a temp file
-# fed to `codex exec --model "$MODEL" -` (the `-` = read stdin). An
+# fed to `codex exec --ephemeral --model "$MODEL" -` (the `-` = read stdin). An
 # earlier version fed $FULL_PROMPT as a here-string into a `bash -c`
 # that read it as an out-of-scope variable → empty prompt whenever GNU
 # timeout/gtimeout was present (the default on homebrew macOS), so codex
@@ -110,12 +140,12 @@ RAW=""
 RC=0
 if command -v timeout >/dev/null 2>&1; then
   set +e
-  RAW="$(timeout "${TIMEOUT_S}s" codex exec --model "$MODEL" - < "$PROMPT_TMP" 2>&1)"
+  RAW="$(timeout "${TIMEOUT_S}s" "${CODEX_CMD[@]}" < "$PROMPT_TMP" 2>&1)"
   RC=$?
   set -e
 elif command -v gtimeout >/dev/null 2>&1; then
   set +e
-  RAW="$(gtimeout "${TIMEOUT_S}s" codex exec --model "$MODEL" - < "$PROMPT_TMP" 2>&1)"
+  RAW="$(gtimeout "${TIMEOUT_S}s" "${CODEX_CMD[@]}" < "$PROMPT_TMP" 2>&1)"
   RC=$?
   set -e
 else
@@ -126,7 +156,7 @@ else
   TMP_OUT="$(mktemp)"
   TIMED_OUT="$(mktemp)"; rm -f "$TIMED_OUT"
   trap 'rm -f "$PROMPT_TMP" "$TMP_OUT" "$TIMED_OUT"' EXIT
-  codex exec --model "$MODEL" - < "$PROMPT_TMP" >"$TMP_OUT" 2>&1 &
+  "${CODEX_CMD[@]}" < "$PROMPT_TMP" >"$TMP_OUT" 2>&1 &
   CODEX_PID=$!
   ( sleep "$TIMEOUT_S"
     if kill -0 "$CODEX_PID" 2>/dev/null; then
