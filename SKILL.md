@@ -135,9 +135,13 @@ Both wiki goals are preserved by construction:
 Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
 
 - **Codex** — only via `backends/codex-review.sh` (pins
-  `printf %s "$PROMPT" | codex exec --model gpt-5.5 - 2>&1`). Never
-  `codex exec "$(...)"` (hangs → pkill), never `-C <dir>` (wrong
-  workdir), never `codex review --base B "PROMPT"` (can't pass both).
+  `printf %s "$PROMPT" | codex exec --ephemeral --model gpt-5.5 - 2>&1`).
+  **`--ephemeral` is mandatory** — cmr runs N codex in parallel
+  (1+N+1); without it concurrent instances collide on `~/.codex/session`
+  → cross-talk (prompt A surfaces in instance B's context). Wiki §额外
+  硬规则 #6 / codex#11435. Never `codex exec "$(...)"` (hangs → pkill),
+  never `-C <dir>` (wrong workdir), never `codex review --base B
+  "PROMPT"` (can't pass both).
 - **Gemini** — only via `backends/gemini.sh`, which calls
   `agy -p --sandbox` (Antigravity CLI 1.0.0, the in-kind replacement
   after `gemini` CLI's 2026-06-18 EOL; locked to 3.5 Flash, no
