@@ -138,8 +138,8 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   `printf %s "$PROMPT" | codex exec --ephemeral --model gpt-5.5 - 2>&1`).
   **`--ephemeral` is mandatory** — cmr runs N codex in parallel
   (1+N+1); without it concurrent instances collide on `~/.codex/session`
-  → cross-talk (prompt A surfaces in instance B's context). Wiki §额外
-  硬规则 #6 / codex#11435. Never `codex exec "$(...)"` (hangs → pkill),
+  → cross-talk (prompt A surfaces in instance B's context). Wiki
+  §额外硬规则 #6 / codex#11435. Never `codex exec "$(...)"` (hangs → pkill),
   never `-C <dir>` (wrong workdir), never `codex review --base B
   "PROMPT"` (can't pass both).
 - **Gemini** — only via `backends/gemini.sh`, which calls
