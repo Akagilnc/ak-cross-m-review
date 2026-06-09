@@ -28,10 +28,16 @@ what the findings identify, nothing more.
 
 ## Scope rules
 
-- **MUST fix**: every `critical` and every `high` finding. These cannot
-  be deferred. If you cannot fix one, say so loudly in `fixes_skipped`
-  with a concrete reason — never silently drop it, never down-rank it to
-  `medium` to escape the loop (that is the #1 anti-pattern).
+- **MUST fix**: every `critical` and every `high` finding **that is
+  mechanical** (per the high bar in the header). A `critical`/`high`
+  finding that is **non-trivial** is NOT yours to patch — hand it back to
+  the main session for `/diagnose`. That hand-back is the *correct route*
+  for it, NOT a deferral or a down-rank: record it in `fixes_skipped`
+  with reason `non-trivial → main-session /diagnose`. Never silently drop
+  a finding, and never down-rank a real `critical`/`high` to `medium` to
+  escape the loop (that is the #1 anti-pattern). (This overrides any
+  reading of "critical/high cannot be deferred" — non-trivial routing to
+  /diagnose is not what that rule was guarding against.)
 - **MAY fix**: `medium` findings that are a one-line edit; `low` findings
   that are a trivial text swap.
 - **MUST NOT fix**: `clarity` findings (author judgment); any finding

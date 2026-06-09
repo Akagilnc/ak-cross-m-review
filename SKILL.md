@@ -9,6 +9,7 @@ allowed-tools:
   - Agent
   - AskUserQuestion
   - TodoWrite
+  - Skill
 ---
 
 # /ak-cross-m-review — wiki cross-model-review, executable
@@ -296,15 +297,16 @@ neighbors, skips repro / the regression test." So the fix step is gated.
 > commit-message-only classification is too late: it lets you do the
 > whole fix and label it after the fact, which defeats the FIRST-action
 > gate and reintroduces the silent skip. No up-front classification =
-> non-trivial = you MUST `Skill` invoke `/diagnose` before reading or
-> editing anything. This makes "skip /diagnose" a visible, audited
+> non-trivial = you MUST invoke the `/diagnose` skill (via the `Skill`
+> tool, in allowed-tools) before reading or editing anything. This makes
+> "skip /diagnose" a visible, audited
 > decision instead of a silent default — the silent default is exactly
 > why real fixes almost never reach /diagnose even though most should.
 
 | Fix kind | Route |
 |---|---|
 | **Mechanical** — see the hard bar below; **must be explicitly declared + a one-line justification of why it qualifies** | edit directly, no further protocol |
-| **Non-trivial** (behavioral / runtime / may-touch-neighbors / not-fully-understood / **anything not explicitly declared mechanical**) | the **first tool call MUST be `Skill` invoke `/diagnose`** — not first grep, not first guess, not first write a patch, not first read a file. /diagnose's 6 phases (feedback loop → reproduce → ranked falsifiable hypotheses → one-probe-at-a-time instrument → fix + regression test → cleanup, with a HITL fallback) are an iterative, possibly human-in-the-loop investigation the **main session** drives — it does not collapse into a single fixer-subagent return. Canonical: wiki §修复 + `matt-pocock-skills#/diagnose`. |
+| **Non-trivial** (behavioral / runtime / may-touch-neighbors / not-fully-understood / **anything not explicitly declared mechanical**) | the **first tool call MUST invoke the `/diagnose` skill** (via the `Skill` tool) — not first grep, not first guess, not first write a patch, not first read a file. /diagnose's 6 phases (feedback loop → reproduce → ranked falsifiable hypotheses → one-probe-at-a-time instrument → fix + regression test → cleanup, with a HITL fallback) are an iterative, possibly human-in-the-loop investigation the **main session** drives — it does not collapse into a single fixer-subagent return. Canonical: wiki §修复 + `matt-pocock-skills#/diagnose`. |
 
 > **The mechanical bar is HIGH — claim it rarely.** Observed reality:
 > almost everything gets waved through as "mechanical," and those
