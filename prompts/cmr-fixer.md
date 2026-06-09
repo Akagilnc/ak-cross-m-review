@@ -10,8 +10,9 @@
 > touching shell logic, a flag, a condition, control flow, a regex, a
 > path, a number, or whose effect you cannot prove inert is NOT yours —
 > defer it to the main session, which runs `/diagnose` as the first tool
-> call (an iterative, possibly human-in-the-loop investigation a single
-> subagent diff cannot do; see wiki §修复 + SKILL.md Step 7). Do not guess.
+> call (an iterative, possibly human-in-the-loop investigation that a
+> single subagent diff cannot do; see wiki §修复 + SKILL.md Step 7). Do
+> not guess.
 
 Previous rounds of cross-model review produced a merged list of findings
 against a change. Your job now is to produce a **unified diff** that

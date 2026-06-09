@@ -291,12 +291,15 @@ neighbors, skips repro / the regression test." So the fix step is gated.
 
 > **Default = non-trivial. The burden of proof is on whoever claims
 > "mechanical" (wiki `91a4e1f`).** The FIRST action in the fix loop is to
-> **explicitly classify** the fix, in writing (commit msg, or a
-> conversation line as you start the fix). No explicit classification =
-> non-trivial = you MUST `Skill` invoke `/diagnose`. This makes "skip
-> /diagnose" a visible, audited decision instead of a silent default —
-> the silent default is exactly why real fixes almost never reach
-> /diagnose even though most of them should.
+> **explicitly classify** the fix, in writing, **up front — a
+> conversation line BEFORE your first read/edit of the target.** A
+> commit-message-only classification is too late: it lets you do the
+> whole fix and label it after the fact, which defeats the FIRST-action
+> gate and reintroduces the silent skip. No up-front classification =
+> non-trivial = you MUST `Skill` invoke `/diagnose` before reading or
+> editing anything. This makes "skip /diagnose" a visible, audited
+> decision instead of a silent default — the silent default is exactly
+> why real fixes almost never reach /diagnose even though most should.
 
 | Fix kind | Route |
 |---|---|
@@ -318,8 +321,8 @@ neighbors, skips repro / the regression test." So the fix step is gated.
 > 2. **Single site, no propagation.** Cannot affect any other file or
 >    call site.
 > 3. **Provably inert.** You could stake that it cannot change any test
->    outcome or runtime behavior — and ideally a test/`--selftest` proves
->    it.
+>    outcome or runtime behavior — and ideally a test or `--selftest`
+>    proves it.
 >
 > NOT valid mechanical justifications: "it's simple," "it's one line,"
 > "I'm confident," "it's obvious," "just a small fix." Those are the
