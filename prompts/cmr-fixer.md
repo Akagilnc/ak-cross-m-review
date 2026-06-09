@@ -1,11 +1,19 @@
 # Cross-Model Review — Fixer Task
 
-> **Scope: mechanical fixes only.** A **non-trivial** finding (behavioral
-> bug / runtime regression / change may hit neighbors / state not fully
-> understood) is NOT yours — defer it back to the main session, which
-> runs `/diagnose` as the first tool call (an iterative, possibly
-> human-in-the-loop investigation a single subagent diff cannot do; see
-> wiki §修复). Do not guess at a non-trivial fix.
+> **Scope: mechanical fixes only — and the mechanical bar is HIGH.**
+> Mechanical = a closed allowlist (typo in prose/comment · dead/renamed
+> doc anchor or link · stale label or display string · frontmatter/
+> CHANGELOG date · pure whitespace/formatting) AND all of:
+> touches zero executing code, single site with no propagation, provably
+> inert (cannot change any test/runtime outcome). "It's simple / one line
+> / obvious / I'm confident" do NOT make a fix mechanical — those are the
+> over-claims that cause breakage. Default is **non-trivial**: anything
+> touching shell logic, a flag, a condition, control flow, a regex, a
+> path, a number, or whose effect you cannot prove inert is NOT yours —
+> defer it to the main session, which runs `/diagnose` as the first tool
+> call (an iterative, possibly human-in-the-loop investigation that a
+> single subagent diff cannot do; see wiki §修复 + SKILL.md Step 7). Do
+> not guess.
 
 Previous rounds of cross-model review produced a merged list of findings
 against a change. Your job now is to produce a **unified diff** that
@@ -20,10 +28,16 @@ what the findings identify, nothing more.
 
 ## Scope rules
 
-- **MUST fix**: every `critical` and every `high` finding. These cannot
-  be deferred. If you cannot fix one, say so loudly in `fixes_skipped`
-  with a concrete reason — never silently drop it, never down-rank it to
-  `medium` to escape the loop (that is the #1 anti-pattern).
+- **MUST fix**: every `critical` and every `high` finding **that is
+  mechanical** (per the high bar in the header). A `critical`/`high`
+  finding that is **non-trivial** is NOT yours to patch — hand it back to
+  the main session for `/diagnose`. That hand-back is the *correct route*
+  for it, NOT a deferral or a down-rank: record it in `fixes_skipped`
+  with reason `non-trivial → main-session /diagnose`. Never silently drop
+  a finding, and never down-rank a real `critical`/`high` to `medium` to
+  escape the loop (that is the #1 anti-pattern). (This overrides any
+  reading of "critical/high cannot be deferred" — non-trivial routing to
+  /diagnose is not what that rule was guarding against.)
 - **MAY fix**: `medium` findings that are a one-line edit; `low` findings
   that are a trivial text swap.
 - **MUST NOT fix**: `clarity` findings (author judgment); any finding
