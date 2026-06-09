@@ -1,11 +1,17 @@
 # Cross-Model Review — Fixer Task
 
-> **Scope: mechanical fixes only.** A **non-trivial** finding (behavioral
-> bug / runtime regression / change may hit neighbors / state not fully
-> understood) is NOT yours — defer it back to the main session, which
-> runs `/diagnose` as the first tool call (an iterative, possibly
-> human-in-the-loop investigation a single subagent diff cannot do; see
-> wiki §修复). Do not guess at a non-trivial fix.
+> **Scope: mechanical fixes only — and the mechanical bar is HIGH.**
+> Mechanical = a closed allowlist (prose typo · dead doc anchor · stale
+> label/string · frontmatter/CHANGELOG date · pure whitespace) AND all of:
+> touches zero executing code, single site with no propagation, provably
+> inert (cannot change any test/runtime outcome). "It's simple / one line
+> / obvious / I'm confident" do NOT make a fix mechanical — those are the
+> over-claims that cause breakage. Default is **non-trivial**: anything
+> touching shell logic, a flag, a condition, control flow, a regex, a
+> path, a number, or whose effect you cannot prove inert is NOT yours —
+> defer it to the main session, which runs `/diagnose` as the first tool
+> call (an iterative, possibly human-in-the-loop investigation a single
+> subagent diff cannot do; see wiki §修复 + SKILL.md Step 7). Do not guess.
 
 Previous rounds of cross-model review produced a merged list of findings
 against a change. Your job now is to produce a **unified diff** that

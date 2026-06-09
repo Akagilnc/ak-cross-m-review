@@ -285,20 +285,53 @@ findings present
                   rework (Step 6), not "one more round"
 ```
 
-**Fix-loop discipline (wiki §修复).** The fix step splits by kind — the
-wiki's ground truth is "findings are stable, the fix loop is the
-bottleneck (agent fixes by feel, breaks neighbors, skips repro / the
-regression test)":
+**Fix-loop discipline (wiki §修复).** The wiki's ground truth: "findings
+are stable, the fix loop is the bottleneck — agent fixes by feel, breaks
+neighbors, skips repro / the regression test." So the fix step is gated.
+
+> **Default = non-trivial. The burden of proof is on whoever claims
+> "mechanical" (wiki `91a4e1f`).** The FIRST action in the fix loop is to
+> **explicitly classify** the fix, in writing (commit msg, or a
+> conversation line as you start the fix). No explicit classification =
+> non-trivial = you MUST `Skill` invoke `/diagnose`. This makes "skip
+> /diagnose" a visible, audited decision instead of a silent default —
+> the silent default is exactly why real fixes almost never reach
+> /diagnose even though most of them should.
 
 | Fix kind | Route |
 |---|---|
-| **Mechanical** (typo / dead anchor / stale label / frontmatter date / obvious slip) | edit directly, no protocol |
-| **Non-trivial** (behavioral bug / runtime regression / change may hit neighbors / current state not fully understood) | the **first tool call MUST be `Skill` invoke `/diagnose`** — not first grep, not first guess, not first write a patch, not first read a file. /diagnose's 6 phases (feedback loop → reproduce → ranked falsifiable hypotheses → one-probe-at-a-time instrument → fix + regression test → cleanup, with a HITL fallback) are an iterative, possibly human-in-the-loop investigation the **main session** drives — it does not collapse into a single fixer-subagent return. Canonical: wiki §修复 + `matt-pocock-skills#/diagnose`. |
+| **Mechanical** — see the hard bar below; **must be explicitly declared + a one-line justification of why it qualifies** | edit directly, no protocol |
+| **Non-trivial** (behavioral / runtime / may-touch-neighbors / not-fully-understood / **anything not explicitly declared mechanical**) | the **first tool call MUST be `Skill` invoke `/diagnose`** — not first grep, not first guess, not first write a patch, not first read a file. /diagnose's 6 phases (feedback loop → reproduce → ranked falsifiable hypotheses → one-probe-at-a-time instrument → fix + regression test → cleanup, with a HITL fallback) are an iterative, possibly human-in-the-loop investigation the **main session** drives — it does not collapse into a single fixer-subagent return. Canonical: wiki §修复 + `matt-pocock-skills#/diagnose`. |
+
+> **The mechanical bar is HIGH — claim it rarely.** Observed reality:
+> almost everything gets waved through as "mechanical," and those
+> "mechanical" fixes are where the breakage comes from. Mechanical is a
+> **closed allowlist**, not a vibe:
+> - typo in prose/comment · dead/renamed doc anchor or link · stale
+>   label or display string · frontmatter/CHANGELOG date · pure
+>   whitespace/formatting.
+>
+> ALL of these must ALSO hold, or it is non-trivial:
+> 1. **Touches zero executing code.** Any change to shell logic, a flag,
+>    a condition, control flow, an arg, a regex, a path, a number, a
+>    config value → NOT mechanical, even one line, even if "obvious."
+> 2. **Single site, no propagation.** Cannot affect any other file or
+>    call site.
+> 3. **Provably inert.** You could stake that it cannot change any test
+>    outcome or runtime behavior — and ideally a test/`--selftest` proves
+>    it.
+>
+> NOT valid mechanical justifications: "it's simple," "it's one line,"
+> "I'm confident," "it's obvious," "just a small fix." Those are the
+> over-claims. **When the slightest doubt exists → non-trivial.** A
+> changed flag like `--ephemeral`, a guard condition, a quoting fix in a
+> command — all non-trivial, no matter how small.
 
 A fresh-context subagent told to "fix a non-trivial bug" guesses and
 breaks neighbors — exactly what /diagnose exists to prevent. The
-`cmr-fixer.md` subagent therefore produces **mechanical** diffs only;
-non-trivial defects go back to the main session for /diagnose.
+`cmr-fixer.md` subagent therefore produces **mechanical** diffs only
+(by the hard bar above); non-trivial defects go back to the main session
+for /diagnose.
 
 Self-check is mandatory and is NOT review — they are not
 interchangeable (anti-pattern #3). The author scanning their own change
@@ -326,3 +359,4 @@ lands it into the PR body `## Deferred Findings`
 10. Treating N/N concur as ship-ready — category error (Step 5).
 11. `gemini -p` headless (CLI stopped serving 2026-06-18) or `agy --dangerously-skip-permissions` (re-consents high scope, breaks headless auth) — use `backends/gemini.sh`, which pins `agy -p --sandbox` + the warm-retry recipe.
 12. **A reviewer that writes** — relying on `--sandbox` alone to keep an agentic CLI (agy) read-only. It edits files / runs commands anyway (first-run: rewrote tracked files + ran pytest mid-review). The prompt MUST forbid writes ("REVIEW ONLY, do not modify any file, do not run commands"); a review that mutates the repo under review is the defect, even when the mutation is correct.
+13. **Over-claiming "mechanical" to skip /diagnose** — waving a fix through as mechanical on "it's simple / one line / obvious / I'm confident." Default is non-trivial; mechanical is a closed high-bar allowlist that touches zero executing code (Step 7). A changed flag / guard / condition / quoting fix is non-trivial no matter how small. Skipping classification = non-trivial = `/diagnose` required.
