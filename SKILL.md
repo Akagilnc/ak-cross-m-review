@@ -303,7 +303,7 @@ neighbors, skips repro / the regression test." So the fix step is gated.
 
 | Fix kind | Route |
 |---|---|
-| **Mechanical** — see the hard bar below; **must be explicitly declared + a one-line justification of why it qualifies** | edit directly, no protocol |
+| **Mechanical** — see the hard bar below; **must be explicitly declared + a one-line justification of why it qualifies** | edit directly, no further protocol |
 | **Non-trivial** (behavioral / runtime / may-touch-neighbors / not-fully-understood / **anything not explicitly declared mechanical**) | the **first tool call MUST be `Skill` invoke `/diagnose`** — not first grep, not first guess, not first write a patch, not first read a file. /diagnose's 6 phases (feedback loop → reproduce → ranked falsifiable hypotheses → one-probe-at-a-time instrument → fix + regression test → cleanup, with a HITL fallback) are an iterative, possibly human-in-the-loop investigation the **main session** drives — it does not collapse into a single fixer-subagent return. Canonical: wiki §修复 + `matt-pocock-skills#/diagnose`. |
 
 > **The mechanical bar is HIGH — claim it rarely.** Observed reality:

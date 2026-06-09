@@ -1,8 +1,9 @@
 # Cross-Model Review — Fixer Task
 
 > **Scope: mechanical fixes only — and the mechanical bar is HIGH.**
-> Mechanical = a closed allowlist (prose typo · dead doc anchor · stale
-> label/string · frontmatter/CHANGELOG date · pure whitespace) AND all of:
+> Mechanical = a closed allowlist (typo in prose/comment · dead/renamed
+> doc anchor or link · stale label or display string · frontmatter/
+> CHANGELOG date · pure whitespace/formatting) AND all of:
 > touches zero executing code, single site with no propagation, provably
 > inert (cannot change any test/runtime outcome). "It's simple / one line
 > / obvious / I'm confident" do NOT make a fix mechanical — those are the
