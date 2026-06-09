@@ -4,6 +4,23 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.2.0] - 2026-06-10
+
+Harden the fix-loop discipline (sync wiki `91a4e1f` + raise the bar).
+The fix step now **defaults to non-trivial**: the first fix-loop action
+must be an explicit, up-front classification (before any read/edit) —
+no classification means non-trivial, which means invoke the `/diagnose`
+skill first. The **mechanical** exception is a closed high-bar allowlist
+(typo / dead anchor / stale label / date / whitespace) that must ALSO
+touch zero executing code, be single-site, and be provably inert;
+"simple / one line / obvious / confident" are explicitly rejected as
+justifications. `Skill` added to `allowed-tools` so the `/diagnose`
+invocation the rule requires is actually grantable. `prompts/cmr-fixer.md`
+aligned (mechanical-only scope reconciled with the MUST-fix rules:
+non-trivial critical/high route to main-session `/diagnose`, not a
+down-rank). New anti-pattern: over-claiming "mechanical" to skip
+`/diagnose`. Docs/manifest only — no code paths changed.
+
 ## [0.3.1.0] - 2026-06-08
 
 Sync to wiki §额外硬规则 #6 (`3b05d34`): concurrent `codex exec` must
