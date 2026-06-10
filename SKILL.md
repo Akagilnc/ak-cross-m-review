@@ -213,8 +213,8 @@ v3 requires all 3 vendors. If one is unavailable, run with the rest and
 | gemini | Claude + codex | `本轮缺 gemini` (reason: rate / quota / agy auth-race after retry×3 / sandbox write denied) |
 | 1 of N codex | Claude + (N−1) codex + Gemini | `codex 实例 N→N−1` |
 | codex + gemini both | Claude only (fallback, no outside voice) | `本轮无 outside voice — 需人工补 review` |
-| **Fable 5 safeguards trigger** (<5% of sessions; security / bio / chem / distillation topics auto-route to Opus 4.8 — Anthropic docs) | **NOT a leg failure**: squad stays 1+1+1, the Claude leg just ran on Opus 4.8 this round. Does NOT trigger any other degradation. Flag it for finding-consistency transparency (a same-model R1→R2 comparison now has one Opus run mixed in). | `Claude leg = Opus 4.8 (Fable safeguards trigger)` |
-| **Client < Claude Code v2.1.170** (the `fable` alias is not selectable on older clients) | **NOT a leg failure**: dispatch the Claude leg with `model: opus` (Opus 4.8) instead of hard-failing; squad stays 1+1+1. (Upgrade the client to restore the strongest Fable tier.) | `Claude leg = Opus 4.8 (client < v2.1.170, no fable)` |
+| **Fable 5 safeguards trigger** (<5% of sessions; security / bio / chem / distillation topics auto-route to Opus 4.8 — Anthropic docs. NOT a leg failure: squad stays 1+1+1, the Claude leg just ran on Opus 4.8; does NOT trigger any other degradation. Flag for finding-consistency transparency — a same-model R1→R2 comparison now has one Opus run mixed in.) | Claude (Opus 4.8) + codex + Gemini | `Claude leg = Opus 4.8 (Fable safeguards trigger)` |
+| **Client < Claude Code v2.1.170** (the `fable` alias is not selectable on older clients. NOT a leg failure: dispatch the Claude leg with `model: opus` (Opus 4.8) instead of hard-failing; squad stays 1+1+1. Upgrade the client to restore the strongest Fable tier.) | Claude (Opus 4.8) + codex + Gemini | `Claude leg = Opus 4.8 (client < v2.1.170, no fable)` |
 
 (Main = Codex variant + the Claude-auth live-smoke rule:
 `printf 'Return exactly: CLAUDE_OK\n' | claude -p --output-format json
@@ -372,7 +372,7 @@ lands it into the PR body `## Deferred Findings`
 6. **Two-phase dispatch violations** — peeking at any CLI output between msg1 and msg2, or emitting anything other than the Agent call as msg2's first content, or mixing Agent + Bash in a single message (the old 逆机理 rule the two-phase replaced). All collapse to silent serialization.
 7. Drift hit → rationalize "one more round" — the infinite-loop entrance.
 8. Silent vendor degrade — always flag "本轮缺 X".
-9. v2 N × Claude (opus / Fable) split sections — violates current quota allocation.
+9. v2 N × Claude (opus / fable) split sections — violates current quota allocation.
 10. Treating N/N concur as ship-ready — category error (Step 5).
 11. `gemini -p` headless (CLI stopped serving 2026-06-18) or `agy --dangerously-skip-permissions` (re-consents high scope, breaks headless auth) — use `backends/gemini.sh`, which pins `agy -p --sandbox` + the warm-retry recipe.
 12. **A reviewer that writes** — relying on `--sandbox` alone to keep an agentic CLI (agy) read-only. It edits files / runs commands anyway (first-run: rewrote tracked files + ran pytest mid-review). The prompt MUST forbid writes ("REVIEW ONLY, do not modify any file, do not run commands"); a review that mutates the repo under review is the defect, even when the mutation is correct.
