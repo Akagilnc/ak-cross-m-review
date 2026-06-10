@@ -166,9 +166,13 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   (§降级链).
 - **Claude reviewer** — the `Agent` tool, model `fable` (Claude Fable 5,
   the strongest review tier since 2026-06-09; was `opus`/Opus 4.8),
-  full-diff reviewer prompt. Anthropic auto-falls-back to Opus 4.8 on
-  <5% of sessions (safeguard topics: security / bio / chem / distillation)
-  — that is NOT a leg failure, but flag it (see Step 3). Never the
+  full-diff reviewer prompt. **Requires Claude Code v2.1.170+** for the
+  `fable` alias; on an older client where `fable` is not selectable,
+  fall back to `model: opus` (Opus 4.8) and flag it (Step 3) rather than
+  hard-failing the leg. Separately, Anthropic auto-falls-back to Opus
+  4.8 on <5% of sessions (safeguard topics: security / bio / chem /
+  distillation) — that too is NOT a leg failure, just flag it (Step 3).
+  Never the
   headless `claude -p` path here (rate-limit + 25min timeout footgun,
   plus 2026-05-17 capability correction: subagents cannot spawn
   subagents, so the Claude reviewer MUST be spawned by the main session
@@ -210,6 +214,7 @@ v3 requires all 3 vendors. If one is unavailable, run with the rest and
 | 1 of N codex | Claude + (N−1) codex + Gemini | `codex 实例 N→N−1` |
 | codex + gemini both | Claude only (fallback, no outside voice) | `本轮无 outside voice — 需人工补 review` |
 | **Fable 5 safeguards trigger** (<5% of sessions; security / bio / chem / distillation topics auto-route to Opus 4.8 — Anthropic docs) | **NOT a leg failure**: squad stays 1+1+1, the Claude leg just ran on Opus 4.8 this round. Does NOT trigger any other degradation. Flag it for finding-consistency transparency (a same-model R1→R2 comparison now has one Opus run mixed in). | `Claude leg = Opus 4.8 (Fable safeguards trigger)` |
+| **Client < Claude Code v2.1.170** (the `fable` alias is not selectable on older clients) | **NOT a leg failure**: dispatch the Claude leg with `model: opus` (Opus 4.8) instead of hard-failing; squad stays 1+1+1. (Upgrade the client to restore the strongest Fable tier.) | `Claude leg = Opus 4.8 (client < v2.1.170, no fable)` |
 
 (Main = Codex variant + the Claude-auth live-smoke rule:
 `printf 'Return exactly: CLAUDE_OK\n' | claude -p --output-format json
