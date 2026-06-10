@@ -4,6 +4,20 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.3.0] - 2026-06-10
+
+Claude reviewer leg: **Opus → Claude Fable 5** (wiki `904c988`+`a64d064`).
+Anthropic shipped `claude-fable-5` (Mythos-class) 2026-06-09 as a tier
+above Opus 4.8 on capability + reasoning, so per the "strongest review
+model" rule the Claude leg switches to it. The Agent dispatch goes from
+`model: opus` (which only tracked the Opus family → Opus 4.8, never
+Fable) to `model: fable`. Step 3 gains a degradation row: Fable's
+safeguards auto-route <5% of sessions (security / bio / chem /
+distillation) to Opus 4.8 — that is NOT a leg failure (squad stays
+1+1+1), but the round flags `Claude leg = Opus 4.8 (Fable safeguards
+trigger)` so finding-consistency comparisons stay honest. Docs/manifest
+only — no code paths changed.
+
 ## [0.3.2.0] - 2026-06-10
 
 Harden the fix-loop discipline (sync wiki `91a4e1f` + raise the bar).
