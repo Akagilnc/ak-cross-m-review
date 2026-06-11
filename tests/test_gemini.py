@@ -1,6 +1,6 @@
 """Regression tests for backends/gemini.sh (the Gemini reviewer leg).
 
-The script now calls `agy` (Antigravity CLI 1.0.0) — the in-kind
+The script now calls `agy` (Antigravity CLI) — the in-kind
 replacement after the original `gemini` CLI's 2026-06-18 EOL — with
 the wiki's keychain-warm + retry × 4 recipe.
 
@@ -218,12 +218,27 @@ def test_invocation_passes_sandbox_flag_and_empty_print_value(tmp_path):
     argv = [a.decode() for a in argv]
     assert "--sandbox" in argv, f"--sandbox missing from agy argv: {argv}"
     assert "--print" in argv, f"--print missing (regressed to -p?): {argv}"
+    # cross-model review R1 (codex#1 R2): the weak form of this test
+    # (--sandbox present + --print present + token-after-first-print
+    # empty) is satisfied even by a regressed `['-p','--sandbox',
+    # '--print','']` where -p still swallows --sandbox. Assert the real
+    # invariant: the short `-p` is never used, and NO `--print`/`-p`
+    # occurrence has `--sandbox` as its value token.
+    assert "-p" not in argv, (
+        f"short `-p` must not be used (agy 1.0.7 makes it swallow the "
+        f"next token as the prompt value): {argv}"
+    )
+    for i, tok in enumerate(argv):
+        if tok in ("--print", "-p"):
+            assert i + 1 < len(argv) and argv[i + 1] != "--sandbox", (
+                f"`{tok}` swallows --sandbox as its value — the 1.0.7 "
+                f"flag-eat bug has regressed. argv={argv}"
+            )
     pi = argv.index("--print")
     assert pi + 1 < len(argv), f"--print has no following token: {argv}"
     assert argv[pi + 1] == "", (
         "--print value must be the empty string (diff rides on stdin); "
-        f"got {argv[pi + 1]!r} — if it is '--sandbox', the 1.0.7 "
-        f"flag-eat bug has regressed. argv={argv}"
+        f"got {argv[pi + 1]!r}. argv={argv}"
     )
 
 
@@ -262,6 +277,37 @@ def test_surfaces_quota_reason_when_agy_swallows_429_to_logfile(tmp_path):
     assert "Resets in 64h" in r.stderr
 
 
+def test_no_false_quota_reason_when_model_output_mentions_quota(tmp_path):
+    # Cross-model review R1 (Claude C1 + codex#2 R1, live-reproduced):
+    # the degrade-reason scan must read agy's --log-file, NOT $RAW. On
+    # the extract-fail path $RAW is the full model output, which routinely
+    # quotes the reviewed diff — so a diff that mentions quota/429 code
+    # (e.g. `check_user_quota()`) must NOT make the flag falsely claim
+    # "quota/429 — agy individual quota exhausted". agy exits 0 with
+    # sentinel-less output and an EMPTY log → extract-fail degrade with
+    # NO quota attribution. (Mirrors the auth-string false-degrade guard.)
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'echo "Reviewed diff adds: def check_user_quota(): return 429"\n'
+        'echo "no sentinel block here"\n'
+        'exit 0\n'
+    ))
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+ def check_user_quota(): return 429\n--- END DIFF ---\n",
+        capture_output=True, text=True,
+        env=_env_with_stub(tmp_path / "bin"),
+        timeout=60,
+    )
+    assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "本轮缺 gemini" in r.stderr  # it DOES degrade (no sentinel)
+    assert "quota" not in r.stderr, (
+        "false quota attribution: the reason scan matched 'quota' in the "
+        f"model output ($RAW) instead of agy's log. stderr={r.stderr!r}"
+    )
+    assert "429" not in r.stderr
+
+
 def _run_copied_gemini(script_root: Path, tmp_path):
     """Copy gemini.sh under script_root/backends and run it with agy
     MISSING (so it degrades right after the path check). Returns the
@@ -296,7 +342,13 @@ def test_warns_when_workspace_root_under_hidden_dir(tmp_path):
 
 def test_no_hidden_warning_when_workspace_root_visible(tmp_path):
     # The other branch: a normal (non-hidden) workspace root must NOT
-    # emit the hidden-path warning.
+    # emit the hidden-path warning. Cross-model review R1 (Claude C3):
+    # guard the env edge where the base temp dir is itself under a hidden
+    # component (e.g. TMPDIR=~/.cache/...), which would make even a
+    # "visible" subpath match the */.* glob and false-red this branch.
+    if "/." in str(tmp_path):
+        import pytest
+        pytest.skip(f"base temp dir is itself under a hidden component: {tmp_path}")
     r = _run_copied_gemini(tmp_path / "visible" / "repo", tmp_path)
     assert r.returncode == 1
     assert "agy not installed" in r.stderr

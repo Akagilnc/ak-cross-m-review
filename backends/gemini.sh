@@ -50,9 +50,12 @@ PROTO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MODE="${1:-doc}"
 PRINT_TIMEOUT="${AGY_PRINT_TIMEOUT:-15m}"
 
-# agy writes fatal backend errors (429/quota/auth) to its --log-file,
-# not to the captured stdout/stderr. Give it a private one so the
-# degrade paths can name the real reason; clean it up on any exit.
+# agy routes fatal backend errors (RESOURCE_EXHAUSTED / 429 quota, the
+# agent-executor error line) to its --log-file, not to the captured
+# stdout/stderr. (The keychain auth-race is the exception — it surfaces
+# on stdout/stderr and is handled by the retry gate below, not here.)
+# Give agy a private log so the degrade paths can name the real reason;
+# clean it up on any exit.
 AGY_LOG="$(mktemp "${TMPDIR:-/tmp}/agy-cmr.XXXXXX")"
 trap 'rm -f "$AGY_LOG"' EXIT
 
@@ -68,20 +71,25 @@ case "$PROTO_ROOT" in
     ;;
 esac
 
-# On a degrade, surface WHY by scanning agy's --log-file plus its
-# captured stdout/stderr ($RAW) for the fatal-error signatures agy
-# otherwise hides. Always returns 0 (empty string = no known reason).
+# On a degrade, surface WHY by scanning ONLY agy's --log-file — that is
+# where agy actually writes its fatal backend errors. Do NOT scan $RAW:
+# on the extract-fail path $RAW is the full model output, which quotes
+# the reviewed diff, so any diff that merely mentions quota/429 code
+# would yield a false "quota exhausted" attribution (cross-model review
+# R1: Claude C1 + codex#2 R1, live-reproduced). Patterns are pinned to
+# agy's fatal-line shapes (not a bare "quota"/"429"). grep reads the
+# file directly (no `printf | grep -q`, which can SIGPIPE under
+# `set -o pipefail` on a large blob). Always returns 0 (empty = none).
 agy_fatal_reason() {
-  local blob
-  blob="$({ [ -s "$AGY_LOG" ] && cat "$AGY_LOG"; printf '%s' "${RAW:-}"; } 2>/dev/null)"
-  if printf '%s' "$blob" | grep -qiE 'RESOURCE_EXHAUSTED|code 429|quota reached|quota'; then
+  [ -s "$AGY_LOG" ] || return 0
+  if grep -qiE 'RESOURCE_EXHAUSTED|\(code 429\)|quota reached|quota exceeded|individual quota' "$AGY_LOG"; then
     local resets
-    resets="$(printf '%s' "$blob" | grep -oiE 'Resets in [0-9hdms]+' | head -1)"
+    resets="$(grep -oiE 'Resets in [0-9hdms]+' "$AGY_LOG" | head -1)"
     printf 'quota/429 — agy individual quota exhausted%s' "${resets:+; $resets}"
     return 0
   fi
   local execerr
-  execerr="$(printf '%s' "$blob" | grep -oE 'agent executor error: [^:]*' | head -1)"
+  execerr="$(grep -oE 'agent executor error: [^:]*' "$AGY_LOG" | head -1)"
   [ -n "$execerr" ] && printf '%s' "$execerr"
   return 0
 }

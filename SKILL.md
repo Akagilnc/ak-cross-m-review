@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: Local pre-PR cross-model review — the executable form of the wiki's cross-model-review.md (tdd-autonomous-dev spine step 4 per-slice / step 5 ship-pre, Layer 1). Dispatches the v3 vendor squad (1 Claude Fable 5 Agent + N codex gpt-5.5 + 1 Gemini via agy 1.0.0 = N+1+1, N by diff size) in a two-phase 顺机理 dispatch (msg1 = all CLI Bash run-in-background, msg2 = Claude Agent, no-peek invariant between), then merge / grade / drift-check / loop as the agent judgment the wiki prescribes. Use every dev cycle before a PR, so the agent runs the wiki step the same way instead of re-deciding by feel.
+description: Local pre-PR cross-model review — the executable form of the wiki's cross-model-review.md (tdd-autonomous-dev spine step 4 per-slice / step 5 ship-pre, Layer 1). Dispatches the v3 vendor squad (1 Claude Fable 5 Agent + N codex gpt-5.5 + 1 Gemini via agy = N+1+1, N by diff size) in a two-phase 顺机理 dispatch (msg1 = all CLI Bash run-in-background, msg2 = Claude Agent, no-peek invariant between), then merge / grade / drift-check / loop as the agent judgment the wiki prescribes. Use every dev cycle before a PR, so the agent runs the wiki step the same way instead of re-deciding by feel.
 allowed-tools:
   - Bash
   - Read
@@ -68,7 +68,7 @@ Pre-flight gates (wiki §操作规程 / §边界):
 ## Step 1 — setup (v3 N+1+1) + the N table
 
 Default **1+1+1**: 1 × Claude Fable 5 (Agent subagent, full diff) +
-1 × codex `gpt-5.5` + 1 × Gemini (via `agy` 1.0.0, locked to **3.5
+1 × codex `gpt-5.5` + 1 × Gemini (via `agy`, locked to **3.5
 Flash** — the explicit exception to "strongest review model", since
 the original `gemini` CLI stopped serving 2026-06-18 and `agy` is the
 only in-kind in-place replacement), **all full diff**. Only codex
@@ -85,7 +85,7 @@ diff.
 2026-06-09; strongest review tier — a step above Opus 4.8; <5% of
 sessions auto-fallback to Opus 4.8 on safeguard topics, see Step 3),
 OpenAI `gpt-5.5`; **Gemini is the documented exception** (locked to 3.5 Flash
-via `agy` 1.0.0 — wiki trade-off: keep 3-vendor cross-family coverage
+via `agy` — wiki trade-off: keep 3-vendor cross-family coverage
 over dropping the Gemini leg entirely after the `gemini` CLI EOL).
 **Never** dev-tier `gpt-5.3-codex-spark` / `claude sonnet-4.6` as a
 reviewer (coding-tier model choice is a separate matter; do not carry

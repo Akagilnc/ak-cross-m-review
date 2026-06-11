@@ -49,6 +49,33 @@ two real defects in `backends/gemini.sh` besides the quota itself:
   non-hidden path for full context. Both branches of the new conditional
   are covered (hidden → warns, visible → silent).
 
+### Hardened in pre-PR cross-model review (R1)
+
+The change ran its own skill (`/ak-cross-m-review`, 1+2+1; gemini leg
+degraded on the same quota 429 — and the new flag named it live).
+Fixes from that round:
+
+- **`agy_fatal_reason` false quota attribution (high).** The reason scan
+  read agy's log AND `$RAW`; on the extract-fail path `$RAW` is the full
+  model output (which quotes the reviewed diff), and a bare `quota`
+  pattern made any diff mentioning quota/429 code falsely report "quota
+  exhausted" — which would wrongly drive the degrade-chain (skip retry /
+  wait ~64h). Now scans ONLY agy's `--log-file`, patterns pinned to
+  agy's fatal-line shapes, and greps the file directly (no
+  `printf | grep -q` that could SIGPIPE under `pipefail` on a large
+  blob). Negative regression test added (Claude C1 + codex#2 R1,
+  live-reproduced by both).
+- **argv regression test strengthened** — it now rejects the short `-p`
+  and asserts no `--print`/`-p` has `--sandbox` as its value, so the
+  exact `-p`-eats-`--sandbox` regression cannot slip through (codex#1
+  R2).
+- **Stale `agy 1.0.0` pins removed** from SKILL.md / README.md /
+  CLAUDE.md / the test docstring (only historical CHANGELOG entries keep
+  the version) — they contradicted the 1.0.7 behavior the fix documents
+  (Claude C2 + codex#1/#2).
+- **Visible-path test guarded** against a base-temp-dir-under-a-hidden-
+  component env edge (Claude C3).
+
 ### Notes
 
 - Could not verify live that the corrected invocation produces real

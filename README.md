@@ -128,7 +128,7 @@ of the wiki's cross-model-review step.
   Claude reviewer runs via the `Agent` tool
 - [OpenAI Codex](https://github.com/openai/codex) CLI (`codex`)
 - [Google Antigravity](https://github.com/google-antigravity/antigravity-cli)
-  CLI (`agy` 1.0.0) — Gemini leg, the in-kind replacement after Google's
+  CLI (`agy`) — Gemini leg, the in-kind replacement after Google's
   `gemini` CLI 2026-06-18 EOL. Locked to Gemini 3.5 Flash; has a
   documented keychain auth-race the backend works around with warm +
   retry × 4 (upstream issue google-antigravity/antigravity-cli#51).
