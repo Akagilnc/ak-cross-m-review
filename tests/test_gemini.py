@@ -308,6 +308,70 @@ def test_no_false_quota_reason_when_model_output_mentions_quota(tmp_path):
     assert "429" not in r.stderr
 
 
+def test_quota_log_without_resets_line_still_degrades_cleanly(tmp_path):
+    # Cross-model review R2 (codex#2 raised an abort concern; refuted
+    # empirically + by the Claude leg, locked here): when agy's log has a
+    # 429/quota signature but NO "Resets in …" line, the optional
+    # `resets="$(grep … | head -1)"` grep finds nothing. Under
+    # `set -euo pipefail` this must NOT abort the script before it emits
+    # the degrade JSON — it must degrade cleanly and still name quota
+    # (just without the reset-time suffix).
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'logf=""\n'
+        'while [ $# -gt 0 ]; do\n'
+        '  case "$1" in --log-file) logf="$2"; shift 2 ;; *) shift ;; esac\n'
+        'done\n'
+        '[ -n "$logf" ] && printf \'%s\\n\' '
+        '"E agent executor error: RESOURCE_EXHAUSTED (code 429): '
+        'Individual quota reached." > "$logf"\n'  # note: no "Resets in" line
+        'exit 0\n'
+    ))
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True,
+        env=_env_with_stub(tmp_path / "bin"),
+        timeout=60,
+    )
+    assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    # the synthetic degrade JSON MUST be present (proves no mid-function
+    # abort before the emit)
+    assert json.loads(r.stdout)["findings"] == []
+    assert "本轮缺 gemini" in r.stderr
+    assert "quota" in r.stderr
+    assert "Resets in" not in r.stderr  # no reset hint available
+
+
+def test_nonempty_nonfatal_log_degrades_without_reason_suffix(tmp_path):
+    # R2 companion: a non-empty agy log with neither a quota signature
+    # NOR an "agent executor error:" line exercises the trailing
+    # `execerr="$(grep … | head -1)"` no-match path. It too must not
+    # abort under `set -euo pipefail`; degrade cleanly with no reason
+    # suffix appended.
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'logf=""\n'
+        'while [ $# -gt 0 ]; do\n'
+        '  case "$1" in --log-file) logf="$2"; shift 2 ;; *) shift ;; esac\n'
+        'done\n'
+        '[ -n "$logf" ] && printf \'%s\\n\' '
+        '"I0611 benign agy log line, nothing fatal here" > "$logf"\n'
+        'exit 0\n'
+    ))
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True,
+        env=_env_with_stub(tmp_path / "bin"),
+        timeout=60,
+    )
+    assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert json.loads(r.stdout)["findings"] == []
+    assert "本轮缺 gemini" in r.stderr
+    assert "quota" not in r.stderr  # no false attribution from a benign log
+
+
 def _run_copied_gemini(script_root: Path, tmp_path):
     """Copy gemini.sh under script_root/backends and run it with agy
     MISSING (so it degrades right after the path check). Returns the

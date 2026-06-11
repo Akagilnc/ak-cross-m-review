@@ -34,9 +34,10 @@ two real defects in `backends/gemini.sh` besides the quota itself:
   stdout/stderr — so a quota-exhausted run looks like a plain empty
   success (rc=0, empty stdout) and the round degraded with a bare
   "empty output" and no reason (this is why 8 rounds looked mysterious).
-  `gemini.sh` now passes `--log-file` and, on any degrade, greps it (and
-  the captured output) for the fatal-error signatures, so the flag names
-  the cause: `本轮缺 gemini (empty output, agy rc=0; quota/429 — agy
+  `gemini.sh` now passes `--log-file` and, on any degrade, greps that
+  log (only — see the R1 note below) for the fatal-error signatures, so
+  the flag names the cause: `本轮缺 gemini (empty output, agy rc=0;
+  quota/429 — agy
   individual quota exhausted; Resets in 63h…)`. Verified live against
   real agy. Regression test stubs an agy that writes the 429 to its
   log-file and exits 0 empty.
