@@ -41,10 +41,11 @@ against the same diff:
   with diff size (1 / 2 / 3 for `<200` / `200–500` / `500+` lines); for
   N≥2 each codex takes a distinct file-section slice.
 - **1 × Gemini** (via `backends/gemini.sh`, which internally calls
-  `agy -p --sandbox` — Antigravity CLI 1.0.0, the in-kind replacement
+  `agy --sandbox --print ''` — Antigravity CLI, the in-kind replacement
   after the original `gemini` CLI's 2026-06-18 EOL; locked to Gemini
   3.5 Flash, the explicit exception to "strongest review model") —
-  full diff.
+  full diff. (Not the old `agy -p --sandbox`: agy 1.0.7 made `-p`
+  swallow `--sandbox` as the prompt value, so sandbox never engaged.)
 
 The dispatch is **two-phase**: msg1 sends every CLI Bash reviewer in one
 assistant message, all `run_in_background: true`; msg2 (immediately,
@@ -95,8 +96,8 @@ backends/codex-review.sh  pins the correct `codex exec` invocation
                           (--ephemeral, no -C, stdin pipe, 2>&1) via a
                           single CODEX_CMD array + clean degrade;
                           --selftest is its regression guard
-backends/gemini.sh        calls `agy -p --sandbox` (post-EOL gemini
-                          replacement) + warm + retry × 4 around agy's
+backends/gemini.sh        calls `agy --sandbox --print ''` (post-EOL
+                          gemini replacement) + warm + retry × 4 around agy's
                           keychain auth-race; visible degrade flag
 lib/extract_json.py       salvage findings JSON from noisy CLI stdout
 prompts/cmr-reviewer.md   reviewer prompt template
@@ -127,7 +128,7 @@ of the wiki's cross-model-review step.
   Claude reviewer runs via the `Agent` tool
 - [OpenAI Codex](https://github.com/openai/codex) CLI (`codex`)
 - [Google Antigravity](https://github.com/google-antigravity/antigravity-cli)
-  CLI (`agy` 1.0.0) — Gemini leg, the in-kind replacement after Google's
+  CLI (`agy`) — Gemini leg, the in-kind replacement after Google's
   `gemini` CLI 2026-06-18 EOL. Locked to Gemini 3.5 Flash; has a
   documented keychain auth-race the backend works around with warm +
   retry × 4 (upstream issue google-antigravity/antigravity-cli#51).
