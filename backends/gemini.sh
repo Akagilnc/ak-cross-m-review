@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Gemini reviewer backend — calls `agy` (Antigravity CLI 1.0.0), the
-# in-kind replacement for the `gemini` CLI that Google stopped serving
-# 2026-06-18. agy 1.0.0 is locked to Gemini 3.5 Flash (no --model
-# flag) — the wiki's explicit exception to the strongest-review-model
-# rule, traded off to keep 3-vendor cross-family coverage.
+# Gemini reviewer backend — calls `agy` (Antigravity CLI), the in-kind
+# replacement for the `gemini` CLI that Google stopped serving
+# 2026-06-18. agy is locked to Gemini 3.5 Flash — the wiki's explicit
+# exception to the strongest-review-model rule, traded off to keep
+# 3-vendor cross-family coverage.
 #
 # Invocation:
 #   <stdin: full reviewer prompt incl. the diff to review>
@@ -22,11 +22,24 @@
 #                            explicitly; non-zero is for debugging).
 #
 # Hard rules (wiki §并行启动 / §agy auth callout):
-#   ALWAYS `agy -p --sandbox` (read OK, terminal/write restricted, uses
-#   existing OAuth scope). NEVER `--dangerously-skip-permissions` (it
-#   re-consents a high scope and breaks headless auth on next run).
-#   ALWAYS 2>&1 (so agy's own diagnostics — 429, auth race, etc. — are
-#   captured into the output rather than silenced).
+#   Invocation form: `agy --sandbox --print '' <<<prompt` (read OK,
+#   terminal/write restricted, existing OAuth scope). NOT the old
+#   `agy -p --sandbox <<<prompt`: agy 1.0.7 changed `--print`/`-p` to a
+#   string flag that takes its value from the NEXT token, so `-p
+#   --sandbox` silently swallowed `--sandbox` as the prompt value —
+#   `--sandbox` never engaged and the real prompt rode in only via the
+#   stdin-concatenation path (prompt = <--print value> + "\n" + stdin).
+#   `--sandbox` BEFORE an explicit empty `--print ''` keeps sandbox a
+#   real flag and the diff on stdin (no ARG_MAX limit). Verified by
+#   the "enabling terminal sandbox for this session" log line.
+#   NEVER `--dangerously-skip-permissions` (re-consents a high scope and
+#   breaks headless auth on next run).
+#   ALWAYS 2>&1 (so agy's own diagnostics — auth race etc. — are
+#   captured into the output rather than silenced). Note: agy routes
+#   fatal backend errors (e.g. RESOURCE_EXHAUSTED / 429 quota) to its
+#   --log-file, NOT stdout/stderr — so a quota-exhausted run looks like
+#   a plain empty success (rc=0, empty stdout). We pass --log-file and
+#   grep it on degrade so the flag names the real reason.
 #   agy keychain auth-race recipe: warm "Antigravity Safe Storage" each
 #   attempt + retry up to 4 attempts total; 4 failed → §降级链 flag
 #   "本轮缺 gemini (auth race after retry×3)", do not block.
@@ -36,6 +49,42 @@ set -euo pipefail
 PROTO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MODE="${1:-doc}"
 PRINT_TIMEOUT="${AGY_PRINT_TIMEOUT:-15m}"
+
+# agy writes fatal backend errors (429/quota/auth) to its --log-file,
+# not to the captured stdout/stderr. Give it a private one so the
+# degrade paths can name the real reason; clean it up on any exit.
+AGY_LOG="$(mktemp "${TMPDIR:-/tmp}/agy-cmr.XXXXXX")"
+trap 'rm -f "$AGY_LOG"' EXIT
+
+# agy refuses to add a workspace folder whose path has a hidden (dot)
+# component ("... is hidden: ignore uri" in its log) — so when cmr runs
+# from e.g. a `.claude/worktrees/...` worktree, the Gemini reviewer gets
+# NO repo context (it sees only the diff on stdin, cannot grep source).
+# Warn (do not degrade — agy still reviews the diff), so the quality gap
+# is visible and the user can rerun from a non-hidden path.
+case "$PROTO_ROOT" in
+  */.*)
+    echo "gemini: warn: workspace root '$PROTO_ROOT' is under a hidden (dot) directory; agy will not add it as a workspace folder ('is hidden: ignore uri'), so the Gemini reviewer runs WITHOUT repo context (diff-only, no source grep). Run cmr from a non-hidden path for full agy context." >&2
+    ;;
+esac
+
+# On a degrade, surface WHY by scanning agy's --log-file plus its
+# captured stdout/stderr ($RAW) for the fatal-error signatures agy
+# otherwise hides. Always returns 0 (empty string = no known reason).
+agy_fatal_reason() {
+  local blob
+  blob="$({ [ -s "$AGY_LOG" ] && cat "$AGY_LOG"; printf '%s' "${RAW:-}"; } 2>/dev/null)"
+  if printf '%s' "$blob" | grep -qiE 'RESOURCE_EXHAUSTED|code 429|quota reached|quota'; then
+    local resets
+    resets="$(printf '%s' "$blob" | grep -oiE 'Resets in [0-9hdms]+' | head -1)"
+    printf 'quota/429 — agy individual quota exhausted%s' "${resets:+; $resets}"
+    return 0
+  fi
+  local execerr
+  execerr="$(printf '%s' "$blob" | grep -oE 'agent executor error: [^:]*' | head -1)"
+  [ -n "$execerr" ] && printf '%s' "$execerr"
+  return 0
+}
 
 FULL_PROMPT="$(cat)"
 
@@ -78,7 +127,7 @@ for attempt in 1 2 3 4; do
     >/dev/null 2>&1 || true
 
   set +e
-  RAW="$(cd "$PROTO_ROOT" && agy -p --sandbox --print-timeout "$PRINT_TIMEOUT" 2>&1 <<<"$AGY_PROMPT")"
+  RAW="$(cd "$PROTO_ROOT" && agy --sandbox --print '' --print-timeout "$PRINT_TIMEOUT" --log-file "$AGY_LOG" 2>&1 <<<"$AGY_PROMPT")"
   G_RC=$?
   set -e
 
@@ -96,7 +145,8 @@ for attempt in 1 2 3 4; do
 done
 
 if [ -z "$RAW" ]; then
-  echo "gemini: degrade — flag '本轮缺 gemini' (empty output, agy rc=$G_RC)" >&2
+  REASON="$(agy_fatal_reason)"
+  echo "gemini: degrade — flag '本轮缺 gemini' (empty output, agy rc=$G_RC${REASON:+; $REASON})" >&2
   printf '{"reviewer":"gemini","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
 fi
@@ -112,7 +162,8 @@ EXTRACTED="$(printf '%s' "$RAW" | python3 "$PROTO_ROOT/lib/extract_json.py" gemi
 EX_RC=$?
 set -e
 if [ "$EX_RC" -ne 0 ] || [ "$G_RC" -ne 0 ]; then
-  echo "gemini: degrade — flag '本轮缺 gemini' (extract_json rc=$EX_RC, agy exit rc=$G_RC; agy's stderr is in the captured output per 2>&1)" >&2
+  REASON="$(agy_fatal_reason)"
+  echo "gemini: degrade — flag '本轮缺 gemini' (extract_json rc=$EX_RC, agy exit rc=$G_RC${REASON:+; $REASON}; agy's stderr is in the captured output per 2>&1)" >&2
   printf '{"reviewer":"gemini","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
 fi

@@ -4,6 +4,64 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.4.0] - 2026-06-11
+
+Fix the agy (Gemini leg) invocation + surface the real degrade reason —
+found by running `/diagnose` on "agy went empty for 8 straight cmr
+rounds." Root cause was **quota** (agy hit `RESOURCE_EXHAUSTED` / 429,
+"Individual quota reached", resets in ~64h), but the diagnosis surfaced
+two real defects in `backends/gemini.sh` besides the quota itself:
+
+### Fixed
+
+- **agy invocation form** (`agy -p --sandbox` → `agy --sandbox --print
+  ''`). agy 1.0.7 changed `--print`/`-p` into a string flag that takes
+  its value from the next token, so `-p --sandbox` silently swallowed
+  `--sandbox` as the prompt value — **`--sandbox` never engaged** (the
+  real prompt still reached agy only via agy's stdin-concatenation,
+  `prompt = <--print value> + "\n" + stdin`). The new form puts
+  `--sandbox` before an explicit empty `--print ''`, so sandbox is a
+  real flag (verified by agy's "enabling terminal sandbox for this
+  session" log line) and the diff still rides on stdin (no ARG_MAX
+  limit). Regression test pins the exact argv (`--sandbox` standalone +
+  `--print` value empty), so a revert to the `-p`-eats-`--sandbox` form
+  fails CI.
+
+### Added
+
+- **Quota / 429 visibility.** agy routes fatal backend errors
+  (RESOURCE_EXHAUSTED / 429 / quota) to its `--log-file`, NOT
+  stdout/stderr — so a quota-exhausted run looks like a plain empty
+  success (rc=0, empty stdout) and the round degraded with a bare
+  "empty output" and no reason (this is why 8 rounds looked mysterious).
+  `gemini.sh` now passes `--log-file` and, on any degrade, greps it (and
+  the captured output) for the fatal-error signatures, so the flag names
+  the cause: `本轮缺 gemini (empty output, agy rc=0; quota/429 — agy
+  individual quota exhausted; Resets in 63h…)`. Verified live against
+  real agy. Regression test stubs an agy that writes the 429 to its
+  log-file and exits 0 empty.
+- **Hidden-path workspace warning.** agy refuses to add a workspace
+  folder whose path has a hidden (dot) component ("is hidden: ignore
+  uri" in its log), so running cmr from e.g. a `.claude/worktrees/...`
+  worktree gives the Gemini reviewer NO repo context (diff-only, no
+  source grep). `gemini.sh` now warns (does not degrade — agy still
+  reviews the diff) so the quality gap is visible; rerun from a
+  non-hidden path for full context. Both branches of the new conditional
+  are covered (hidden → warns, visible → silent).
+
+### Notes
+
+- Could not verify live that the corrected invocation produces real
+  findings: the same quota 429 that triggered the investigation blocks
+  any agy output for ~64h. Invocation correctness (sandbox engaged,
+  prompt delivered) and both observability features ARE verified live;
+  the model-output step is quota-blocked, not logic-blocked.
+- **Wiki re-sync owed (reverse drift):** the source-of-truth wiki
+  (`cross-model-review.md`) still documents `agy -p --sandbox` / "agy
+  1.0.0". This skill had to track the installed agy 1.0.7 to keep
+  working; the wiki needs the same invocation correction or the next
+  re-sync will drift it back.
+
 ## [0.3.3.0] - 2026-06-10
 
 Claude reviewer leg: **Opus → Claude Fable 5** (wiki `904c988`+`a64d064`).

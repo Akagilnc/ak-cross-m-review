@@ -19,6 +19,7 @@ Two pinned behaviors:
 
 import json
 import os
+import shutil
 import stat
 import subprocess
 from pathlib import Path
@@ -184,3 +185,119 @@ def test_injects_read_only_instruction_into_agy_prompt(tmp_path):
         f"prompt. stdout={r.stdout!r}"
     )
     assert "RO_MARKER_ABSENT" not in r.stdout
+
+
+def test_invocation_passes_sandbox_flag_and_empty_print_value(tmp_path):
+    # Regression for the agy 1.0.7 flag-parse change. `--print`/`-p`
+    # became a string flag that takes its value from the NEXT token, so
+    # the old `agy -p --sandbox` made `-p` swallow `--sandbox` as the
+    # prompt value — `--sandbox` never engaged. Pin the corrected form:
+    # `--sandbox` is a standalone flag and `--print`'s value is the
+    # empty string (the diff rides in on stdin, no ARG_MAX limit).
+    dump = tmp_path / "argv.txt"
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        ': > "$AGY_ARGV_DUMP"\n'
+        'for a in "$@"; do printf \'%s\\0\' "$a" >> "$AGY_ARGV_DUMP"; done\n'
+        'echo "===CMR-FINDINGS-BEGIN==="\n'
+        'echo \'{"reviewer":"gemini","mode":"code","findings":[]}\'\n'
+        'echo "===CMR-FINDINGS-END==="\n'
+        'exit 0\n'
+    ))
+    env = _env_with_stub(tmp_path / "bin")
+    env["AGY_ARGV_DUMP"] = str(dump)
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True, env=env, timeout=60,
+    )
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    argv = dump.read_bytes().split(b"\0")
+    if argv and argv[-1] == b"":
+        argv = argv[:-1]  # drop the trailing-delimiter artifact only
+    argv = [a.decode() for a in argv]
+    assert "--sandbox" in argv, f"--sandbox missing from agy argv: {argv}"
+    assert "--print" in argv, f"--print missing (regressed to -p?): {argv}"
+    pi = argv.index("--print")
+    assert pi + 1 < len(argv), f"--print has no following token: {argv}"
+    assert argv[pi + 1] == "", (
+        "--print value must be the empty string (diff rides on stdin); "
+        f"got {argv[pi + 1]!r} — if it is '--sandbox', the 1.0.7 "
+        f"flag-eat bug has regressed. argv={argv}"
+    )
+
+
+def test_surfaces_quota_reason_when_agy_swallows_429_to_logfile(tmp_path):
+    # Real-world failure (8 empty rounds): agy hits RESOURCE_EXHAUSTED
+    # (429) but routes it to its --log-file and exits 0 with EMPTY
+    # stdout — so the round looked like a silent empty degrade with no
+    # reason. gemini.sh now passes --log-file and greps it on degrade,
+    # so the flag names the quota cause instead of just "empty output".
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'logf=""\n'
+        'while [ $# -gt 0 ]; do\n'
+        '  case "$1" in\n'
+        '    --log-file) logf="$2"; shift 2 ;;\n'
+        '    *) shift ;;\n'
+        '  esac\n'
+        'done\n'
+        '[ -n "$logf" ] && printf \'%s\\n\' '
+        '"E0611 agent executor error: RESOURCE_EXHAUSTED (code 429): '
+        'Individual quota reached. Resets in 64h24m36s." > "$logf"\n'
+        'exit 0\n'
+    ))
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True,
+        env=_env_with_stub(tmp_path / "bin"),
+        timeout=60,
+    )
+    assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert '"findings":[]' in r.stdout
+    assert "本轮缺 gemini" in r.stderr
+    assert "quota" in r.stderr
+    assert "429" in r.stderr
+    assert "Resets in 64h" in r.stderr
+
+
+def _run_copied_gemini(script_root: Path, tmp_path):
+    """Copy gemini.sh under script_root/backends and run it with agy
+    MISSING (so it degrades right after the path check). Returns the
+    CompletedProcess. PROTO_ROOT resolves to script_root, letting a test
+    place it under a hidden vs visible parent to exercise both branches
+    of the hidden-path warning."""
+    backends = script_root / "backends"
+    backends.mkdir(parents=True)
+    shutil.copy2(SCRIPT, backends / "gemini.sh")
+    bindir = tmp_path / "emptybin"
+    bindir.mkdir()
+    env = dict(os.environ)
+    env["PATH"] = f"{bindir}{os.pathsep}/usr/bin{os.pathsep}/bin"
+    env["GEMINI_RETRY_WARM_SLEEP"] = "0"
+    return subprocess.run(
+        ["bash", str(backends / "gemini.sh"), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True, env=env, timeout=30,
+    )
+
+
+def test_warns_when_workspace_root_under_hidden_dir(tmp_path):
+    # cmr run from e.g. a `.claude/worktrees/...` path: agy refuses to
+    # add a hidden-component path as a workspace folder, so the reviewer
+    # loses repo context. The backend must warn (not silently degrade).
+    r = _run_copied_gemini(tmp_path / ".hidden" / "repo", tmp_path)
+    assert r.returncode == 1
+    assert "agy not installed" in r.stderr  # degraded AFTER the warning
+    assert "hidden" in r.stderr
+    assert "without repo context" in r.stderr.lower()
+
+
+def test_no_hidden_warning_when_workspace_root_visible(tmp_path):
+    # The other branch: a normal (non-hidden) workspace root must NOT
+    # emit the hidden-path warning.
+    r = _run_copied_gemini(tmp_path / "visible" / "repo", tmp_path)
+    assert r.returncode == 1
+    assert "agy not installed" in r.stderr
+    assert "hidden" not in r.stderr

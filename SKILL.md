@@ -111,8 +111,8 @@ mechanics:
 every Bash CLI reviewer tool call, ALL with `run_in_background: true`:
 
 - Default (N=1): 1 × `Bash` (`backends/codex-review.sh`) + 1 × `Bash`
-  (`backends/gemini.sh` — which calls `agy -p --sandbox` internally,
-  see invocation forms) = **2 bg jobs**.
+  (`backends/gemini.sh` — which calls `agy --sandbox --print ''`
+  internally, see invocation forms) = **2 bg jobs**.
 - Upgraded (N codex): N × `Bash` codex (section k/N, non-overlapping
   diff slices) + 1 × `Bash` `gemini.sh` (full diff) = **N+1 bg jobs**.
 
@@ -146,10 +146,17 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   never `-C <dir>` (wrong workdir), never `codex review --base B
   "PROMPT"` (can't pass both).
 - **Gemini** — only via `backends/gemini.sh`, which calls
-  `agy -p --sandbox` (Antigravity CLI 1.0.0, the in-kind replacement
-  after `gemini` CLI's 2026-06-18 EOL; locked to 3.5 Flash, no
-  `--model` flag). cwd = repo root (agy auto-enters the workspace);
-  large diff → `AGY_PRINT_TIMEOUT=15m` (default 5m is short). Never
+  `agy --sandbox --print '' <<<prompt` (Antigravity CLI, the in-kind
+  replacement after `gemini` CLI's 2026-06-18 EOL; locked to 3.5 Flash).
+  **NOT the old `agy -p --sandbox`**: agy 1.0.7 made `--print`/`-p` a
+  string flag that takes its value from the next token, so `-p
+  --sandbox` silently swallowed `--sandbox` as the prompt value —
+  `--sandbox` never engaged and the diff rode in only via agy's
+  stdin-concatenation (prompt = `<--print value>` + `\n` + stdin).
+  `--sandbox` BEFORE an explicit empty `--print ''` keeps sandbox a real
+  flag (verified: "enabling terminal sandbox" log line) and the diff on
+  stdin (no ARG_MAX limit). cwd = repo root; large diff →
+  `AGY_PRINT_TIMEOUT=15m` (default 5m is short). Never
   `agy --dangerously-skip-permissions` (re-consents high scope, breaks
   headless auth); never the deprecated `gemini --approval-mode plan`.
   **agy is agentic — `--sandbox` does NOT stop it editing files / running
@@ -159,6 +166,18 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   (wiki §调用规范 line 185); the preamble is the real read-only guard,
   `--sandbox` is defense-in-depth. cmr-reviewer.md carries the same
   read-only hard-constraint for all vendors.
+  **Quota / 429 visibility**: agy routes fatal backend errors
+  (RESOURCE_EXHAUSTED / 429 quota, etc.) to its `--log-file`, NOT
+  stdout/stderr — a quota-exhausted run looks like a plain empty success
+  (rc=0, empty stdout). `gemini.sh` passes `--log-file` and greps it on
+  degrade, so the flag names the real cause (e.g. `本轮缺 gemini (empty
+  output, agy rc=0; quota/429 — agy individual quota exhausted; Resets
+  in 63h…)`) instead of a bare "empty output". **Hidden-path caveat**:
+  agy refuses to add a workspace folder whose path has a hidden (dot)
+  component ("is hidden: ignore uri"), so running cmr from e.g. a
+  `.claude/worktrees/...` worktree gives the Gemini reviewer NO repo
+  context (diff-only, no source grep). `gemini.sh` warns (does not
+  degrade); for full agy context run cmr from a non-hidden path.
   The backend handles agy's keychain auth-race with warm + retry (4
   attempts total = initial 1 + 3 retries; each attempt pre-warms
   `Antigravity Safe Storage` keychain item). All 4 failing → emit the
@@ -210,7 +229,8 @@ v3 requires all 3 vendors. If one is unavailable, run with the rest and
 | Down (main = Claude) | Continue with | Flag |
 |---|---|---|
 | codex (all) | Claude + Gemini | `本轮缺 codex` |
-| gemini | Claude + codex | `本轮缺 gemini` (reason: rate / quota / agy auth-race after retry×3 / sandbox write denied) |
+| gemini | Claude + codex | `本轮缺 gemini` (reason: rate / quota-429 (agy individual quota exhausted, + "Resets in …" from agy's --log-file) / agy auth-race after retry×3 / sandbox write denied). agy hides 429/quota in its --log-file and exits rc=0 empty — `gemini.sh` greps the log so the reason is named, not a bare "empty output". |
+| gemini (no repo context) | Claude + codex + Gemini (diff-only) | `gemini WITHOUT repo context` — cmr ran from a hidden (dot) path (e.g. `.claude/worktrees/...`); agy refuses hidden workspace folders. Warn, not a leg drop; rerun from a non-hidden path for full context. |
 | 1 of N codex | Claude + (N−1) codex + Gemini | `codex 实例 N→N−1` |
 | codex + gemini both | Claude only (fallback, no outside voice) | `本轮无 outside voice — 需人工补 review` |
 | **Fable 5 safeguards trigger** (<5% of sessions; security / bio / chem / distillation topics auto-route to Opus 4.8 — Anthropic docs. NOT a leg failure: squad stays 1+1+1, the Claude leg just ran on Opus 4.8; does NOT trigger any other degradation. Flag for finding-consistency transparency — a same-model R1→R2 comparison now has one Opus run mixed in.) | Claude (Opus 4.8) + codex + Gemini | `Claude leg = Opus 4.8 (Fable safeguards trigger)` |
@@ -374,6 +394,6 @@ lands it into the PR body `## Deferred Findings`
 8. Silent vendor degrade — always flag "本轮缺 X".
 9. v2 N × Claude (opus / fable) split sections — violates current quota allocation.
 10. Treating N/N concur as ship-ready — category error (Step 5).
-11. `gemini -p` headless (CLI stopped serving 2026-06-18) or `agy --dangerously-skip-permissions` (re-consents high scope, breaks headless auth) — use `backends/gemini.sh`, which pins `agy -p --sandbox` + the warm-retry recipe.
+11. `gemini -p` headless (CLI stopped serving 2026-06-18) or `agy --dangerously-skip-permissions` (re-consents high scope, breaks headless auth) — use `backends/gemini.sh`, which pins `agy --sandbox --print ''` + the warm-retry recipe. Also dead: `agy -p --sandbox` (1.0.7 flag-parse made `-p` swallow `--sandbox` as the prompt value → sandbox never engaged).
 12. **A reviewer that writes** — relying on `--sandbox` alone to keep an agentic CLI (agy) read-only. It edits files / runs commands anyway (first-run: rewrote tracked files + ran pytest mid-review). The prompt MUST forbid writes ("REVIEW ONLY, do not modify any file, do not run commands"); a review that mutates the repo under review is the defect, even when the mutation is correct.
 13. **Over-claiming "mechanical" to skip /diagnose** — waving a fix through as mechanical on "it's simple / one line / obvious / I'm confident." Default is non-trivial; mechanical is a closed high-bar allowlist that touches zero executing code (Step 7). A changed flag / guard / condition / quoting fix is non-trivial no matter how small. Skipping classification = non-trivial = `/diagnose` required.
