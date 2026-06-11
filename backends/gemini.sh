@@ -83,13 +83,23 @@ esac
 agy_fatal_reason() {
   [ -s "$AGY_LOG" ] || return 0
   if grep -qiE 'RESOURCE_EXHAUSTED|\(code 429\)|quota reached|quota exceeded|individual quota' "$AGY_LOG"; then
+    # Optional detail. `grep -m1 … || true` keeps it non-fatal under
+    # `set -euo pipefail`: a no-match (grep exit 1) must NOT abort the
+    # function before the reason is printed, and `-m1` (not `| head -1`)
+    # avoids a pipefail/SIGPIPE interaction. (Online R1: gemini-code-
+    # assist + sourcery; the empty-/no-match degrade IS exercised by the
+    # R2 characterization tests, the `|| true` makes it explicit and
+    # cross-bash-robust rather than relying on subtle errexit semantics.)
     local resets
-    resets="$(grep -oiE 'Resets in [0-9hdms]+' "$AGY_LOG" | head -1)"
+    resets="$(grep -m1 -oiE 'Resets in [0-9hdms]+' "$AGY_LOG" || true)"
     printf 'quota/429 — agy individual quota exhausted%s' "${resets:+; $resets}"
     return 0
   fi
+  # `.*` (to end of line, not `[^:]*`) so a multi-colon executor error
+  # like "agent executor error: call failed: backend timeout" is kept
+  # whole, not truncated at the first colon (online R1: sourcery).
   local execerr
-  execerr="$(grep -oE 'agent executor error: [^:]*' "$AGY_LOG" | head -1)"
+  execerr="$(grep -m1 -oE 'agent executor error: .*' "$AGY_LOG" || true)"
   [ -n "$execerr" ] && printf '%s' "$execerr"
   return 0
 }
@@ -133,6 +143,12 @@ RAW=""; G_RC=0
 for attempt in 1 2 3 4; do
   security find-generic-password -s "Antigravity Safe Storage" \
     >/dev/null 2>&1 || true
+
+  # Truncate the shared log before each attempt so agy_fatal_reason
+  # reflects ONLY the final attempt — otherwise a fatal error recorded
+  # on an earlier retry could leak into the degrade reason for a later
+  # attempt that failed for a different cause (online R1: sourcery).
+  : > "$AGY_LOG"
 
   set +e
   RAW="$(cd "$PROTO_ROOT" && agy --sandbox --print '' --print-timeout "$PRINT_TIMEOUT" --log-file "$AGY_LOG" 2>&1 <<<"$AGY_PROMPT")"

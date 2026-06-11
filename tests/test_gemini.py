@@ -372,6 +372,74 @@ def test_nonempty_nonfatal_log_degrades_without_reason_suffix(tmp_path):
     assert "quota" not in r.stderr  # no false attribution from a benign log
 
 
+def test_execerr_reason_is_not_truncated_at_colon(tmp_path):
+    # Online R1 (sourcery): the executor-error grep used `[^:]*` and
+    # truncated multi-colon messages at the first colon. It now matches
+    # to end of line, so the full executor error reaches the flag.
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'logf=""\n'
+        'while [ $# -gt 0 ]; do\n'
+        '  case "$1" in --log-file) logf="$2"; shift 2 ;; *) shift ;; esac\n'
+        'done\n'
+        '[ -n "$logf" ] && printf \'%s\\n\' '
+        '"E agent executor error: call failed: backend timeout" > "$logf"\n'
+        'exit 0\n'
+    ))
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True,
+        env=_env_with_stub(tmp_path / "bin"),
+        timeout=60,
+    )
+    assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "agent executor error: call failed: backend timeout" in r.stderr, (
+        "executor error was truncated at the first colon — should match to "
+        f"end of line. stderr={r.stderr!r}"
+    )
+
+
+def test_log_truncated_per_attempt_no_stale_reason_leak(tmp_path):
+    # Online R1 (sourcery): AGY_LOG is reused across retry attempts; the
+    # script truncates it before each attempt so the degrade reason
+    # reflects ONLY the final attempt. Here attempt 1 writes a 429 to the
+    # log AND emits the auth-race signature (→ retry); attempt 2 is a
+    # clean empty success. Without per-attempt truncation, attempt 1's
+    # 429 would leak into attempt 2's empty-output degrade reason.
+    counter = tmp_path / "attempt_n"
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'logf=""\n'
+        'while [ $# -gt 0 ]; do\n'
+        '  case "$1" in --log-file) logf="$2"; shift 2 ;; *) shift ;; esac\n'
+        'done\n'
+        'n=$(cat "$AGY_ATTEMPT_COUNTER" 2>/dev/null || echo 0); n=$((n + 1))\n'
+        'echo "$n" > "$AGY_ATTEMPT_COUNTER"\n'
+        'if [ "$n" = 1 ]; then\n'
+        '  [ -n "$logf" ] && printf \'%s\\n\' '
+        '"E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$logf"\n'
+        '  echo "Authentication required"\n'  # auth-race signature → retry
+        '  exit 1\n'
+        'fi\n'
+        'exit 0\n'  # attempt 2: clean empty success, writes nothing to log
+    ))
+    env = _env_with_stub(tmp_path / "bin")
+    env["AGY_ATTEMPT_COUNTER"] = str(counter)
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True, env=env, timeout=60,
+    )
+    assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "agy auth-race on attempt 1" in r.stderr  # it did retry
+    assert "本轮缺 gemini" in r.stderr
+    assert "quota" not in r.stderr, (
+        "attempt 1's 429 leaked into attempt 2's degrade reason — the "
+        f"per-attempt log truncation is not working. stderr={r.stderr!r}"
+    )
+
+
 def _run_copied_gemini(script_root: Path, tmp_path):
     """Copy gemini.sh under script_root/backends and run it with agy
     MISSING (so it degrades right after the path check). Returns the

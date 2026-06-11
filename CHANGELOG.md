@@ -77,6 +77,29 @@ Fixes from that round:
 - **Visible-path test guarded** against a base-temp-dir-under-a-hidden-
   component env edge (Claude C3).
 
+### Hardened in online PR review (R1)
+
+Online bots on the PR (codex clean-approved; gemini-code-assist +
+sourcery raised three points, all in `agy_fatal_reason` / the retry
+loop):
+
+- **Optional greps made non-fatal + crash-proof.** `resets=` and
+  `execerr=` now use `grep -m1 … || true` instead of `… | head -1`,
+  so a no-match (grep exit 1) cannot abort under `set -euo pipefail`
+  and there is no pipefail/SIGPIPE interaction. (Empirically the old
+  form already degraded cleanly — locked by the R2 characterization
+  tests — but `|| true` makes it explicit and cross-bash-robust rather
+  than relying on subtle errexit semantics. gemini-code-assist high +
+  medium.)
+- **Per-attempt log truncation.** `AGY_LOG` is truncated (`: > …`)
+  before each retry attempt, so a fatal error recorded on an earlier
+  attempt cannot leak into the degrade reason for a later attempt that
+  failed for a different cause (sourcery). Regression test added.
+- **Executor-error reason no longer truncated at the first colon** —
+  the grep matches `agent executor error: .*` (to end of line) instead
+  of `[^:]*`, so a multi-colon message is kept whole (sourcery).
+  Regression test added.
+
 ### Notes
 
 - Could not verify live that the corrected invocation produces real
