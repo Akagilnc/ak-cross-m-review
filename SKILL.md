@@ -365,12 +365,13 @@ Prompt construction when dispatching a later round:
 ❌ Wrong (the degraded spot-check): making `"check that last round's P1
 <X> is fixed"` the *entire* prompt — the reviewer returns only
 "closed / not", emits no new findings, and the fix's regression + the
-surface last round missed are dropped together. This is orthogonal to
-Step 6 drift (which governs *when to stop*); full re-review governs *how
-wide each round looks*, and only full re-review makes the drift triple
-measurable. It is also the entry-scope floor that must hold *before*
-Step 6's Coverage-drift note (a late-convergence optimization) even
-applies.
+surface last round missed are dropped together.
+
+**Full re-review is orthogonal to Step 6 drift, not in tension with it.**
+Drift governs *when to stop*; full re-review governs *how wide each round
+looks* — and only full re-review makes the drift triple measurable. It is
+also the entry-scope floor that must hold *before* Step 6's Coverage-drift
+note (a late-convergence optimization) even applies.
 
 **Fix-loop discipline (wiki §修复).** The wiki's ground truth: "findings
 are stable, the fix loop is the bottleneck — agent fixes by feel, breaks
