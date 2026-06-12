@@ -312,11 +312,65 @@ a round counter (no-3-cap, see `iterative-adversarial-review`).
 findings present
   → P0/P1 exist → FIX (see fix-loop discipline below) → narrow self-check
                   (same-pattern bug elsewhere? fix introduced a new bug?)
-                  → commit → next round
+                  → commit → next round (FULL re-review — see below)
   → no P0/P1     → STOP (normal convergence)
   → not converging / drift hit → STOP, architectural/implementation
                   rework (Step 6), not "one more round"
 ```
+
+**Every round = full re-review (NOT a "did last round's P0/P1 close?"
+spot-check)** (wiki §每轮 review = 全量复审). From round 2 on, the reviewer
+(and the main session dispatching it) drifts toward narrowing scope to
+"is last round's P1 fixed?" — only verifying prior findings, no longer
+reading the current full diff. **This repo has hit it repeatedly; refuse
+it explicitly.**
+
+The rule: **every round re-reviews the CURRENT full diff in full.**
+"Did last round's P0/P1 close" is only a line **appended to the tail** of
+the review prompt — not the round's whole scope. Order is fixed: full
+review is the body, prior-finding regression-confirm is the tail.
+
+Why narrowing is wrong (all three are structural, not "just try harder"):
+
+1. **The fix is itself new diff and must be reviewed.** A fix touches
+   neighbors (change A breaks B); narrowing to "is P1 closed" hides the
+   regression the fix introduced. The fix-loop's own "self-check (fix
+   introduced a bug?)" is *author* self-check — structurally it cannot
+   replace next round's independent reviewer reading the fix diff in full
+   (anti-pattern #3: self-check ≠ review).
+2. **A reviewer in one round is non-exhaustive.** Last round not raising
+   a finding ≠ nothing wrong there — its attention may simply not have
+   reached it. A fresh full read (especially a different vendor) catches
+   structurally-missed surface; that is the value of multi-round ×
+   cross-model.
+3. **Narrowing fakes convergence → breaks termination.** Step 5's
+   positive termination (N/N concur) and Step 6's drift triple all assume
+   **each round covers the same full surface**. Review only last round's
+   P1 and the finding count is artificially low → looks converged when it
+   just wasn't looked at. A "2/2 concur" under narrowed scope is a bad
+   check.
+
+Prompt construction when dispatching a later round:
+
+```
+[body] Full-review the CURRENT full diff (including this round's fix),
+       per the §Step 1 role split — emit ALL P0/P1/P2 findings this
+       round (not limited to ones raised before).
+[tail] Also confirm these prior findings are correctly closed and the
+       fix introduced no regression:
+        - P1: <prior finding summary + file:line>
+        - P0: <...>
+```
+
+❌ Wrong (the degraded spot-check): making `"check that last round's P1
+<X> is fixed"` the *entire* prompt — the reviewer returns only
+"closed / not", emits no new findings, and the fix's regression + the
+surface last round missed are dropped together. This is orthogonal to
+Step 6 drift (which governs *when to stop*); full re-review governs *how
+wide each round looks*, and only full re-review makes the drift triple
+measurable. It is also the entry-scope floor that must hold *before*
+Step 6's Coverage-drift note (a late-convergence optimization) even
+applies.
 
 **Fix-loop discipline (wiki §修复).** The wiki's ground truth: "findings
 are stable, the fix loop is the bottleneck — agent fixes by feel, breaks
@@ -397,3 +451,4 @@ lands it into the PR body `## Deferred Findings`
 11. `gemini -p` headless (CLI stopped serving 2026-06-18) or `agy --dangerously-skip-permissions` (re-consents high scope, breaks headless auth) — use `backends/gemini.sh`, which pins `agy --sandbox --print ''` + the warm-retry recipe. Also dead: `agy -p --sandbox` (1.0.7 flag-parse made `-p` swallow `--sandbox` as the prompt value → sandbox never engaged).
 12. **A reviewer that writes** — relying on `--sandbox` alone to keep an agentic CLI (agy) read-only. It edits files / runs commands anyway (first-run: rewrote tracked files + ran pytest mid-review). The prompt MUST forbid writes ("REVIEW ONLY, do not modify any file, do not run commands"); a review that mutates the repo under review is the defect, even when the mutation is correct.
 13. **Over-claiming "mechanical" to skip /diagnose** — waving a fix through as mechanical on "it's simple / one line / obvious / I'm confident." Default is non-trivial; mechanical is a closed high-bar allowlist that touches zero executing code (Step 7). A changed flag / guard / condition / quoting fix is non-trivial no matter how small. Skipping classification = non-trivial = `/diagnose` required.
+14. **Narrowing a later round into a "did last round's P1 close?" spot-check** — every round must full-re-review the current full diff; prior-finding acceptance is only a tail item. Narrowing drops the regression the fix introduced + the surface last round missed, and fakes a low finding count that breaks the Step 5/6 convergence read. See Step 7 "Every round = full re-review."
