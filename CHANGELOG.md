@@ -4,6 +4,28 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.5.0] - 2026-06-12
+
+Sync to wiki `5e565f1` — new rule **§每轮 review = 全量复审** (every
+round is a full re-review, not a "did last round's P0/P1 close?"
+spot-check). From round 2 on, a reviewer (and the session dispatching
+it) drifts toward only verifying prior findings and stops reading the
+current full diff; this repo has hit it repeatedly. SKILL.md Step 7 now
+carries the rule: every round full-re-reviews the current diff (including
+this round's fix) and prior-finding acceptance is only a tail-appended
+item — with the three structural reasons it can't be narrowed (the fix
+is new diff that must be reviewed; one round is non-exhaustive; narrowing
+fakes a low finding count that breaks the Step 5/6 convergence read), the
+body+tail prompt-construction shape, and the ❌ degraded spot-check form.
+New anti-pattern #14. The Step 7 loop line is annotated `next round
+(FULL re-review)`. Docs/manifest only — no code paths changed.
+
+(The wiki's other recent change, `def164a` — the agy `--sandbox --print
+''` invocation form + `--log-file` quota note — was already in the skill
+from v0.3.4.0; the two converged on the same form. Reverse-drift still
+owed the OTHER way: the skill's hidden-path workspace warning is not yet
+in the wiki.)
+
 ## [0.3.4.0] - 2026-06-11
 
 Fix the agy (Gemini leg) invocation + surface the real degrade reason —
