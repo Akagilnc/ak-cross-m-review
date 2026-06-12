@@ -354,12 +354,16 @@ Prompt construction when dispatching a later round:
 
 ```
 [body] Full-review the CURRENT full diff (including this round's fix),
-       per the §Step 1 role split — emit ALL P0/P1/P2 findings this
-       round (not limited to ones raised before).
-[tail] Also confirm these prior findings are correctly closed and the
-       fix introduced no regression:
-        - P1: <prior finding summary + file:line>
-        - P0: <...>
+       per the §Step 1 lens split — emit ALL findings in the
+       cmr-reviewer.md schema vocabulary (critical/high/medium/low/
+       clarity), not limited to ones raised before. (Reviewers emit the
+       severity strings; Step 4 maps them to P0–P4. Do NOT instruct the
+       reviewer in P-levels — that yields invalid severities and, by
+       dropping low/clarity, silently narrows the "full" re-review.)
+[tail] Also confirm these prior findings (by their Step 4 grade) are
+       correctly closed and the fix introduced no regression:
+        - P1 (high): <prior finding summary + file:line>
+        - P0 (critical): <...>
 ```
 
 ❌ Wrong (the degraded spot-check): making `"check that last round's P1
