@@ -360,10 +360,11 @@ Prompt construction when dispatching a later round:
        severity strings; Step 4 maps them to P0–P4. Do NOT instruct the
        reviewer in P-levels — that yields invalid severities and, by
        dropping low/clarity, silently narrows the "full" re-review.)
-[tail] Also confirm these prior findings (by their Step 4 grade) are
-       correctly closed and the fix introduced no regression:
-        - P1 (high): <prior finding summary + file:line>
-        - P0 (critical): <...>
+[tail] Also confirm these prior findings are correctly closed and the
+       fix introduced no regression (name them in the reviewer-schema
+       severity, NOT P-levels — same reason as the body):
+        - high: <prior finding summary + file:line>
+        - critical: <...>
 ```
 
 ❌ Wrong (the degraded spot-check): making `"check that last round's P1
