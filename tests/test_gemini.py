@@ -19,10 +19,11 @@ Two pinned behaviors:
 
 import json
 import os
-import shutil
 import stat
 import subprocess
 from pathlib import Path
+
+import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "backends" / "gemini.sh"
 
@@ -40,6 +41,10 @@ def _env_with_stub(stub_dir: Path) -> dict[str, str]:
     env["PATH"] = f"{stub_dir}{os.pathsep}{env['PATH']}"
     # Tests should never wait between retries.
     env["GEMINI_RETRY_WARM_SLEEP"] = "0"
+    # Don't let an inherited AGY_MODEL collapse the ladder to one rung and
+    # perturb the ladder tests (Claude C1). Tests that want a pin set it
+    # explicitly after this.
+    env.pop("AGY_MODEL", None)
     return env
 
 
@@ -440,48 +445,205 @@ def test_log_truncated_per_attempt_no_stale_reason_leak(tmp_path):
     )
 
 
-def _run_copied_gemini(script_root: Path, tmp_path):
-    """Copy gemini.sh under script_root/backends and run it with agy
-    MISSING (so it degrades right after the path check). Returns the
-    CompletedProcess. PROTO_ROOT resolves to script_root, letting a test
-    place it under a hidden vs visible parent to exercise both branches
-    of the hidden-path warning."""
-    backends = script_root / "backends"
-    backends.mkdir(parents=True)
-    shutil.copy2(SCRIPT, backends / "gemini.sh")
+def test_quota_reason_resets_not_doubled_when_agy_logs_error_twice(tmp_path):
+    # Live-surfaced bug: real agy writes the fatal error TWICE on one log
+    # line ("…Resets in X.: …Resets in X."). `grep -m1 -o` caps matching
+    # LINES, not matches-per-line, so it emitted both → the degrade flag
+    # carried a doubled, newline-split "Resets in …". The reason must
+    # contain exactly ONE "Resets in".
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'logf=""\n'
+        'while [ $# -gt 0 ]; do\n'
+        '  case "$1" in --log-file) logf="$2"; shift 2 ;; *) shift ;; esac\n'
+        'done\n'
+        '[ -n "$logf" ] && printf \'%s\\n\' '
+        '"E RESOURCE_EXHAUSTED (code 429): Individual quota reached. Resets in 64h24m36s.: '
+        'RESOURCE_EXHAUSTED (code 429): Individual quota reached. Resets in 64h24m36s." > "$logf"\n'
+        'exit 0\n'
+    ))
+    env = _env_with_stub(tmp_path / "bin")
+    env["AGY_MODEL"] = "x-single-rung"  # pin to one rung so no ladder step-down noise
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True, env=env, timeout=60,
+    )
+    assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert r.stderr.count("Resets in") == 1, (
+        f"'Resets in' should appear exactly once (not doubled). stderr={r.stderr!r}"
+    )
+    assert "Resets in 64h24m36s" in r.stderr
+
+
+def test_agy_steps_down_to_sonnet_when_gemini_quota_exhausted(tmp_path):
+    # agy model-degradation ladder: Gemini 3.5 Flash (no --model) quota-
+    # 429s → the leg steps DOWN to `Claude Sonnet 4.6 (Thinking)` (a
+    # separate quota bucket) rather than degrading the whole leg, so a
+    # 3rd voice survives. Stub: default call (no --model) → quota; a
+    # --model call → valid findings.
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'logf=""; model=""\n'
+        'while [ $# -gt 0 ]; do\n'
+        '  case "$1" in\n'
+        '    --log-file) logf="$2"; shift 2 ;;\n'
+        '    --model) model="$2"; shift 2 ;;\n'
+        '    *) shift ;;\n'
+        '  esac\n'
+        'done\n'
+        'if [ -n "$model" ]; then\n'
+        '  echo "===CMR-FINDINGS-BEGIN==="\n'
+        '  echo \'{"reviewer":"gemini","mode":"code","findings":[]}\'\n'
+        '  echo "===CMR-FINDINGS-END==="\n'
+        '  exit 0\n'
+        'fi\n'
+        '[ -n "$logf" ] && printf \'%s\\n\' '
+        '"E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$logf"\n'
+        'exit 0\n'
+    ))
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True,
+        env=_env_with_stub(tmp_path / "bin"),
+        timeout=60,
+    )
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert json.loads(r.stdout)["findings"] == []
+    assert "stepping down to next agy model" in r.stderr
+    assert "Claude Sonnet 4.6 (Thinking)" in r.stderr  # the fallback note
+    assert "NO Google voice this round" in r.stderr
+
+
+def test_agy_leg_degrades_only_when_every_model_quota_exhausted(tmp_path):
+    # Both rungs (Gemini 3.5 AND the Sonnet fallback) quota-429 → the agy
+    # leg steps down entirely → degrade `本轮缺 gemini` with the quota
+    # reason. The "stepping down" warn proves the fallback rung was tried.
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'logf=""\n'
+        'while [ $# -gt 0 ]; do\n'
+        '  case "$1" in --log-file) logf="$2"; shift 2 ;; *) shift ;; esac\n'
+        'done\n'
+        '[ -n "$logf" ] && printf \'%s\\n\' '
+        '"E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$logf"\n'
+        'exit 0\n'  # every model: quota, empty stdout
+    ))
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True,
+        env=_env_with_stub(tmp_path / "bin"),
+        timeout=60,
+    )
+    assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert json.loads(r.stdout)["findings"] == []
+    assert "stepping down to next agy model" in r.stderr  # tried the fallback
+    assert "本轮缺 gemini" in r.stderr
+    assert "quota" in r.stderr
+
+
+def test_agy_does_not_step_down_when_gemini_works(tmp_path):
+    # Happy path: Gemini 3.5 Flash (no --model) returns valid findings →
+    # the ladder must NOT step down (Sonnet never tried, no fallback note).
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'echo "===CMR-FINDINGS-BEGIN==="\n'
+        'echo \'{"reviewer":"gemini","mode":"code","findings":[]}\'\n'
+        'echo "===CMR-FINDINGS-END==="\n'
+        'exit 0\n'
+    ))
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True,
+        env=_env_with_stub(tmp_path / "bin"),
+        timeout=60,
+    )
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert json.loads(r.stdout)["findings"] == []
+    assert "stepping down" not in r.stderr
+    assert "NO Google voice" not in r.stderr
+
+
+def test_agy_explicit_override_note_when_non_google_model_used(tmp_path):
+    # The other branch of the no-Google-voice note (AGY_STEPPED_DOWN=0):
+    # an explicit AGY_MODEL=Claude override that succeeds on the first try
+    # must flag the EXPLICIT-override wording, NOT the quota-step-down one
+    # (coderabbit R1).
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'echo "===CMR-FINDINGS-BEGIN==="\n'
+        'echo \'{"reviewer":"gemini","mode":"code","findings":[]}\'\n'
+        'echo "===CMR-FINDINGS-END==="\n'
+        'exit 0\n'
+    ))
+    env = _env_with_stub(tmp_path / "bin")
+    env["AGY_MODEL"] = "Claude Sonnet 4.6 (Thinking)"
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True, env=env, timeout=60,
+    )
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "explicit AGY_MODEL override" in r.stderr
+    assert "stepped down" not in r.stderr  # not the quota-step-down note
+    assert "stepping down to next agy model" not in r.stderr
+
+
+def _run_gemini_in_cwd(cwd_dir: Path, tmp_path):
+    """Run the real gemini.sh with cwd=cwd_dir and agy MISSING (so it
+    degrades right after the hidden-path check). cwd_dir is a non-git
+    directory, so REVIEW_ROOT = `git rev-parse … || pwd` resolves to
+    cwd_dir itself — letting a test place the *reviewed repo root* under a
+    hidden vs visible path to exercise both branches of the warning. (The
+    warning now keys on REVIEW_ROOT, not the skill's own dir.)"""
+    cwd_dir.mkdir(parents=True, exist_ok=True)
     bindir = tmp_path / "emptybin"
-    bindir.mkdir()
+    bindir.mkdir(exist_ok=True)
+    # Stub `git` to fail so gemini.sh's `git rev-parse --show-toplevel ||
+    # pwd` deterministically falls back to pwd (= cwd_dir). Without this,
+    # if the test tmpdir happens to sit inside a git repo (common in CI),
+    # rev-parse would resolve to the ENCLOSING repo's toplevel and
+    # REVIEW_ROOT would not be cwd_dir, false-failing the hidden/visible
+    # assertions (online R2: gemini-code-assist).
+    git_stub = bindir / "git"
+    git_stub.write_text("#!/bin/sh\nexit 1\n")
+    git_stub.chmod(git_stub.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
     env = dict(os.environ)
     env["PATH"] = f"{bindir}{os.pathsep}/usr/bin{os.pathsep}/bin"
     env["GEMINI_RETRY_WARM_SLEEP"] = "0"
+    env.pop("AGY_MODEL", None)
     return subprocess.run(
-        ["bash", str(backends / "gemini.sh"), "code"],
+        ["bash", str(SCRIPT), "code"],
         input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
-        capture_output=True, text=True, env=env, timeout=30,
+        capture_output=True, text=True, env=env, cwd=str(cwd_dir), timeout=30,
     )
 
 
-def test_warns_when_workspace_root_under_hidden_dir(tmp_path):
-    # cmr run from e.g. a `.claude/worktrees/...` path: agy refuses to
-    # add a hidden-component path as a workspace folder, so the reviewer
-    # loses repo context. The backend must warn (not silently degrade).
-    r = _run_copied_gemini(tmp_path / ".hidden" / "repo", tmp_path)
+def test_warns_when_reviewed_repo_root_under_hidden_dir(tmp_path):
+    # The reviewed repo (REVIEW_ROOT, = where cmr is invoked) is under a
+    # hidden (dot) path → agy refuses it as a workspace folder, the
+    # reviewer loses repo context. The backend must warn (not silently
+    # degrade). NOTE this keys on the REVIEWED repo, not the skill's dir.
+    if "/." in str(tmp_path):
+        pytest.skip(f"base temp dir is itself under a hidden component: {tmp_path}")
+    r = _run_gemini_in_cwd(tmp_path / ".hidden" / "repo", tmp_path)
     assert r.returncode == 1
     assert "agy not installed" in r.stderr  # degraded AFTER the warning
     assert "hidden" in r.stderr
     assert "without repo context" in r.stderr.lower()
+    assert "reviewed repo root" in r.stderr  # not "the skill's dir"
 
 
-def test_no_hidden_warning_when_workspace_root_visible(tmp_path):
-    # The other branch: a normal (non-hidden) workspace root must NOT
-    # emit the hidden-path warning. Cross-model review R1 (Claude C3):
-    # guard the env edge where the base temp dir is itself under a hidden
-    # component (e.g. TMPDIR=~/.cache/...), which would make even a
-    # "visible" subpath match the */.* glob and false-red this branch.
+def test_no_hidden_warning_when_reviewed_repo_root_visible(tmp_path):
+    # The other branch: a normal (non-hidden) reviewed repo root must NOT
+    # emit the hidden-path warning — the key fix is that the skill living
+    # under ~/.claude/ (hidden) no longer makes this fire on every run.
     if "/." in str(tmp_path):
-        import pytest
         pytest.skip(f"base temp dir is itself under a hidden component: {tmp_path}")
-    r = _run_copied_gemini(tmp_path / "visible" / "repo", tmp_path)
+    r = _run_gemini_in_cwd(tmp_path / "visible" / "repo", tmp_path)
     assert r.returncode == 1
     assert "agy not installed" in r.stderr
     assert "hidden" not in r.stderr

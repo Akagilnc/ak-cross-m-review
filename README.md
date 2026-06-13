@@ -32,11 +32,13 @@ and wiki disagree, the wiki wins.
 Dispatched **two-phase** (wiki §并行启动, 2026-05-18 顺机理 reorder),
 against the same diff:
 
-- **1 × Claude Fable 5** — via the `Agent` tool as an independent
-  subagent (zero context contamination). Strongest review tier since
-  2026-06-09; needs Claude Code v2.1.170+ for the `fable` alias (older
-  clients fall back to Opus 4.8). This is why the skill MUST run in the
-  **main session**: Claude Code does not expose `Agent` to subagents.
+- **1 × Claude reviewer** — via the `Agent` tool as an independent
+  subagent (zero context contamination), model = the current strongest
+  available Claude (SKILL.md Step 2 is the authority): `fable` (Claude
+  Fable 5) when up; **2026-06-13 Fable is paused → Opus 4.8 now, revert
+  when it returns**. Set the model explicitly — it does not inherit the
+  session model. This is why the skill MUST run in the **main session**:
+  Claude Code does not expose `Agent` to subagents.
 - **N × Codex** (`gpt-5.5`, via `backends/codex-review.sh`) — N scales
   with diff size (1 / 2 / 3 for `<200` / `200–500` / `500+` lines); for
   N≥2 each codex takes a distinct file-section slice.

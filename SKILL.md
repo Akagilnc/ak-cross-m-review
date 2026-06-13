@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: Local pre-PR cross-model review — the executable form of the wiki's cross-model-review.md (tdd-autonomous-dev spine step 4 per-slice / step 5 ship-pre, Layer 1). Dispatches the v3 vendor squad (1 Claude Fable 5 Agent + N codex gpt-5.5 + 1 Gemini via agy = N+1+1, N by diff size) in a two-phase 顺机理 dispatch (msg1 = all CLI Bash run-in-background, msg2 = Claude Agent, no-peek invariant between), then merge / grade / drift-check / loop as the agent judgment the wiki prescribes. Use every dev cycle before a PR, so the agent runs the wiki step the same way instead of re-deciding by feel.
+description: Local pre-PR cross-model review — the executable form of the wiki's cross-model-review.md (tdd-autonomous-dev spine step 4 per-slice / step 5 ship-pre, Layer 1). Dispatches the v3 vendor squad (1 Claude reviewer Agent + N codex gpt-5.5 + 1 Gemini via agy = N+1+1, N by diff size) in a two-phase 顺机理 dispatch (msg1 = all CLI Bash run-in-background, msg2 = Claude Agent, no-peek invariant between), then merge / grade / drift-check / loop as the agent judgment the wiki prescribes. Use every dev cycle before a PR, so the agent runs the wiki step the same way instead of re-deciding by feel.
 allowed-tools:
   - Bash
   - Read
@@ -64,16 +64,34 @@ Pre-flight gates (wiki §操作规程 / §边界):
   default, and you MUST annotate the eventual commit message
   `"小 diff 例外，跑 1+1 不跑 v3 default"`. Silent degrade is an
   anti-pattern.
+- **Design docs (ADR / spec / contract) get cmr too — same rigor as
+  code** (wiki §设计文档). A design doc carries decisions *more
+  upstream* than code (a wrong spec → the whole implementation is built
+  on a wrong premise; TDD-green ≠ spec-correct — code can perfectly
+  implement a wrong design). So an ADR / spec / contract **MUST run a
+  full cmr in `doc` mode** — not "written → approved → done" — and when
+  you *produce* such a doc you **proactively remind the user to review
+  it**, without waiting to be asked. Doc-mode runs the same 1+1+1
+  two-phase setup; concretely: pass mode `doc` to the backends
+  (`backends/codex-review.sh doc` / `backends/gemini.sh doc`, and the
+  Claude `Agent`) and append a **design-completeness** lens to the
+  `cmr-reviewer.md` prompt instead of the code lens — contract holes /
+  state-machine deadlocks / uncovered boundary cases / undefined
+  invariants / contradictions with existing ADRs. (Evidence:
+  ming-salvage-sim ADR 0008 — a *design doc* — took multiple cmr rounds
+  to converge, each catching a real spec-level hole like a
+  poison-payload soft-lock that no code read would surface.)
 
 ## Step 1 — setup (v3 N+1+1) + the N table
 
-Default **1+1+1**: 1 × Claude Fable 5 (Agent subagent, full diff) +
-1 × codex `gpt-5.5` + 1 × Gemini (via `agy`, locked to **3.5
-Flash** — the explicit exception to "strongest review model", since
-the original `gemini` CLI stopped serving 2026-06-18 and `agy` is the
-only in-kind in-place replacement), **all full diff**. Only codex
-instantiates by diff size; Claude & Gemini are always ×1 on the full
-diff.
+Default **1+1+1**: 1 × Claude reviewer (Agent subagent, full diff —
+current strongest available Claude per Step 2: `fable`, or `opus`/Opus
+4.8 while Fable is paused) + 1 × codex `gpt-5.5` + 1 × Gemini (via `agy`,
+locked to **3.5 Flash** — the explicit exception to "strongest review
+model", since the original `gemini` CLI stopped serving 2026-06-18 and
+`agy` is the only in-kind in-place replacement), **all full diff**. Only
+codex instantiates by diff size; Claude & Gemini are always ×1 on the
+full diff.
 
 | Diff size | codex N | total reviewers | lens split |
 |---|---|---|---|
@@ -81,12 +99,12 @@ diff.
 | Medium (200–500 / 2 sections) | 2 | 4 (1+2+1) | 2 codex split 1/2 within-section; Claude+Gemini full |
 | Large (500+ / 3+ sections) | 3 | 5 (1+3+1) | 3 codex split 1/3 within-section; Claude+Gemini full |
 
-**Strongest review model only** — Anthropic `claude-fable-5` (Mythos-class,
-2026-06-09; strongest review tier — a step above Opus 4.8; <5% of
-sessions auto-fallback to Opus 4.8 on safeguard topics, see Step 3),
-OpenAI `gpt-5.5`; **Gemini is the documented exception** (locked to 3.5 Flash
-via `agy` — wiki trade-off: keep 3-vendor cross-family coverage
-over dropping the Gemini leg entirely after the `gemini` CLI EOL).
+**Strongest review model only** — Anthropic = the current strongest
+available Claude (Step 2 is the authority: `claude-fable-5` when up;
+**Fable paused 2026-06-13 → `claude-opus-4-8` now**), OpenAI `gpt-5.5`;
+**Gemini is the documented exception** (locked to 3.5 Flash via `agy` —
+wiki trade-off: keep 3-vendor cross-family coverage over dropping the
+Gemini leg entirely after the `gemini` CLI EOL).
 **Never** dev-tier `gpt-5.3-codex-spark` / `claude sonnet-4.6` as a
 reviewer (coding-tier model choice is a separate matter; do not carry
 it into review).
@@ -117,9 +135,10 @@ every Bash CLI reviewer tool call, ALL with `run_in_background: true`:
   diff slices) + 1 × `Bash` `gemini.sh` (full diff) = **N+1 bg jobs**.
 
 **msg2 — the very next message; first content MUST be the Agent call.**
-1 × `Agent` tool call (Claude Fable 5 subagent, full-diff reviewer prompt).
-The Agent runs foreground (the turn blocks here) while msg1's bg CLIs
-continue running.
+1 × `Agent` tool call (Claude reviewer subagent, model per the
+Claude-reviewer invocation form below — `fable` when up, else `opus`/Opus
+4.8 while Fable is paused; full-diff reviewer prompt). The Agent runs
+foreground (the turn blocks here) while msg1's bg CLIs continue running.
 
 **no-peek invariant** (the one thing prose still has to enforce):
 between msg1 and msg2, do NOT read any CLI output, do NOT make any
@@ -172,30 +191,60 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   (rc=0, empty stdout). `gemini.sh` passes `--log-file` and greps it on
   degrade, so the flag names the real cause (e.g. `本轮缺 gemini (empty
   output, agy rc=0; quota/429 — agy individual quota exhausted; Resets
-  in 63h…)`) instead of a bare "empty output". **Hidden-path caveat**:
-  agy refuses to add a workspace folder whose path has a hidden (dot)
-  component ("is hidden: ignore uri"), so running cmr from e.g. a
-  `.claude/worktrees/...` worktree gives the Gemini reviewer NO repo
-  context (diff-only, no source grep). `gemini.sh` warns (does not
-  degrade); for full agy context run cmr from a non-hidden path.
+  in 63h…)`) instead of a bare "empty output".
+  **agy model-degradation ladder** (the leg's own fallback): agy's
+  Gemini quota is a small consumer Code Assist bucket that exhausts. When
+  the preferred model **Gemini 3.5 Flash** quota-429s, `gemini.sh` steps
+  the agy leg DOWN to **`Claude Sonnet 4.6 (Thinking)` via agy** — a
+  SEPARATE quota bucket (verified), and deliberately a DIFFERENT model
+  from the squad's Claude-Agent leg (Opus 4.8) for a distinct voice — so
+  a third independent read survives. Only when EVERY rung is quota-
+  exhausted does the agy leg step down entirely (degrade → `本轮缺
+  gemini`). When a fallback rung runs, the round has **no Google voice**;
+  `gemini.sh` flags that on stderr (the 3rd voice is then agy-served
+  Claude, separate quota). `AGY_MODEL` env pins one explicit model
+  (manual / tests). (Cross-family is the ideal, but Gemini is already
+  quota-dead either way — a distinct same-family 3rd read beats only
+  two; the wiki §降级链 should bless this rung.) **Workspace = the reviewed
+  repo, not the skill dir**: agy reads its cwd as the workspace, so
+  `gemini.sh` cd's into the **reviewed repo root** (`REVIEW_ROOT` = the
+  invocation cwd's `git rev-parse --show-toplevel`), NOT `PROTO_ROOT`
+  (the skill's own dir — which lives under `~/.claude/skills/...`, hidden,
+  and would make agy refuse the workspace and run diff-only on EVERY
+  registered-skill invocation). agy still refuses a workspace whose path
+  has a hidden (dot) component ("is hidden: ignore uri"), so if the
+  *reviewed repo itself* is under a dot-path (e.g. reviewing from a
+  `.claude/worktrees/...` checkout) the Gemini leg is diff-only;
+  `gemini.sh` warns (does not degrade). For full agy grep-grounding
+  (esp. the 5a completeness audit) review from a non-hidden checkout.
   The backend handles agy's keychain auth-race with warm + retry (4
   attempts total = initial 1 + 3 retries; each attempt pre-warms
   `Antigravity Safe Storage` keychain item). All 4 failing → emit the
   exact flag `本轮缺 gemini (auth race after retry×3)`, do not block
   (§降级链).
-- **Claude reviewer** — the `Agent` tool, model `fable` (Claude Fable 5,
-  the strongest review tier since 2026-06-09; was `opus`/Opus 4.8),
-  full-diff reviewer prompt. **Requires Claude Code v2.1.170+** for the
-  `fable` alias; on an older client where `fable` is not selectable,
-  fall back to `model: opus` (Opus 4.8) and flag it (Step 3) rather than
-  hard-failing the leg. Separately, Anthropic auto-falls-back to Opus
-  4.8 on <5% of sessions (safeguard topics: security / bio / chem /
-  distillation) — that too is NOT a leg failure, just flag it (Step 3).
-  Never the
-  headless `claude -p` path here (rate-limit + 25min timeout footgun,
-  plus 2026-05-17 capability correction: subagents cannot spawn
-  subagents, so the Claude reviewer MUST be spawned by the main session
-  via `Agent`).
+- **Claude reviewer** — the `Agent` tool, full-diff reviewer prompt,
+  model = **the current strongest available Claude**. This bullet is the
+  ONE authoritative place for the Claude leg's model — flip only it when
+  Fable pauses / returns:
+  - `fable` (Claude Fable 5) when available;
+  - **2026-06-13 Fable is paused → use `opus` (Opus 4.8) now; revert to
+    `fable` when it returns** (wiki §操作规程 model table).
+  - The model MUST be set **explicitly** on the `Agent` call — it does
+    **NOT** inherit the session model. (A dev-tier session would
+    otherwise silently drag the reviewer below the strongest-review-model
+    rule; you got lucky only if the session itself ran Opus 4.8.)
+  - `fable` additionally needs Claude Code v2.1.170+; on an older client
+    where it isn't selectable, `opus` is the same current baseline.
+
+  Never the headless `claude -p` path **for the Claude reviewer in this
+  (main = Claude) flow** (rate-limit + 25min timeout footgun, plus the
+  2026-05-17 capability correction: subagents cannot spawn subagents, so
+  here the Claude reviewer MUST be spawned by the main session via
+  `Agent`). (Exception — a *different host*: when the main session is
+  **Codex**, Step 3, it has no `Agent` tool, so there the Claude reviewer
+  legitimately runs via `claude -p`; and the Step 3 Claude-auth
+  *live-smoke* is a `claude -p` probe too — both are outside this ban,
+  which is only about dispatching the reviewer in the main=Claude flow.)
 - Always `2>&1`. Run from the repo root, no `-C`. The backends
   self-time-out (`backends/codex-review.sh`: `CMR_CODEX_TIMEOUT`,
   default 600s, scoped kill of its own pid tree) and degrade
@@ -204,6 +253,10 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   codex`** (msg1 launched N parallel codex reviewers — a global pkill
   takes the siblings down too). rate / quota / limit → the backend
   degrades and flags "本轮缺 X"; do not retry by hand.
+- **Huge diff (> 10K lines): segment the prompt** to avoid saturating the
+  pipe buffer (wiki §额外硬规则 #3). This is separate from the N-table
+  (which scales reviewer *count*) — it is about not shoving a single
+  >10K-line payload through one stdin pipe.
 
 Findings channel: reviewers wrap their JSON between
 `===CMR-FINDINGS-BEGIN===` / `===CMR-FINDINGS-END===` sentinels
@@ -236,10 +289,29 @@ v3 requires all 3 vendors. If one is unavailable, run with the rest and
 | **Fable 5 safeguards trigger** (<5% of sessions; security / bio / chem / distillation topics auto-route to Opus 4.8 — Anthropic docs. NOT a leg failure: squad stays 1+1+1, the Claude leg just ran on Opus 4.8; does NOT trigger any other degradation. Flag for finding-consistency transparency — a same-model R1→R2 comparison now has one Opus run mixed in.) | Claude (Opus 4.8) + codex + Gemini | `Claude leg = Opus 4.8 (Fable safeguards trigger)` |
 | **Client < Claude Code v2.1.170** (the `fable` alias is not selectable on older clients. NOT a leg failure: dispatch the Claude leg with `model: opus` (Opus 4.8) instead of hard-failing; squad stays 1+1+1. Upgrade the client to restore the strongest Fable tier.) | Claude (Opus 4.8) + codex + Gemini | `Claude leg = Opus 4.8 (client < v2.1.170, no fable)` |
 
-(Main = Codex variant + the Claude-auth live-smoke rule:
+> **Fable paused (2026-06-13):** the Claude leg's current baseline IS
+> Opus 4.8 (Step 2 is the authority), so the two Fable-specific rows
+> above are **dormant** until Fable returns — Opus 4.8 is the default
+> right now, not a degradation. When Fable is back they re-activate as
+> Fable→Opus fallbacks.
+
+**If the main session is Codex** (not the wiki's primary scenario, but
+symmetric — wiki §降级链 "主 session = Codex"):
+
+| Down (main = Codex) | Continue with | Flag |
+|---|---|---|
+| Claude (verify by live-smoke first, below) | Codex + Gemini | `本轮缺 claude` |
+| Gemini | Codex + Claude | `本轮缺 gemini` |
+| Claude + Gemini both | Codex only (fallback, no outside voice) | `本轮无 outside voice` |
+
+When main = Codex, **never** check Claude auth via file/env (false
+negatives on keychain / GUI logins) — use a live smoke:
 `printf 'Return exactly: CLAUDE_OK\n' | claude -p --output-format json
---disable-slash-commands --tools ""` — never file/env auth checks. See
-wiki §降级链.)
+--disable-slash-commands --tools ""` (`.result == "CLAUDE_OK"` → up,
+priority 1; failure / timeout → degrade). The outside-voice reviewer
+always stays the strongest in range (main = Claude → codex `gpt-5.5`;
+main = Codex → current strongest Claude or Gemini), never dev-tier
+spark / 5.3-codex / sonnet. See wiki §降级链.
 
 ## Step 4 — merge + grade (agent judgment, not a deterministic engine)
 
@@ -278,8 +350,11 @@ category, reviewer count, first claim quote); count the rest.
 - v3 default: **3/3 concur** (all reviewers approve).
 - Upgraded 1+N+1, 3 vendors present: **(N+2)/(N+2) concur**.
 - One vendor degraded (1+1+1 → 2 reviewers): **2/2 concur + flag**.
-- Only 1 vendor ran (no outside voice): **NOT positive** — needs human
-  review or wait for vendor recovery.
+- Upgraded-state single-vendor loss (1+N+1):
+  - Claude **or** Gemini missing → N+1 reviewers: **(N+1)/(N+1) concur + flag**.
+  - **All codex missing** → falls back to 1+0+1 = 2 reviewers (Claude + Gemini): **2/2 concur + flag `升级态缺 codex，已退化`**.
+  - codex partial-instance loss (N→N′): **(N′+2)/(N′+2) concur + flag `codex 实例数 N→N′`**.
+- Only 1 vendor ran (no outside voice — e.g. codex+gemini both down → Claude only; or claude+gemini both down → codex only): **NOT positive** — no cross-family check; needs human review or wait for vendor recovery.
 
 **Hard stop (do not continue):** bug count not converging → the
 implementation method or architecture needs rework, not another patch.

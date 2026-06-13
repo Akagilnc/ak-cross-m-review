@@ -4,6 +4,93 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.6.0] - 2026-06-13
+
+Sync the accumulated wiki deltas, headlined by the **Fable pause**.
+
+### Changed — Claude reviewer model (wiki `f0b4747`)
+The Claude leg is no longer hardcoded to `fable`. Step 2's Claude-reviewer
+bullet is now the **single authoritative place** for the model = "current
+strongest available Claude": `fable` (Claude Fable 5) when up;
+**2026-06-13 Fable is paused → `opus` (Opus 4.8) now, revert when it
+returns**. The model MUST be set explicitly on the `Agent` call — it does
+NOT inherit the session model (a dev-tier session would otherwise drag
+the reviewer below the strongest-review-model rule). Step 1 / the
+dispatch line / the frontmatter description / README / CLAUDE.md all stop
+hardcoding "Claude Fable 5" and point at Step 2; the Step 3 Fable rows
+(safeguards-autofallback, client < v2.1.170) are flagged **dormant while
+Fable is paused** (Opus 4.8 is the baseline now, not a degradation).
+
+### Added — previously-missing wiki rules (transcription gaps)
+- **Design docs (ADR / spec / contract) get cmr too** (wiki §设计文档):
+  a Step 0 pre-flight gate — design docs MUST run a full cmr in `doc`
+  mode (design-completeness lens), and the agent proactively reminds the
+  user when it produces one. TDD-green ≠ spec-correct.
+- **Huge-diff (>10K lines) segmentation** hard rule (wiki §额外硬规则
+  #3) added to the Step 2 invocation forms — avoid pipe-buffer saturation
+  (separate from the N-table, which scales reviewer count).
+- **Upgraded-state degraded termination sub-cases** (wiki §终止信号)
+  added to Step 5: Claude/Gemini-missing → (N+1)/(N+1); all-codex-missing
+  → 1+0+1 2/2; codex partial N→N′ → (N′+2)/(N′+2).
+- **Main-session = Codex degradation table** (wiki §降级链) restored in
+  Step 3 (was a one-line parenthetical) + the live-smoke auth rule.
+
+### Added — agy model-degradation ladder (`backends/gemini.sh`, code)
+The agy/Gemini leg now has its own model fallback. agy's Gemini quota is
+a small **consumer Code Assist** bucket (separate from any paid Gemini
+plan) that exhausts; when the preferred **Gemini 3.5 Flash** rung
+quota-429s, `gemini.sh` steps the leg DOWN to **`Claude Sonnet 4.6
+(Thinking)` via agy** — a SEPARATE quota bucket (verified live: Gemini
+429 while agy-Claude still answered) — so a third independent read
+survives instead of the leg dropping. Sonnet (not Opus 4.6) is chosen
+deliberately: it is a *different* model from the squad's Claude-Agent leg
+(Opus 4.8), so it is a distinct voice rather than a near-duplicate. Only
+when EVERY rung is quota-exhausted does the leg degrade (`本轮缺 gemini`).
+When a fallback rung runs, the round has **no Google voice** and
+`gemini.sh` flags it on stderr (the 3rd voice is then agy-served Claude).
+`AGY_MODEL` env pins one explicit model (manual / tests). 3 regression
+tests (step-down → Sonnet; all-rungs → degrade; happy-path no step-down;
+the doubled-Resets dedup is its own test in the Fixed entry below). This
+supersedes an earlier mislabeled
+"Fable-death stopgap" working-tree experiment — same mechanism, but
+correctly framed (it is a Gemini-quota fallback, not a Fable thing) and
+using the right model. **The wiki §降级链 should bless this rung** (the
+anti-#9 "don't escalate Claude when Gemini's down" rule was quota-driven,
+and agy-Claude uses a different bucket, so that rationale doesn't apply).
+
+### Fixed — agy workspace was the skill's own (hidden) dir, not the reviewed repo (`gemini.sh`, code)
+The real root cause behind the perpetual "WITHOUT repo context" warning.
+`gemini.sh` cd'd agy into `PROTO_ROOT` (the skill's own dir) before
+running it — and the registered skill lives under `~/.claude/skills/...`
+(hidden), so agy refused the (hidden) workspace and ran **diff-only on
+every registered-skill invocation**, regardless of where the user's
+project was. The v0.3.4.0 change only *warned* (and mislabeled the
+skill's dir as the "workspace root"). Now agy runs from **`REVIEW_ROOT`**
+(the reviewed repo = the invocation cwd's `git rev-parse --show-toplevel`,
+captured before any cd); `PROTO_ROOT` is kept only for `lib/`. The
+hidden-path warning now keys on `REVIEW_ROOT`, so it fires only when the
+*reviewed repo itself* is under a dot-path — not on every run. This
+restores agy grep-grounding (matters for the 5a completeness audit).
+Verified live (non-hidden cwd → no warning + agy gets the repo; hidden
+cwd → warning). The two hidden-path tests now drive REVIEW_ROOT via cwd.
+
+### Fixed — doubled "Resets in …" in the quota flag (`gemini.sh`, code)
+Live-surfaced: real agy writes the fatal error TWICE on one log line, and
+`agy_fatal_reason`'s `grep -m1 -o` (caps matching *lines*, not
+matches-per-line) emitted both → the degrade flag carried a doubled,
+newline-split `Resets in …`. Now takes only the first via
+`${resets%%<newline>*}` (no extra pipe). Regression test added.
+
+### Note — reverse drift (skill-ahead-of-wiki items owed back)
+The skill's hidden-path workspace warning is now in the wiki too (wiki
+`51ad2b0`). Two skill-ahead items remain, both owed back to the wiki:
+(1) the client-<v2.1.170 Claude degradation row; (2) **the agy model
+ladder (Gemini 3.5 Flash → Sonnet 4.6 on quota)** — the wiki §降级链 does
+not yet bless the Sonnet rung (its anti-#9 "don't escalate Claude when
+Gemini's down" rule is quota-driven and doesn't apply, since agy-Claude
+uses a separate bucket). Until the wiki is updated these are intentional
+skill-ahead exceptions, flagged here.
+
 ## [0.3.5.0] - 2026-06-12
 
 Sync to wiki `5e565f1` — new rule **§每轮 review = 全量复审** (every
