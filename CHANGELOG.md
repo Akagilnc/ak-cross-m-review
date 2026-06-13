@@ -4,6 +4,48 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.6.0] - 2026-06-13
+
+Sync the accumulated wiki deltas, headlined by the **Fable pause**.
+
+### Changed — Claude reviewer model (wiki `f0b4747`)
+The Claude leg is no longer hardcoded to `fable`. Step 2's Claude-reviewer
+bullet is now the **single authoritative place** for the model = "current
+strongest available Claude": `fable` (Claude Fable 5) when up;
+**2026-06-13 Fable is paused → `opus` (Opus 4.8) now, revert when it
+returns**. The model MUST be set explicitly on the `Agent` call — it does
+NOT inherit the session model (a dev-tier session would otherwise drag
+the reviewer below the strongest-review-model rule). Step 1 / the
+dispatch line / the frontmatter description / README / CLAUDE.md all stop
+hardcoding "Claude Fable 5" and point at Step 2; the Step 3 Fable rows
+(safeguards-autofallback, client < v2.1.170) are flagged **dormant while
+Fable is paused** (Opus 4.8 is the baseline now, not a degradation).
+
+### Added — previously-missing wiki rules (transcription gaps)
+- **Design docs (ADR / spec / contract) get cmr too** (wiki §设计文档):
+  a Step 0 pre-flight gate — design docs MUST run a full cmr in `doc`
+  mode (design-completeness lens), and the agent proactively reminds the
+  user when it produces one. TDD-green ≠ spec-correct.
+- **Huge-diff (>10K lines) segmentation** hard rule (wiki §额外硬规则
+  #3) added to the Step 2 invocation forms — avoid pipe-buffer saturation
+  (separate from the N-table, which scales reviewer count).
+- **Upgraded-state degraded termination sub-cases** (wiki §终止信号)
+  added to Step 5: Claude/Gemini-missing → (N+1)/(N+1); all-codex-missing
+  → 1+0+1 2/2; codex partial N→N′ → (N′+2)/(N′+2).
+- **Main-session = Codex degradation table** (wiki §降级链) restored in
+  Step 3 (was a one-line parenthetical) + the live-smoke auth rule.
+
+### Note — reverse drift reconciled
+The skill's hidden-path workspace warning is now in the wiki too (wiki
+`51ad2b0`). The only remaining skill-ahead item is the client-<v2.1.170
+degradation row (not in the wiki). An uncommitted `AGY_MODEL` `--model`
+override was found in the repo working tree and **rejected, not adopted**:
+routing the agy/Gemini leg to a Claude model collapses cross-family
+diversity (2 Claude + 0 Gemini, anti-pattern #2/#4), its example used a
+forbidden dev-tier reviewer (`claude sonnet-4.6`), and Fable-down is
+correctly handled by the Claude leg → Opus 4.8, not by hijacking the
+Gemini slot. Docs/manifest only — no code paths changed.
+
 ## [0.3.5.0] - 2026-06-12
 
 Sync to wiki `5e565f1` — new rule **§每轮 review = 全量复审** (every
