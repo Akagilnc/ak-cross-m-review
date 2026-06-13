@@ -40,6 +40,10 @@ def _env_with_stub(stub_dir: Path) -> dict[str, str]:
     env["PATH"] = f"{stub_dir}{os.pathsep}{env['PATH']}"
     # Tests should never wait between retries.
     env["GEMINI_RETRY_WARM_SLEEP"] = "0"
+    # Don't let an inherited AGY_MODEL collapse the ladder to one rung and
+    # perturb the ladder tests (Claude C1). Tests that want a pin set it
+    # explicitly after this.
+    env.pop("AGY_MODEL", None)
     return env
 
 

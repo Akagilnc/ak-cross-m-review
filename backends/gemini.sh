@@ -163,7 +163,12 @@ AGY_MODELS=("" "Claude Sonnet 4.6 (Thinking)")
 [ -n "${AGY_MODEL:-}" ] && AGY_MODELS=("$AGY_MODEL")
 AGY_LADDER_LAST=$(( ${#AGY_MODELS[@]} - 1 ))
 
-RAW=""; G_RC=0; AGY_RAN_MODEL=""; mi=0
+# `mi` MUST advance in lockstep with the outer for-iteration — ONLY the
+# step-down `continue` below increments it; preserve that invariant if you
+# ever add another outer-loop continue/break (Claude C2). AGY_STEPPED_DOWN
+# records whether a quota step-down actually happened (vs a manual
+# AGY_MODEL override), so the success-path note can word itself correctly.
+RAW=""; G_RC=0; AGY_RAN_MODEL=""; AGY_STEPPED_DOWN=0; mi=0
 for LADDER_MODEL in "${AGY_MODELS[@]}"; do
   # agy keychain auth-race: per-attempt keychain warm + retry (×4).
   for attempt in 1 2 3 4; do
@@ -202,18 +207,12 @@ for LADDER_MODEL in "${AGY_MODELS[@]}"; do
   if [ "$mi" -lt "$AGY_LADDER_LAST" ] && \
      grep -qiE 'RESOURCE_EXHAUSTED|\(code 429\)|quota reached|quota exceeded|individual quota' "$AGY_LOG"; then
     echo "gemini: warn: agy model '${LADDER_MODEL:-Gemini 3.5 Flash}' quota-exhausted → stepping down to next agy model" >&2
+    AGY_STEPPED_DOWN=1
     mi=$(( mi + 1 ))
     continue
   fi
   break
 done
-
-# When the agy leg ran a non-Gemini fallback model, this round has NO
-# Google voice — the agy slot became a same-vendor-as-agy Claude fallback
-# for a 3rd independent read. Flag it so the round report stays honest.
-if [ -n "$RAW" ] && printf '%s' "$AGY_RAN_MODEL" | grep -qi 'claude'; then
-  echo "gemini: note: agy leg ran fallback model '$AGY_RAN_MODEL' (agy Gemini quota-exhausted) — NO Google voice this round; the 3rd voice is agy-served Claude (separate quota), distinct from the squad's Opus 4.8 leg" >&2
-fi
 
 if [ -z "$RAW" ]; then
   REASON="$(agy_fatal_reason)"
@@ -237,5 +236,18 @@ if [ "$EX_RC" -ne 0 ] || [ "$G_RC" -ne 0 ]; then
   echo "gemini: degrade — flag '本轮缺 gemini' (extract_json rc=$EX_RC, agy exit rc=$G_RC${REASON:+; $REASON}; agy's stderr is in the captured output per 2>&1)" >&2
   printf '{"reviewer":"gemini","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
+fi
+
+# Success WITH a non-Gemini fallback model → flag that this round has no
+# Google voice (the 3rd voice is agy-served Claude). Emitted ONLY here,
+# after the round actually succeeds (not before the degrade gates, or it
+# would falsely claim a 3rd voice on a degraded round — codex#1 R1).
+# Word it by cause: quota step-down vs an explicit AGY_MODEL override.
+if printf '%s' "$AGY_RAN_MODEL" | grep -qi 'claude'; then
+  if [ "$AGY_STEPPED_DOWN" -eq 1 ]; then
+    echo "gemini: note: agy Gemini quota-exhausted → leg stepped down to '$AGY_RAN_MODEL' (separate quota). NO Google voice this round; the 3rd voice is agy-served Claude, distinct from the squad's Opus 4.8 leg." >&2
+  else
+    echo "gemini: note: agy ran the explicit AGY_MODEL override '$AGY_RAN_MODEL' (non-Google). NO Google voice this round; the 3rd voice is agy-served Claude." >&2
+  fi
 fi
 printf '%s\n' "$EXTRACTED"

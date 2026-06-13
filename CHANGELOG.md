@@ -48,9 +48,10 @@ deliberately: it is a *different* model from the squad's Claude-Agent leg
 when EVERY rung is quota-exhausted does the leg degrade (`本轮缺 gemini`).
 When a fallback rung runs, the round has **no Google voice** and
 `gemini.sh` flags it on stderr (the 3rd voice is then agy-served Claude).
-`AGY_MODEL` env pins one explicit model (manual / tests). 4 regression
+`AGY_MODEL` env pins one explicit model (manual / tests). 3 regression
 tests (step-down → Sonnet; all-rungs → degrade; happy-path no step-down;
-+ the comment relabel). This supersedes an earlier mislabeled
+the doubled-Resets dedup is its own test in the Fixed entry below). This
+supersedes an earlier mislabeled
 "Fable-death stopgap" working-tree experiment — same mechanism, but
 correctly framed (it is a Gemini-quota fallback, not a Fable thing) and
 using the right model. **The wiki §降级链 should bless this rung** (the
@@ -64,10 +65,15 @@ matches-per-line) emitted both → the degrade flag carried a doubled,
 newline-split `Resets in …`. Now takes only the first via
 `${resets%%<newline>*}` (no extra pipe). Regression test added.
 
-### Note — reverse drift reconciled
+### Note — reverse drift (skill-ahead-of-wiki items owed back)
 The skill's hidden-path workspace warning is now in the wiki too (wiki
-`51ad2b0`). The only remaining skill-ahead item is the client-<v2.1.170
-degradation row (not in the wiki).
+`51ad2b0`). Two skill-ahead items remain, both owed back to the wiki:
+(1) the client-<v2.1.170 Claude degradation row; (2) **the agy model
+ladder (Gemini 3.5 Flash → Sonnet 4.6 on quota)** — the wiki §降级链 does
+not yet bless the Sonnet rung (its anti-#9 "don't escalate Claude when
+Gemini's down" rule is quota-driven and doesn't apply, since agy-Claude
+uses a separate bucket). Until the wiki is updated these are intentional
+skill-ahead exceptions, flagged here.
 
 ## [0.3.5.0] - 2026-06-12
 
