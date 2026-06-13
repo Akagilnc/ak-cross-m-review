@@ -602,6 +602,15 @@ def _run_gemini_in_cwd(cwd_dir: Path, tmp_path):
     cwd_dir.mkdir(parents=True, exist_ok=True)
     bindir = tmp_path / "emptybin"
     bindir.mkdir(exist_ok=True)
+    # Stub `git` to fail so gemini.sh's `git rev-parse --show-toplevel ||
+    # pwd` deterministically falls back to pwd (= cwd_dir). Without this,
+    # if the test tmpdir happens to sit inside a git repo (common in CI),
+    # rev-parse would resolve to the ENCLOSING repo's toplevel and
+    # REVIEW_ROOT would not be cwd_dir, false-failing the hidden/visible
+    # assertions (online R2: gemini-code-assist).
+    git_stub = bindir / "git"
+    git_stub.write_text("#!/bin/sh\nexit 1\n")
+    git_stub.chmod(git_stub.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
     env = dict(os.environ)
     env["PATH"] = f"{bindir}{os.pathsep}/usr/bin{os.pathsep}/bin"
     env["GEMINI_RETRY_WARM_SLEEP"] = "0"
