@@ -201,13 +201,17 @@ for LADDER_MODEL in "${AGY_MODELS[@]}"; do
     : > "$AGY_LOG"
 
     # One agy invocation; the optional --model is a guarded array so the
-    # command line isn't duplicated (online R1: gemini). The
-    # `${MODEL_FLAG[@]+"${MODEL_FLAG[@]}"}` form is bash-3.2-safe for an
-    # empty array under `set -u` (verified on 3.2.57).
+    # command line isn't duplicated (online R1: gemini). Outer-quoted
+    # `"${MODEL_FLAG[@]+"${MODEL_FLAG[@]}"}"` — the canonical form: empty
+    # array → zero args (no stray empty arg), set → each element preserved
+    # whole (the spaces in "Claude Sonnet 4.6 (Thinking)" stay one arg).
+    # bash-3.2-safe under `set -u`; verified on 3.2.57 that this and the
+    # unquoted form behave identically here, but the outer quotes are the
+    # unambiguous idiom (online R3: gemini, defensive).
     MODEL_FLAG=()
     [ -n "$LADDER_MODEL" ] && MODEL_FLAG=(--model "$LADDER_MODEL")
     set +e
-    RAW="$(cd "$REVIEW_ROOT" && agy --sandbox ${MODEL_FLAG[@]+"${MODEL_FLAG[@]}"} --print '' --print-timeout "$PRINT_TIMEOUT" --log-file "$AGY_LOG" 2>&1 <<<"$AGY_PROMPT")"
+    RAW="$(cd "$REVIEW_ROOT" && agy --sandbox "${MODEL_FLAG[@]+"${MODEL_FLAG[@]}"}" --print '' --print-timeout "$PRINT_TIMEOUT" --log-file "$AGY_LOG" 2>&1 <<<"$AGY_PROMPT")"
     G_RC=$?
     set -e
 
