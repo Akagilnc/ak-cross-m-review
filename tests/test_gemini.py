@@ -19,10 +19,11 @@ Two pinned behaviors:
 
 import json
 import os
-import shutil
 import stat
 import subprocess
 from pathlib import Path
+
+import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "backends" / "gemini.sh"
 
@@ -566,48 +567,74 @@ def test_agy_does_not_step_down_when_gemini_works(tmp_path):
     assert "NO Google voice" not in r.stderr
 
 
-def _run_copied_gemini(script_root: Path, tmp_path):
-    """Copy gemini.sh under script_root/backends and run it with agy
-    MISSING (so it degrades right after the path check). Returns the
-    CompletedProcess. PROTO_ROOT resolves to script_root, letting a test
-    place it under a hidden vs visible parent to exercise both branches
-    of the hidden-path warning."""
-    backends = script_root / "backends"
-    backends.mkdir(parents=True)
-    shutil.copy2(SCRIPT, backends / "gemini.sh")
+def test_agy_explicit_override_note_when_non_google_model_used(tmp_path):
+    # The other branch of the no-Google-voice note (AGY_STEPPED_DOWN=0):
+    # an explicit AGY_MODEL=Claude override that succeeds on the first try
+    # must flag the EXPLICIT-override wording, NOT the quota-step-down one
+    # (coderabbit R1).
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'echo "===CMR-FINDINGS-BEGIN==="\n'
+        'echo \'{"reviewer":"gemini","mode":"code","findings":[]}\'\n'
+        'echo "===CMR-FINDINGS-END==="\n'
+        'exit 0\n'
+    ))
+    env = _env_with_stub(tmp_path / "bin")
+    env["AGY_MODEL"] = "Claude Sonnet 4.6 (Thinking)"
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True, env=env, timeout=60,
+    )
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "explicit AGY_MODEL override" in r.stderr
+    assert "stepped down" not in r.stderr  # not the quota-step-down note
+    assert "stepping down to next agy model" not in r.stderr
+
+
+def _run_gemini_in_cwd(cwd_dir: Path, tmp_path):
+    """Run the real gemini.sh with cwd=cwd_dir and agy MISSING (so it
+    degrades right after the hidden-path check). cwd_dir is a non-git
+    directory, so REVIEW_ROOT = `git rev-parse … || pwd` resolves to
+    cwd_dir itself — letting a test place the *reviewed repo root* under a
+    hidden vs visible path to exercise both branches of the warning. (The
+    warning now keys on REVIEW_ROOT, not the skill's own dir.)"""
+    cwd_dir.mkdir(parents=True, exist_ok=True)
     bindir = tmp_path / "emptybin"
-    bindir.mkdir()
+    bindir.mkdir(exist_ok=True)
     env = dict(os.environ)
     env["PATH"] = f"{bindir}{os.pathsep}/usr/bin{os.pathsep}/bin"
     env["GEMINI_RETRY_WARM_SLEEP"] = "0"
+    env.pop("AGY_MODEL", None)
     return subprocess.run(
-        ["bash", str(backends / "gemini.sh"), "code"],
+        ["bash", str(SCRIPT), "code"],
         input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
-        capture_output=True, text=True, env=env, timeout=30,
+        capture_output=True, text=True, env=env, cwd=str(cwd_dir), timeout=30,
     )
 
 
-def test_warns_when_workspace_root_under_hidden_dir(tmp_path):
-    # cmr run from e.g. a `.claude/worktrees/...` path: agy refuses to
-    # add a hidden-component path as a workspace folder, so the reviewer
-    # loses repo context. The backend must warn (not silently degrade).
-    r = _run_copied_gemini(tmp_path / ".hidden" / "repo", tmp_path)
+def test_warns_when_reviewed_repo_root_under_hidden_dir(tmp_path):
+    # The reviewed repo (REVIEW_ROOT, = where cmr is invoked) is under a
+    # hidden (dot) path → agy refuses it as a workspace folder, the
+    # reviewer loses repo context. The backend must warn (not silently
+    # degrade). NOTE this keys on the REVIEWED repo, not the skill's dir.
+    if "/." in str(tmp_path):
+        pytest.skip(f"base temp dir is itself under a hidden component: {tmp_path}")
+    r = _run_gemini_in_cwd(tmp_path / ".hidden" / "repo", tmp_path)
     assert r.returncode == 1
     assert "agy not installed" in r.stderr  # degraded AFTER the warning
     assert "hidden" in r.stderr
     assert "without repo context" in r.stderr.lower()
+    assert "reviewed repo root" in r.stderr  # not "the skill's dir"
 
 
-def test_no_hidden_warning_when_workspace_root_visible(tmp_path):
-    # The other branch: a normal (non-hidden) workspace root must NOT
-    # emit the hidden-path warning. Cross-model review R1 (Claude C3):
-    # guard the env edge where the base temp dir is itself under a hidden
-    # component (e.g. TMPDIR=~/.cache/...), which would make even a
-    # "visible" subpath match the */.* glob and false-red this branch.
+def test_no_hidden_warning_when_reviewed_repo_root_visible(tmp_path):
+    # The other branch: a normal (non-hidden) reviewed repo root must NOT
+    # emit the hidden-path warning — the key fix is that the skill living
+    # under ~/.claude/ (hidden) no longer makes this fire on every run.
     if "/." in str(tmp_path):
-        import pytest
         pytest.skip(f"base temp dir is itself under a hidden component: {tmp_path}")
-    r = _run_copied_gemini(tmp_path / "visible" / "repo", tmp_path)
+    r = _run_gemini_in_cwd(tmp_path / "visible" / "repo", tmp_path)
     assert r.returncode == 1
     assert "agy not installed" in r.stderr
     assert "hidden" not in r.stderr

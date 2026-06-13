@@ -205,12 +205,18 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   Claude, separate quota). `AGY_MODEL` env pins one explicit model
   (manual / tests). (Cross-family is the ideal, but Gemini is already
   quota-dead either way — a distinct same-family 3rd read beats only
-  two; the wiki §降级链 should bless this rung.) **Hidden-path caveat**:
-  agy refuses to add a workspace folder whose path has a hidden (dot)
-  component ("is hidden: ignore uri"), so running cmr from e.g. a
-  `.claude/worktrees/...` worktree gives the Gemini reviewer NO repo
-  context (diff-only, no source grep). `gemini.sh` warns (does not
-  degrade); for full agy context run cmr from a non-hidden path.
+  two; the wiki §降级链 should bless this rung.) **Workspace = the reviewed
+  repo, not the skill dir**: agy reads its cwd as the workspace, so
+  `gemini.sh` cd's into the **reviewed repo root** (`REVIEW_ROOT` = the
+  invocation cwd's `git rev-parse --show-toplevel`), NOT `PROTO_ROOT`
+  (the skill's own dir — which lives under `~/.claude/skills/...`, hidden,
+  and would make agy refuse the workspace and run diff-only on EVERY
+  registered-skill invocation). agy still refuses a workspace whose path
+  has a hidden (dot) component ("is hidden: ignore uri"), so if the
+  *reviewed repo itself* is under a dot-path (e.g. reviewing from a
+  `.claude/worktrees/...` checkout) the Gemini leg is diff-only;
+  `gemini.sh` warns (does not degrade). For full agy grep-grounding
+  (esp. the 5a completeness audit) review from a non-hidden checkout.
   The backend handles agy's keychain auth-race with warm + retry (4
   attempts total = initial 1 + 3 retries; each attempt pre-warms
   `Antigravity Safe Storage` keychain item). All 4 failing → emit the

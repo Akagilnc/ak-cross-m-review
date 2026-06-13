@@ -58,6 +58,22 @@ using the right model. **The wiki §降级链 should bless this rung** (the
 anti-#9 "don't escalate Claude when Gemini's down" rule was quota-driven,
 and agy-Claude uses a different bucket, so that rationale doesn't apply).
 
+### Fixed — agy workspace was the skill's own (hidden) dir, not the reviewed repo (`gemini.sh`, code)
+The real root cause behind the perpetual "WITHOUT repo context" warning.
+`gemini.sh` cd'd agy into `PROTO_ROOT` (the skill's own dir) before
+running it — and the registered skill lives under `~/.claude/skills/...`
+(hidden), so agy refused the (hidden) workspace and ran **diff-only on
+every registered-skill invocation**, regardless of where the user's
+project was. The v0.3.4.0 change only *warned* (and mislabeled the
+skill's dir as the "workspace root"). Now agy runs from **`REVIEW_ROOT`**
+(the reviewed repo = the invocation cwd's `git rev-parse --show-toplevel`,
+captured before any cd); `PROTO_ROOT` is kept only for `lib/`. The
+hidden-path warning now keys on `REVIEW_ROOT`, so it fires only when the
+*reviewed repo itself* is under a dot-path — not on every run. This
+restores agy grep-grounding (matters for the 5a completeness audit).
+Verified live (non-hidden cwd → no warning + agy gets the repo; hidden
+cwd → warning). The two hidden-path tests now drive REVIEW_ROOT via cwd.
+
 ### Fixed — doubled "Resets in …" in the quota flag (`gemini.sh`, code)
 Live-surfaced: real agy writes the fatal error TWICE on one log line, and
 `agy_fatal_reason`'s `grep -m1 -o` (caps matching *lines*, not
