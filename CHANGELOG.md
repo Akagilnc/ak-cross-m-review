@@ -35,16 +35,39 @@ Fable is paused** (Opus 4.8 is the baseline now, not a degradation).
 - **Main-session = Codex degradation table** (wiki §降级链) restored in
   Step 3 (was a one-line parenthetical) + the live-smoke auth rule.
 
+### Added — agy model-degradation ladder (`backends/gemini.sh`, code)
+The agy/Gemini leg now has its own model fallback. agy's Gemini quota is
+a small **consumer Code Assist** bucket (separate from any paid Gemini
+plan) that exhausts; when the preferred **Gemini 3.5 Flash** rung
+quota-429s, `gemini.sh` steps the leg DOWN to **`Claude Sonnet 4.6
+(Thinking)` via agy** — a SEPARATE quota bucket (verified live: Gemini
+429 while agy-Claude still answered) — so a third independent read
+survives instead of the leg dropping. Sonnet (not Opus 4.6) is chosen
+deliberately: it is a *different* model from the squad's Claude-Agent leg
+(Opus 4.8), so it is a distinct voice rather than a near-duplicate. Only
+when EVERY rung is quota-exhausted does the leg degrade (`本轮缺 gemini`).
+When a fallback rung runs, the round has **no Google voice** and
+`gemini.sh` flags it on stderr (the 3rd voice is then agy-served Claude).
+`AGY_MODEL` env pins one explicit model (manual / tests). 4 regression
+tests (step-down → Sonnet; all-rungs → degrade; happy-path no step-down;
++ the comment relabel). This supersedes an earlier mislabeled
+"Fable-death stopgap" working-tree experiment — same mechanism, but
+correctly framed (it is a Gemini-quota fallback, not a Fable thing) and
+using the right model. **The wiki §降级链 should bless this rung** (the
+anti-#9 "don't escalate Claude when Gemini's down" rule was quota-driven,
+and agy-Claude uses a different bucket, so that rationale doesn't apply).
+
+### Fixed — doubled "Resets in …" in the quota flag (`gemini.sh`, code)
+Live-surfaced: real agy writes the fatal error TWICE on one log line, and
+`agy_fatal_reason`'s `grep -m1 -o` (caps matching *lines*, not
+matches-per-line) emitted both → the degrade flag carried a doubled,
+newline-split `Resets in …`. Now takes only the first via
+`${resets%%<newline>*}` (no extra pipe). Regression test added.
+
 ### Note — reverse drift reconciled
 The skill's hidden-path workspace warning is now in the wiki too (wiki
 `51ad2b0`). The only remaining skill-ahead item is the client-<v2.1.170
-degradation row (not in the wiki). An uncommitted `AGY_MODEL` `--model`
-override was found in the repo working tree and **rejected, not adopted**:
-routing the agy/Gemini leg to a Claude model collapses cross-family
-diversity (2 Claude + 0 Gemini, anti-pattern #2/#4), its example used a
-forbidden dev-tier reviewer (`claude sonnet-4.6`), and Fable-down is
-correctly handled by the Claude leg → Opus 4.8, not by hijacking the
-Gemini slot. Docs/manifest only — no code paths changed.
+degradation row (not in the wiki).
 
 ## [0.3.5.0] - 2026-06-12
 

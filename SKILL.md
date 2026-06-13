@@ -72,11 +72,14 @@ Pre-flight gates (wiki §操作规程 / §边界):
   full cmr in `doc` mode** — not "written → approved → done" — and when
   you *produce* such a doc you **proactively remind the user to review
   it**, without waiting to be asked. Doc-mode runs the same 1+1+1
-  two-phase setup; the reviewer prompt swaps to a **design-completeness**
-  lens: contract holes / state-machine deadlocks / uncovered boundary
-  cases / undefined invariants / contradictions with existing ADRs.
-  (Evidence: ming-salvage-sim ADR 0008 — a *design doc* — took multiple
-  cmr rounds to converge, each catching a real spec-level hole like a
+  two-phase setup; concretely: pass mode `doc` to the backends
+  (`backends/codex-review.sh doc` / `backends/gemini.sh doc`, and the
+  Claude `Agent`) and append a **design-completeness** lens to the
+  `cmr-reviewer.md` prompt instead of the code lens — contract holes /
+  state-machine deadlocks / uncovered boundary cases / undefined
+  invariants / contradictions with existing ADRs. (Evidence:
+  ming-salvage-sim ADR 0008 — a *design doc* — took multiple cmr rounds
+  to converge, each catching a real spec-level hole like a
   poison-payload soft-lock that no code read would surface.)
 
 ## Step 1 — setup (v3 N+1+1) + the N table
@@ -132,10 +135,10 @@ every Bash CLI reviewer tool call, ALL with `run_in_background: true`:
   diff slices) + 1 × `Bash` `gemini.sh` (full diff) = **N+1 bg jobs**.
 
 **msg2 — the very next message; first content MUST be the Agent call.**
-1 × `Agent` tool call (Claude reviewer subagent, model per Step 2 —
-`fable` when up, else `opus`/Opus 4.8 while Fable is paused; full-diff
-reviewer prompt). The Agent runs foreground (the turn blocks here) while
-msg1's bg CLIs continue running.
+1 × `Agent` tool call (Claude reviewer subagent, model per the
+Claude-reviewer invocation form below — `fable` when up, else `opus`/Opus
+4.8 while Fable is paused; full-diff reviewer prompt). The Agent runs
+foreground (the turn blocks here) while msg1's bg CLIs continue running.
 
 **no-peek invariant** (the one thing prose still has to enforce):
 between msg1 and msg2, do NOT read any CLI output, do NOT make any
@@ -188,7 +191,21 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   (rc=0, empty stdout). `gemini.sh` passes `--log-file` and greps it on
   degrade, so the flag names the real cause (e.g. `本轮缺 gemini (empty
   output, agy rc=0; quota/429 — agy individual quota exhausted; Resets
-  in 63h…)`) instead of a bare "empty output". **Hidden-path caveat**:
+  in 63h…)`) instead of a bare "empty output".
+  **agy model-degradation ladder** (the leg's own fallback): agy's
+  Gemini quota is a small consumer Code Assist bucket that exhausts. When
+  the preferred model **Gemini 3.5 Flash** quota-429s, `gemini.sh` steps
+  the agy leg DOWN to **`Claude Sonnet 4.6 (Thinking)` via agy** — a
+  SEPARATE quota bucket (verified), and deliberately a DIFFERENT model
+  from the squad's Claude-Agent leg (Opus 4.8) for a distinct voice — so
+  a third independent read survives. Only when EVERY rung is quota-
+  exhausted does the agy leg step down entirely (degrade → `本轮缺
+  gemini`). When a fallback rung runs, the round has **no Google voice**;
+  `gemini.sh` flags that on stderr (the 3rd voice is then agy-served
+  Claude, separate quota). `AGY_MODEL` env pins one explicit model
+  (manual / tests). (Cross-family is the ideal, but Gemini is already
+  quota-dead either way — a distinct same-family 3rd read beats only
+  two; the wiki §降级链 should bless this rung.) **Hidden-path caveat**:
   agy refuses to add a workspace folder whose path has a hidden (dot)
   component ("is hidden: ignore uri"), so running cmr from e.g. a
   `.claude/worktrees/...` worktree gives the Gemini reviewer NO repo
@@ -213,10 +230,15 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   - `fable` additionally needs Claude Code v2.1.170+; on an older client
     where it isn't selectable, `opus` is the same current baseline.
 
-  Never the headless `claude -p` path here (rate-limit + 25min timeout
-  footgun, plus the 2026-05-17 capability correction: subagents cannot
-  spawn subagents, so the Claude reviewer MUST be spawned by the main
-  session via `Agent`).
+  Never the headless `claude -p` path **for the Claude reviewer in this
+  (main = Claude) flow** (rate-limit + 25min timeout footgun, plus the
+  2026-05-17 capability correction: subagents cannot spawn subagents, so
+  here the Claude reviewer MUST be spawned by the main session via
+  `Agent`). (Exception — a *different host*: when the main session is
+  **Codex**, Step 3, it has no `Agent` tool, so there the Claude reviewer
+  legitimately runs via `claude -p`; and the Step 3 Claude-auth
+  *live-smoke* is a `claude -p` probe too — both are outside this ban,
+  which is only about dispatching the reviewer in the main=Claude flow.)
 - Always `2>&1`. Run from the repo root, no `-C`. The backends
   self-time-out (`backends/codex-review.sh`: `CMR_CODEX_TIMEOUT`,
   default 600s, scoped kill of its own pid tree) and degrade

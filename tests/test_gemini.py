@@ -440,6 +440,128 @@ def test_log_truncated_per_attempt_no_stale_reason_leak(tmp_path):
     )
 
 
+def test_quota_reason_resets_not_doubled_when_agy_logs_error_twice(tmp_path):
+    # Live-surfaced bug: real agy writes the fatal error TWICE on one log
+    # line ("…Resets in X.: …Resets in X."). `grep -m1 -o` caps matching
+    # LINES, not matches-per-line, so it emitted both → the degrade flag
+    # carried a doubled, newline-split "Resets in …". The reason must
+    # contain exactly ONE "Resets in".
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'logf=""\n'
+        'while [ $# -gt 0 ]; do\n'
+        '  case "$1" in --log-file) logf="$2"; shift 2 ;; *) shift ;; esac\n'
+        'done\n'
+        '[ -n "$logf" ] && printf \'%s\\n\' '
+        '"E RESOURCE_EXHAUSTED (code 429): Individual quota reached. Resets in 64h24m36s.: '
+        'RESOURCE_EXHAUSTED (code 429): Individual quota reached. Resets in 64h24m36s." > "$logf"\n'
+        'exit 0\n'
+    ))
+    env = _env_with_stub(tmp_path / "bin")
+    env["AGY_MODEL"] = "x-single-rung"  # pin to one rung so no ladder step-down noise
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True, env=env, timeout=60,
+    )
+    assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert r.stderr.count("Resets in") == 1, (
+        f"'Resets in' should appear exactly once (not doubled). stderr={r.stderr!r}"
+    )
+    assert "Resets in 64h24m36s" in r.stderr
+
+
+def test_agy_steps_down_to_sonnet_when_gemini_quota_exhausted(tmp_path):
+    # agy model-degradation ladder: Gemini 3.5 Flash (no --model) quota-
+    # 429s → the leg steps DOWN to `Claude Sonnet 4.6 (Thinking)` (a
+    # separate quota bucket) rather than degrading the whole leg, so a
+    # 3rd voice survives. Stub: default call (no --model) → quota; a
+    # --model call → valid findings.
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'logf=""; model=""\n'
+        'while [ $# -gt 0 ]; do\n'
+        '  case "$1" in\n'
+        '    --log-file) logf="$2"; shift 2 ;;\n'
+        '    --model) model="$2"; shift 2 ;;\n'
+        '    *) shift ;;\n'
+        '  esac\n'
+        'done\n'
+        'if [ -n "$model" ]; then\n'
+        '  echo "===CMR-FINDINGS-BEGIN==="\n'
+        '  echo \'{"reviewer":"gemini","mode":"code","findings":[]}\'\n'
+        '  echo "===CMR-FINDINGS-END==="\n'
+        '  exit 0\n'
+        'fi\n'
+        '[ -n "$logf" ] && printf \'%s\\n\' '
+        '"E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$logf"\n'
+        'exit 0\n'
+    ))
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True,
+        env=_env_with_stub(tmp_path / "bin"),
+        timeout=60,
+    )
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert json.loads(r.stdout)["findings"] == []
+    assert "stepping down to next agy model" in r.stderr
+    assert "Claude Sonnet 4.6 (Thinking)" in r.stderr  # the fallback note
+    assert "NO Google voice this round" in r.stderr
+
+
+def test_agy_leg_degrades_only_when_every_model_quota_exhausted(tmp_path):
+    # Both rungs (Gemini 3.5 AND the Sonnet fallback) quota-429 → the agy
+    # leg steps down entirely → degrade `本轮缺 gemini` with the quota
+    # reason. The "stepping down" warn proves the fallback rung was tried.
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'logf=""\n'
+        'while [ $# -gt 0 ]; do\n'
+        '  case "$1" in --log-file) logf="$2"; shift 2 ;; *) shift ;; esac\n'
+        'done\n'
+        '[ -n "$logf" ] && printf \'%s\\n\' '
+        '"E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$logf"\n'
+        'exit 0\n'  # every model: quota, empty stdout
+    ))
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True,
+        env=_env_with_stub(tmp_path / "bin"),
+        timeout=60,
+    )
+    assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert json.loads(r.stdout)["findings"] == []
+    assert "stepping down to next agy model" in r.stderr  # tried the fallback
+    assert "本轮缺 gemini" in r.stderr
+    assert "quota" in r.stderr
+
+
+def test_agy_does_not_step_down_when_gemini_works(tmp_path):
+    # Happy path: Gemini 3.5 Flash (no --model) returns valid findings →
+    # the ladder must NOT step down (Sonnet never tried, no fallback note).
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'echo "===CMR-FINDINGS-BEGIN==="\n'
+        'echo \'{"reviewer":"gemini","mode":"code","findings":[]}\'\n'
+        'echo "===CMR-FINDINGS-END==="\n'
+        'exit 0\n'
+    ))
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True,
+        env=_env_with_stub(tmp_path / "bin"),
+        timeout=60,
+    )
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert json.loads(r.stdout)["findings"] == []
+    assert "stepping down" not in r.stderr
+    assert "NO Google voice" not in r.stderr
+
+
 def _run_copied_gemini(script_root: Path, tmp_path):
     """Copy gemini.sh under script_root/backends and run it with agy
     MISSING (so it degrades right after the path check). Returns the

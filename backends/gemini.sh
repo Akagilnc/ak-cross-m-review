@@ -20,6 +20,11 @@
 #                            — the per-attempt keychain warm is the
 #                            actual mitigation. Tests can set this to 0
 #                            explicitly; non-zero is for debugging).
+#   AGY_MODEL                override the agy model-degradation ladder
+#                            with ONE explicit model (manual / tests).
+#                            Unset = the ladder: Gemini 3.5 Flash →
+#                            (quota) Claude Sonnet 4.6 (Thinking) → (all
+#                            quota) degrade. See the ladder block below.
 #
 # Hard rules (wiki §并行启动 / §agy auth callout):
 #   Invocation form: `agy --sandbox --print '' <<<prompt` (read OK,
@@ -85,13 +90,15 @@ agy_fatal_reason() {
   if grep -qiE 'RESOURCE_EXHAUSTED|\(code 429\)|quota reached|quota exceeded|individual quota' "$AGY_LOG"; then
     # Optional detail. `grep -m1 … || true` keeps it non-fatal under
     # `set -euo pipefail`: a no-match (grep exit 1) must NOT abort the
-    # function before the reason is printed, and `-m1` (not `| head -1`)
-    # avoids a pipefail/SIGPIPE interaction. (Online R1: gemini-code-
-    # assist + sourcery; the empty-/no-match degrade IS exercised by the
-    # R2 characterization tests, the `|| true` makes it explicit and
-    # cross-bash-robust rather than relying on subtle errexit semantics.)
+    # function before the reason is printed (online R1: gemini + sourcery;
+    # the empty-/no-match degrade is exercised by the R2 characterization
+    # tests). `-m1` caps to the first matching LINE, but agy writes the
+    # error TWICE on one line, so `-o` still emits two matches — keep only
+    # the first via `${resets%%<newline>*}` (no extra pipe → no SIGPIPE),
+    # else the flag carries a doubled, newline-split "Resets in …".
     local resets
     resets="$(grep -m1 -oiE 'Resets in [0-9hdms]+' "$AGY_LOG" || true)"
+    resets="${resets%%$'\n'*}"
     printf 'quota/429 — agy individual quota exhausted%s' "${resets:+; $resets}"
     return 0
   fi
@@ -139,34 +146,74 @@ $FULL_PROMPT"
 # Capture agy's OWN exit code (G_RC) — a non-zero exit that still
 # printed a salvageable JSON error body must STILL degrade, never slip
 # through as a silent zero-finding approve.
-RAW=""; G_RC=0
-for attempt in 1 2 3 4; do
-  security find-generic-password -s "Antigravity Safe Storage" \
-    >/dev/null 2>&1 || true
+# agy model-degradation ladder (the agy/Gemini leg's OWN fallback, not a
+# new vendor). Preferred model = Gemini 3.5 Flash (agy default, empty
+# --model). If a rung quota-exhausts (429), step DOWN to the next model
+# so the leg still returns a third independent voice; only when EVERY
+# rung is quota-exhausted does the agy leg step down entirely (degrade →
+# 本轮缺 gemini). The fallback rung is `Claude Sonnet 4.6 (Thinking)` via
+# agy — a SEPARATE quota bucket from agy's Gemini (verified: Gemini 429
+# while agy-Claude still answers), and deliberately a DIFFERENT model
+# from the squad's existing Claude leg (Opus 4.8) so it is a distinct
+# voice, not a near-duplicate. (Cross-family is preferred, but Gemini is
+# already quota-dead either way; a distinct 3rd read beats only two.)
+# `AGY_MODEL` env overrides the ladder with one explicit model (manual /
+# tests). The "no Google voice this round" caveat is flagged below.
+AGY_MODELS=("" "Claude Sonnet 4.6 (Thinking)")
+[ -n "${AGY_MODEL:-}" ] && AGY_MODELS=("$AGY_MODEL")
+AGY_LADDER_LAST=$(( ${#AGY_MODELS[@]} - 1 ))
 
-  # Truncate the shared log before each attempt so agy_fatal_reason
-  # reflects ONLY the final attempt — otherwise a fatal error recorded
-  # on an earlier retry could leak into the degrade reason for a later
-  # attempt that failed for a different cause (online R1: sourcery).
-  : > "$AGY_LOG"
+RAW=""; G_RC=0; AGY_RAN_MODEL=""; mi=0
+for LADDER_MODEL in "${AGY_MODELS[@]}"; do
+  # agy keychain auth-race: per-attempt keychain warm + retry (×4).
+  for attempt in 1 2 3 4; do
+    security find-generic-password -s "Antigravity Safe Storage" \
+      >/dev/null 2>&1 || true
 
-  set +e
-  RAW="$(cd "$PROTO_ROOT" && agy --sandbox --print '' --print-timeout "$PRINT_TIMEOUT" --log-file "$AGY_LOG" 2>&1 <<<"$AGY_PROMPT")"
-  G_RC=$?
-  set -e
+    # Truncate the shared log before each attempt so agy_fatal_reason
+    # reflects ONLY the final attempt (online R1: sourcery).
+    : > "$AGY_LOG"
 
-  if [ "$G_RC" -ne 0 ] && echo "$RAW" | grep -qE "Authentication required|authentication timed out"; then
-    if [ "$attempt" -lt 4 ]; then
-      echo "gemini: warn: agy auth-race on attempt $attempt/4, retrying..." >&2
-      [ "${GEMINI_RETRY_WARM_SLEEP:-0}" != "0" ] && sleep "${GEMINI_RETRY_WARM_SLEEP}"
-      continue
+    set +e
+    if [ -n "$LADDER_MODEL" ]; then
+      RAW="$(cd "$PROTO_ROOT" && agy --sandbox --model "$LADDER_MODEL" --print '' --print-timeout "$PRINT_TIMEOUT" --log-file "$AGY_LOG" 2>&1 <<<"$AGY_PROMPT")"
+    else
+      RAW="$(cd "$PROTO_ROOT" && agy --sandbox --print '' --print-timeout "$PRINT_TIMEOUT" --log-file "$AGY_LOG" 2>&1 <<<"$AGY_PROMPT")"
     fi
-    echo "gemini: degrade — flag '本轮缺 gemini (auth race after retry×3)'" >&2
-    printf '{"reviewer":"gemini","mode":"%s","findings":[]}\n' "$MODE"
-    exit 1
+    G_RC=$?
+    set -e
+
+    if [ "$G_RC" -ne 0 ] && echo "$RAW" | grep -qE "Authentication required|authentication timed out"; then
+      if [ "$attempt" -lt 4 ]; then
+        echo "gemini: warn: agy auth-race on attempt $attempt/4, retrying..." >&2
+        [ "${GEMINI_RETRY_WARM_SLEEP:-0}" != "0" ] && sleep "${GEMINI_RETRY_WARM_SLEEP}"
+        continue
+      fi
+      echo "gemini: degrade — flag '本轮缺 gemini (auth race after retry×3)'" >&2
+      printf '{"reviewer":"gemini","mode":"%s","findings":[]}\n' "$MODE"
+      exit 1
+    fi
+    break
+  done
+  AGY_RAN_MODEL="$LADDER_MODEL"
+
+  # Quota on this rung + a lower rung exists → step the agy leg DOWN to
+  # the next model (different voice) instead of degrading the whole leg.
+  if [ "$mi" -lt "$AGY_LADDER_LAST" ] && \
+     grep -qiE 'RESOURCE_EXHAUSTED|\(code 429\)|quota reached|quota exceeded|individual quota' "$AGY_LOG"; then
+    echo "gemini: warn: agy model '${LADDER_MODEL:-Gemini 3.5 Flash}' quota-exhausted → stepping down to next agy model" >&2
+    mi=$(( mi + 1 ))
+    continue
   fi
   break
 done
+
+# When the agy leg ran a non-Gemini fallback model, this round has NO
+# Google voice — the agy slot became a same-vendor-as-agy Claude fallback
+# for a 3rd independent read. Flag it so the round report stays honest.
+if [ -n "$RAW" ] && printf '%s' "$AGY_RAN_MODEL" | grep -qi 'claude'; then
+  echo "gemini: note: agy leg ran fallback model '$AGY_RAN_MODEL' (agy Gemini quota-exhausted) — NO Google voice this round; the 3rd voice is agy-served Claude (separate quota), distinct from the squad's Opus 4.8 leg" >&2
+fi
 
 if [ -z "$RAW" ]; then
   REASON="$(agy_fatal_reason)"
