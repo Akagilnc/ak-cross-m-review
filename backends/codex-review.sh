@@ -10,12 +10,16 @@
 #      - `-C` flag → runs in the wrong workdir (codex-wrong-repo-cwd)
 #      - no `--model` → review quality drifts to the CLI default
 #
-#   ✅ cat <<'PROMPT' | codex exec --ephemeral --model gpt-5.5 - 2>&1
+#   ✅ cat <<'PROMPT' | codex exec --ephemeral \
+#        -c model_reasoning_effort="xhigh" --model gpt-5.5 - 2>&1
 #      - stdin pipe (the `-` means "read prompt from stdin")
 #      - `--ephemeral`: do NOT persist a session rollout file. cmr runs
 #        N codex in parallel (1+N+1); without it concurrent instances
 #        collide on ~/.codex/session → cross-talk (prompt A surfaces in
 #        instance B's context). Wiki §额外硬规则 #6 / codex#11435.
+#      - `-c model_reasoning_effort="xhigh"`: pin max review depth so a
+#        clone / other host can't silently inherit a lower config.toml
+#        value (wiki §调用规范 reasoning-effort callout)
 #      - `--model gpt-5.5` pinned: review-tier, never dev-tier spark/5.3
 #      - NO `-C`: codex runs from the current dir (the repo root)
 #      - always 2>&1 so failures are visible
@@ -136,7 +140,8 @@ fi
 echo "codex-review: model=${MODEL} mode=${MODE} label=${LABEL} timeout=${TIMEOUT_S}s" >&2
 
 # Portable hard timeout. The prompt ALWAYS reaches codex via a temp file
-# fed to `codex exec --ephemeral --model "$MODEL" -` (the `-` = read stdin). An
+# fed to `codex exec --ephemeral -c model_reasoning_effort="xhigh" --model
+# "$MODEL" -` (the `-` = read stdin; via the CODEX_CMD array). An
 # earlier version fed $FULL_PROMPT as a here-string into a `bash -c`
 # that read it as an out-of-scope variable → empty prompt whenever GNU
 # timeout/gtimeout was present (the default on homebrew macOS), so codex
