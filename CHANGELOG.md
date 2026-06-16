@@ -4,6 +4,42 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.7.0] - 2026-06-14
+
+Sync to wiki `841eeae` (reasoning-effort reality) + the surrounding
+§调用规范 state.
+
+### Changed — codex review pinned to max reasoning depth (`codex-review.sh`, code)
+`CODEX_CMD` now passes **`-c model_reasoning_effort="xhigh"`**. codex
+inherits `~/.codex/config.toml`'s global effort, so pinning it in the
+command prevents a clone / other host from silently dropping review
+depth. `--selftest` updated: the canonical form is now `codex exec
+--ephemeral -c model_reasoning_effort=xhigh --model X -` (8-token array,
+stdin `-` at index 7), plus a new guard asserting the
+`model_reasoning_effort=xhigh` pin is present.
+
+### Added — docs (`SKILL.md`)
+- **Reasoning-effort reality callout** (wiki §调用规范): the three legs
+  run at very different depth — codex `xhigh` (maxed); the Claude
+  reviewer Agent (main=Claude, primary path) is Opus 4.8 adaptive default
+  and **cannot be dialed up** (the `Agent` tool has no effort param;
+  `ultrathink` in a subagent prompt is inert literal text,
+  claude-code#25669); agy/Gemini is Flash with no knob. Explains why
+  codex tends to surface the most each round.
+- **main=Codex Claude review call**: documented as `claude -p --effort
+  max …` (≈5× depth) with **no `--tools ""`** — the tool-kill is for the
+  auth smoke only; a reviewer must keep Read/Grep/Glob for grounded
+  review (wiki §调用规范).
+
+### Note — intentional divergence from the wiki (auth-race warm+retry KEPT)
+The wiki's auth-race `[!note]` says the 1s-keyring race was fixed upstream
+in agy 1.0.1 (#85/#51) and that 1.0.8 needs no warm+retry. The skill
+**deliberately keeps** the warm+retry recipe (`backends/gemini.sh`),
+because the OAuth login page still pops up intermittently on 1.0.8 in
+practice — the safety net stays until that stops recurring. SKILL.md
+flags this divergence; the wiki note is the side that's out of date and
+should be corrected. No agy code path changed.
+
 ## [0.3.6.0] - 2026-06-13
 
 Sync the accumulated wiki deltas, headlined by the **Fable pause**.

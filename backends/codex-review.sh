@@ -59,7 +59,12 @@ TIMEOUT_S="${CMR_CODEX_TIMEOUT:-600}"
 # selftest validate a hand-copied mirror instead of the live command.)
 # Expand as "${CODEX_CMD[@]}" at call sites; the `2>&1` redirection is
 # added per-call (it is shell redirection, not part of the command).
-CODEX_CMD=(codex exec --ephemeral --model "$MODEL" -)
+# `-c model_reasoning_effort="xhigh"` pins codex review at max reasoning
+# depth — codex inherits ~/.codex/config.toml's global value, so pinning
+# it in the command prevents a clone / other machine from silently
+# dropping to a lower tier (wiki §调用规范 reasoning-effort callout,
+# 2026-06-14).
+CODEX_CMD=(codex exec --ephemeral -c model_reasoning_effort="xhigh" --model "$MODEL" -)
 
 # --selftest: validate the REAL invocation array (not a hand-copied
 # mirror), assert it is on-convention, never call codex. Regression
@@ -75,8 +80,15 @@ if [ "${1:-}" = "--selftest" ]; then
     *) echo "FAIL: command missing --model pin" >&2; fail=1 ;;
   esac
   case "$CMD" in
-    *"codex exec --ephemeral --model ${MODEL} -"*) ;;
-    *) echo "FAIL: command not stdin-pipe form ('codex exec --ephemeral --model X -')" >&2; fail=1 ;;
+    *"codex exec --ephemeral -c model_reasoning_effort=xhigh --model ${MODEL} -"*) ;;
+    *) echo "FAIL: command not canonical stdin-pipe form ('codex exec --ephemeral -c model_reasoning_effort=xhigh --model X -')" >&2; fail=1 ;;
+  esac
+  # reasoning-effort pin mandatory: codex review must run at xhigh; an
+  # un-pinned command inherits whatever the machine's config.toml says
+  # (drift risk on clone / other host — wiki §调用规范 callout).
+  case "$CMD" in
+    *"model_reasoning_effort=xhigh"*) ;;
+    *) echo "FAIL: command missing -c model_reasoning_effort=xhigh (review depth pin)" >&2; fail=1 ;;
   esac
   # --ephemeral mandatory: parallel codex instances collide on
   # ~/.codex/session without it (wiki §额外硬规则 #6 / codex#11435).
@@ -93,11 +105,12 @@ if [ "${1:-}" = "--selftest" ]; then
   # (${CODEX_CMD[*]}) strips the quotes, so a reintroduced positional
   # prompt (CODEX_CMD=(codex exec "$PROMPT" ...)) would slip through.
   # Validate the array STRUCTURE instead (gemini R3 HIGH): exactly the
-  # canonical 6 tokens, `codex exec` first, stdin `-` last. Explicit
-  # index [5] (not negative) keeps this bash-3.2 safe (macOS default).
-  if [ "${#CODEX_CMD[@]}" -ne 6 ] \
+  # canonical 8 tokens (codex exec --ephemeral -c model_reasoning_effort=
+  # xhigh --model X -), `codex exec` first, stdin `-` last. Explicit
+  # index [7] (not negative) keeps this bash-3.2 safe (macOS default).
+  if [ "${#CODEX_CMD[@]}" -ne 8 ] \
      || [ "${CODEX_CMD[0]} ${CODEX_CMD[1]}" != "codex exec" ] \
-     || [ "${CODEX_CMD[5]}" != "-" ]; then
+     || [ "${CODEX_CMD[7]}" != "-" ]; then
     echo "FAIL: codex command array shape off (positional-arg / stray flag / missing stdin '-'; update this guard if a flag was intentionally added)" >&2
     fail=1
   fi

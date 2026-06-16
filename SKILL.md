@@ -156,14 +156,30 @@ Both wiki goals are preserved by construction:
 
 Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
 
-- **Codex** — only via `backends/codex-review.sh` (pins
-  `printf %s "$PROMPT" | codex exec --ephemeral --model gpt-5.5 - 2>&1`).
-  **`--ephemeral` is mandatory** — cmr runs N codex in parallel
-  (1+N+1); without it concurrent instances collide on `~/.codex/session`
-  → cross-talk (prompt A surfaces in instance B's context). Wiki
-  §额外硬规则 #6 / codex#11435. Never `codex exec "$(...)"` (hangs → pkill),
-  never `-C <dir>` (wrong workdir), never `codex review --base B
-  "PROMPT"` (can't pass both).
+> **Reasoning-effort reality, per leg** (wiki §调用规范, 2026-06-14
+> measured) — the three legs run at very different reasoning depth:
+> **codex** = `xhigh` (pinned, maxed); **Claude reviewer Agent**
+> (main=Claude — the primary path) = Opus 4.8 adaptive default and
+> **cannot be dialed up** — the `Agent` tool exposes no effort param, and
+> `ultrathink` written into a subagent prompt is inert literal text
+> (claude-code#25669); **agy / Gemini** = 3.5 Flash, no knob. So in the
+> main=Claude path **only codex is at max depth** — which is why codex
+> tends to surface the most findings each round. (When main=Codex the
+> Claude leg runs via `claude -p` and CAN take `--effort max` ≈ 5× depth
+> — see Step 3.)
+
+- **Codex** — only via `backends/codex-review.sh` (pins `printf %s
+  "$PROMPT" | codex exec --ephemeral -c model_reasoning_effort="xhigh"
+  --model gpt-5.5 - 2>&1`). **`--ephemeral` is mandatory** — cmr runs N
+  codex in parallel (1+N+1); without it concurrent instances collide on
+  `~/.codex/session` → cross-talk (prompt A surfaces in instance B's
+  context). Wiki §额外硬规则 #6 / codex#11435. **`-c
+  model_reasoning_effort="xhigh"` is also pinned** — codex would
+  otherwise inherit the machine's `~/.codex/config.toml` value and
+  silently drop review depth on a clone / other host (`--selftest`
+  guards both flags). Never `codex exec "$(...)"` (hangs → pkill), never
+  `-C <dir>` (wrong workdir), never `codex review --base B "PROMPT"`
+  (can't pass both).
 - **Gemini** — only via `backends/gemini.sh`, which calls
   `agy --sandbox --print '' <<<prompt` (Antigravity CLI, the in-kind
   replacement after `gemini` CLI's 2026-06-18 EOL; locked to 3.5 Flash).
@@ -222,6 +238,13 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   `Antigravity Safe Storage` keychain item). All 4 failing → emit the
   exact flag `本轮缺 gemini (auth race after retry×3)`, do not block
   (§降级链).
+  **Intentional divergence from the wiki here**: the wiki's auth-race
+  `[!note]` says the 1s-keyring race was fixed upstream in agy 1.0.1
+  (#85/#51) and that 1.0.8 needs no warm+retry. The skill **keeps** the
+  warm+retry recipe anyway, because the OAuth login page still pops up
+  intermittently on 1.0.8 in practice (author-observed) — so the safety
+  net stays until that stops recurring. (The wiki note is the one that's
+  out of date here; flag it for correction.)
 - **Claude reviewer** — the `Agent` tool, full-diff reviewer prompt,
   model = **the current strongest available Claude**. This bullet is the
   ONE authoritative place for the Claude leg's model — flip only it when
@@ -308,10 +331,16 @@ When main = Codex, **never** check Claude auth via file/env (false
 negatives on keychain / GUI logins) — use a live smoke:
 `printf 'Return exactly: CLAUDE_OK\n' | claude -p --output-format json
 --disable-slash-commands --tools ""` (`.result == "CLAUDE_OK"` → up,
-priority 1; failure / timeout → degrade). The outside-voice reviewer
-always stays the strongest in range (main = Claude → codex `gpt-5.5`;
-main = Codex → current strongest Claude or Gemini), never dev-tier
-spark / 5.3-codex / sonnet. See wiki §降级链.
+priority 1; failure / timeout → degrade). After the smoke passes, the
+actual Claude **review** call is `claude -p --effort max --output-format
+json --disable-slash-commands` — **`--effort max`** (≈5× reasoning depth,
+no error on Opus 4.8) and crucially **no `--tools ""`**: the `--tools ""`
+kill is ONLY for the auth smoke. A reviewer must keep Read/Grep/Glob to
+do grounded review (grep the source, not just the diff) — killing its
+tools guts the grounding axis (wiki §调用规范). The outside-voice
+reviewer always stays the strongest in range (main = Claude → codex
+`gpt-5.5`; main = Codex → current strongest Claude or Gemini), never
+dev-tier spark / 5.3-codex / sonnet. See wiki §降级链.
 
 ## Step 4 — merge + grade (agent judgment, not a deterministic engine)
 
