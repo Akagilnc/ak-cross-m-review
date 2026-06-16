@@ -83,16 +83,14 @@ if [ "${1:-}" = "--selftest" ]; then
     *"--model "*) ;;
     *) echo "FAIL: command missing --model pin" >&2; fail=1 ;;
   esac
+  # On-convention canonical form. This already pins BOTH the stdin-pipe
+  # shape AND `-c model_reasoning_effort=xhigh` (the reasoning-depth pin
+  # so a clone / other host can't inherit a lower config.toml value, wiki
+  # §调用规范) — a missing/altered pin fails this single check, so a
+  # separate xhigh guard would only double-report (online R2: gemini).
   case "$CMD" in
     *"codex exec --ephemeral -c model_reasoning_effort=xhigh --model ${MODEL} -"*) ;;
     *) echo "FAIL: command not canonical stdin-pipe form ('codex exec --ephemeral -c model_reasoning_effort=xhigh --model X -')" >&2; fail=1 ;;
-  esac
-  # reasoning-effort pin mandatory: codex review must run at xhigh; an
-  # un-pinned command inherits whatever the machine's config.toml says
-  # (drift risk on clone / other host — wiki §调用规范 callout).
-  case "$CMD" in
-    *"model_reasoning_effort=xhigh"*) ;;
-    *) echo "FAIL: command missing -c model_reasoning_effort=xhigh (review depth pin)" >&2; fail=1 ;;
   esac
   # --ephemeral mandatory: parallel codex instances collide on
   # ~/.codex/session without it (wiki §额外硬规则 #6 / codex#11435).
