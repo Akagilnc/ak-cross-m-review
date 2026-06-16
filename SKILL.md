@@ -157,7 +157,7 @@ Both wiki goals are preserved by construction:
 Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
 
 > **Reasoning-effort reality, per leg** (wiki §调用规范, 2026-06-14
-> measured) — the three legs run at very different reasoning depth:
+> measured) — the three legs run at very different reasoning depths:
 > **codex** = `xhigh` (pinned, maxed); **Claude reviewer Agent**
 > (main=Claude — the primary path) = Opus 4.8 adaptive default and
 > **cannot be dialed up** — the `Agent` tool exposes no effort param, and

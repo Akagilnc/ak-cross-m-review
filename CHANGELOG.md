@@ -20,7 +20,7 @@ stdin `-` at index 7), plus a new guard asserting the
 
 ### Added — docs (`SKILL.md`)
 - **Reasoning-effort reality callout** (wiki §调用规范): the three legs
-  run at very different depth — codex `xhigh` (maxed); the Claude
+  run at very different depths — codex `xhigh` (maxed); the Claude
   reviewer Agent (main=Claude, primary path) is Opus 4.8 adaptive default
   and **cannot be dialed up** (the `Agent` tool has no effort param;
   `ultrathink` in a subagent prompt is inert literal text,
