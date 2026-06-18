@@ -60,10 +60,13 @@ Pre-flight gates (wiki §操作规程 / §边界):
   the upstream wiki gate `content-fact-gate.md` — a caller precondition,
   not a script bundled in this repo.)
 - **Small diff** (typo / copy, < 50 changed lines): explicit exception —
-  run **1+1** (Claude Agent + codex, cross-family) instead of the v3
-  default, and you MUST annotate the eventual commit message
-  `"小 diff 例外，跑 1+1 不跑 v3 default"`. Silent degrade is an
-  anti-pattern.
+  run a reduced **cross-family 2-vendor** instead of the full default,
+  scoped to who runs it (per §Step 1 / orchestration law): **ship-pre /
+  main-session** = `Claude Agent + codex`; **per-slice** = `codex + agy`
+  (still cross-family — a slice subagent cannot spawn the Claude `Agent`,
+  and per-slice has no Claude anyway). You MUST annotate the eventual
+  commit message `"小 diff 例外，跑 2-vendor 不跑 v3 default"`. Silent
+  degrade is an anti-pattern.
 - **Design docs (ADR / spec / contract) get cmr too — same rigor as
   code** (wiki §设计文档). A design doc carries decisions *more
   upstream* than code (a wrong spec → the whole implementation is built

@@ -24,9 +24,21 @@ def _frontmatter_lines():
     return body[:end].splitlines()
 
 
+def _top_level_key_lines():
+    """Top-level `key: value` lines, ignoring full-line `#` comments and
+    stripping inline ` #` comments (online R: gemini — a comment that
+    contains a colon must not be mistaken for a key / a bare `: `)."""
+    for ln in _frontmatter_lines():
+        if not ln or ln[0].isspace() or ln.lstrip().startswith("#"):
+            continue
+        if " #" in ln:
+            ln = ln.split(" #", 1)[0].rstrip()
+        if ":" in ln:
+            yield ln
+
+
 def test_frontmatter_has_required_top_level_keys():
-    keys = [ln.split(":", 1)[0] for ln in _frontmatter_lines()
-            if ln and not ln[0].isspace() and ":" in ln]
+    keys = [ln.split(":", 1)[0] for ln in _top_level_key_lines()]
     for required in ("name", "description", "allowed-tools"):
         assert required in keys, f"frontmatter missing top-level key '{required}'"
 
@@ -36,9 +48,7 @@ def test_top_level_plain_scalar_values_have_no_bare_colon_space():
     # as a nested mapping → invalid frontmatter. Quoted/block scalars are
     # exempt (they can hold `: `), so only check unquoted single-line
     # values.
-    for ln in _frontmatter_lines():
-        if not ln or ln[0].isspace() or ":" not in ln:
-            continue  # not a top-level key line
+    for ln in _top_level_key_lines():
         key, _, value = ln.partition(":")
         value = value.lstrip()
         if not value or value[0] in "\"'|>[{":
