@@ -4,6 +4,62 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.8.0] - 2026-06-18
+
+Full sync to the wiki's 2026-06-14→06-18 revision (16 commits) — a major
+restructure of who runs cmr and at what depth. Several of these supersede
+the earlier-this-PR reasoning-effort sync (always-`xhigh`, `--effort
+max`), so they never ship.
+
+### Changed — squad depends on the trigger point (wiki §谁跑 cmr)
+**Claude is concentrated to ship-pre** (`claude -p` credit is too tight
+for the high-frequency per-slice gate): **per-slice = `N codex + agy`
+(2-vendor, NO Claude)**, run by the slice's own implementing subagent
+(both Bash, no nested-Agent); **ship-pre = `N codex + Claude + agy`
+(1+1+1)**, main session orchestrates with Claude via the `Agent`
+subagent. SKILL.md Step 1/2/5, the two-phase rule (Step 2 + anti-pattern
+#6) and the termination table now distinguish the two.
+
+### Changed — codex reasoning effort is scenario-dependent (`codex-review.sh`, code)
+Not always `xhigh`. **ship-pre 5a/5b = `xhigh`; per-slice = `high`**
+(downshifted to save credit, but never below `high`). `codex-review.sh`
+takes `CMR_CODEX_EFFORT` (validated `high|xhigh`, default `xhigh`); the
+`--selftest` matches the live effort. Header/callout updated.
+
+### Changed — N table thresholds ×2.5–3 + effective lines (wiki §N 取值表)
+`<500 / 500–1500 / 1500+` (was 200/500). N is now by **effective (core-
+logic) lines** — exclude test/spec/fixture/lock/generated/`*.md`/docs
+noise before computing N; dense core → bump a tier with a one-line
+justification. (Both hypothesis, not yet validated; roll back if findings
+slip.)
+
+### Changed — `claude -p --effort max` RETRACTED (wiki, code-doc)
+The main=Codex Claude review call drops `--effort max` (billing on
+isolated/capped `claude -p` credit burns 5× tokens too fast — the 6/15
+policy is paused but may restart). It now pins `--model claude-opus-4-8`
+(current strongest; revert to `claude-fable-5` when Fable returns) and
+keeps **no `--tools ""`** (reviewer needs Read/Grep/Glob for grounded
+review; tool-kill is auth-smoke only).
+
+### Changed — misc
+- Fix-loop **mandatory self-check 二连** after every fix (same-type +
+  fix-introduced-bug, with a visible "自查二连 done"); used to be a
+  flowchart arrow that got skipped (wiki §修复).
+- `/diagnose` → **`/diagnosing-bugs`** (skill renamed) everywhere in
+  SKILL.md + `prompts/cmr-fixer.md`.
+- **Hang judgment 3min → 8min** (deep reasoning thinks silently past
+  3min; still under agy's 15m print-timeout).
+- main=Codex codex leg note: runs as a Codex **native subagent** (not
+  `codex exec`) except nested → `codex exec` (wiki §主=Codex …,
+  hypothesis; this skill executes main=Claude, so its codex leg stays
+  `codex exec`).
+
+### Note — divergence kept (auth-race warm+retry)
+The wiki (re)affirms agy's auth-race was fixed in 1.0.1 and 1.0.8 needs
+no warm+retry; the skill **deliberately keeps** the warm+retry recipe in
+`gemini.sh` because the OAuth page still pops intermittently on 1.0.8 in
+practice. Flagged in SKILL.md; the wiki note is the stale side.
+
 ## [0.3.6.0] - 2026-06-13
 
 Sync the accumulated wiki deltas, headlined by the **Fable pause**.

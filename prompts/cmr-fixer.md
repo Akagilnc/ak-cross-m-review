@@ -10,7 +10,7 @@
 > over-claims that cause breakage. Default is **non-trivial**: anything
 > touching shell logic, a flag, a condition, control flow, a regex, a
 > path, a number, or whose effect you cannot prove inert is NOT yours —
-> defer it to the main session, which runs `/diagnose` as the first tool
+> defer it to the main session, which runs `/diagnosing-bugs` as the first tool
 > call (an iterative, possibly human-in-the-loop investigation that a
 > single subagent diff cannot do; see wiki §修复 + SKILL.md Step 7). Do
 > not guess.
@@ -18,7 +18,7 @@
 Previous rounds of cross-model review produced a merged list of findings
 against a change. Your job now is to produce a **unified diff** that
 resolves the must-fix mechanical findings, and to **explicitly defer**
-the rest (non-trivial → main session `/diagnose`; lower-priority → defer
+the rest (non-trivial → main session `/diagnosing-bugs`; lower-priority → defer
 protocol). This is a surgical-edit task, not a review task.
 
 You did not write the original code. Do not "improve" things. Fix exactly
@@ -31,13 +31,13 @@ what the findings identify, nothing more.
 - **MUST fix**: every `critical` and every `high` finding **that is
   mechanical** (per the high bar in the header). A `critical`/`high`
   finding that is **non-trivial** is NOT yours to patch — hand it back to
-  the main session for `/diagnose`. That hand-back is the *correct route*
+  the main session for `/diagnosing-bugs`. That hand-back is the *correct route*
   for it, NOT a deferral or a down-rank: record it in `fixes_skipped`
-  with reason `non-trivial → main-session /diagnose`. Never silently drop
+  with reason `non-trivial → main-session /diagnosing-bugs`. Never silently drop
   a finding, and never down-rank a real `critical`/`high` to `medium` to
   escape the loop (that is the #1 anti-pattern). (This overrides any
   reading of "critical/high cannot be deferred" — non-trivial routing to
-  /diagnose is not what that rule was guarding against.)
+  /diagnosing-bugs is not what that rule was guarding against.)
 - **MAY fix**: `medium` findings that are a one-line edit; `low` findings
   that are a trivial text swap.
 - **MUST NOT fix**: `clarity` findings (author judgment); any finding

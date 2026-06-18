@@ -10,12 +10,17 @@
 #      - `-C` flag → runs in the wrong workdir (codex-wrong-repo-cwd)
 #      - no `--model` → review quality drifts to the CLI default
 #
-#   ✅ cat <<'PROMPT' | codex exec --ephemeral --model gpt-5.5 - 2>&1
+#   ✅ cat <<'PROMPT' | codex exec --ephemeral \
+#        -c model_reasoning_effort="<high|xhigh>" --model gpt-5.5 - 2>&1
 #      - stdin pipe (the `-` means "read prompt from stdin")
 #      - `--ephemeral`: do NOT persist a session rollout file. cmr runs
 #        N codex in parallel (1+N+1); without it concurrent instances
 #        collide on ~/.codex/session → cross-talk (prompt A surfaces in
 #        instance B's context). Wiki §额外硬规则 #6 / codex#11435.
+#      - `-c model_reasoning_effort=<high|xhigh>`: pin review depth so a
+#        clone / other host can't silently inherit a lower config.toml
+#        value. Scenario-dependent (CMR_CODEX_EFFORT): ship-pre=xhigh,
+#        per-slice=high (wiki §调用规范 reasoning-effort callout)
 #      - `--model gpt-5.5` pinned: review-tier, never dev-tier spark/5.3
 #      - NO `-C`: codex runs from the current dir (the repo root)
 #      - always 2>&1 so failures are visible
@@ -50,6 +55,17 @@ MODE="${1:-code}"
 LABEL="${2:-full}"
 MODEL="${CMR_CODEX_MODEL:-gpt-5.5}"
 TIMEOUT_S="${CMR_CODEX_TIMEOUT:-600}"
+# Reasoning effort is scenario-dependent (wiki §调用规范 effort 表,
+# 2026-06-18): ship-pre 5a/5b = `xhigh` (the real gate + cross-slice
+# invariants need max depth); per-slice = `high` (cheap high-frequency
+# gate, downshifted to save codex credit — but never below `high`, else
+# per-slice becomes a rubber stamp). The caller (SKILL.md) sets
+# CMR_CODEX_EFFORT=high for per-slice; default xhigh for ship-pre.
+CMR_CODEX_EFFORT="${CMR_CODEX_EFFORT:-xhigh}"
+case "$CMR_CODEX_EFFORT" in
+  high|xhigh) ;;
+  *) echo "codex-review: error: CMR_CODEX_EFFORT must be high|xhigh, got '$CMR_CODEX_EFFORT'" >&2; exit 64 ;;
+esac
 
 # Single source of truth for the codex invocation. Every real call site
 # (timeout / gtimeout / background) AND the --selftest validation derive
@@ -59,7 +75,12 @@ TIMEOUT_S="${CMR_CODEX_TIMEOUT:-600}"
 # selftest validate a hand-copied mirror instead of the live command.)
 # Expand as "${CODEX_CMD[@]}" at call sites; the `2>&1` redirection is
 # added per-call (it is shell redirection, not part of the command).
-CODEX_CMD=(codex exec --ephemeral --model "$MODEL" -)
+# `-c model_reasoning_effort=…` pins codex review depth (high|xhigh per
+# scenario, see CMR_CODEX_EFFORT above) — codex inherits ~/.codex/
+# config.toml's global value otherwise, so pinning it in the command
+# prevents a clone / other machine from silently dropping to a lower tier
+# (wiki §调用规范 reasoning-effort callout).
+CODEX_CMD=(codex exec --ephemeral -c model_reasoning_effort="$CMR_CODEX_EFFORT" --model "$MODEL" -)
 
 # --selftest: validate the REAL invocation array (not a hand-copied
 # mirror), assert it is on-convention, never call codex. Regression
@@ -74,9 +95,16 @@ if [ "${1:-}" = "--selftest" ]; then
     *"--model "*) ;;
     *) echo "FAIL: command missing --model pin" >&2; fail=1 ;;
   esac
+  # On-convention canonical form. This pins BOTH the stdin-pipe shape AND
+  # `-c model_reasoning_effort=<effort>` (the reasoning-depth pin so a
+  # clone / other host can't inherit a lower config.toml value, wiki
+  # §调用规范). The effort is scenario-dependent (high|xhigh, validated at
+  # the top into CMR_CODEX_EFFORT), so the pattern matches the live value
+  # — a missing/altered pin fails this single check (a separate guard
+  # would only double-report, online R2: gemini).
   case "$CMD" in
-    *"codex exec --ephemeral --model ${MODEL} -"*) ;;
-    *) echo "FAIL: command not stdin-pipe form ('codex exec --ephemeral --model X -')" >&2; fail=1 ;;
+    *"codex exec --ephemeral -c model_reasoning_effort=${CMR_CODEX_EFFORT} --model ${MODEL} -"*) ;;
+    *) echo "FAIL: command not canonical stdin-pipe form ('codex exec --ephemeral -c model_reasoning_effort=${CMR_CODEX_EFFORT} --model X -')" >&2; fail=1 ;;
   esac
   # --ephemeral mandatory: parallel codex instances collide on
   # ~/.codex/session without it (wiki §额外硬规则 #6 / codex#11435).
@@ -93,11 +121,12 @@ if [ "${1:-}" = "--selftest" ]; then
   # (${CODEX_CMD[*]}) strips the quotes, so a reintroduced positional
   # prompt (CODEX_CMD=(codex exec "$PROMPT" ...)) would slip through.
   # Validate the array STRUCTURE instead (gemini R3 HIGH): exactly the
-  # canonical 6 tokens, `codex exec` first, stdin `-` last. Explicit
-  # index [5] (not negative) keeps this bash-3.2 safe (macOS default).
-  if [ "${#CODEX_CMD[@]}" -ne 6 ] \
+  # canonical 8 tokens (codex exec --ephemeral -c model_reasoning_effort=
+  # xhigh --model X -), `codex exec` first, stdin `-` last. Explicit
+  # index [7] (not negative) keeps this bash-3.2 safe (macOS default).
+  if [ "${#CODEX_CMD[@]}" -ne 8 ] \
      || [ "${CODEX_CMD[0]} ${CODEX_CMD[1]}" != "codex exec" ] \
-     || [ "${CODEX_CMD[5]}" != "-" ]; then
+     || [ "${CODEX_CMD[7]}" != "-" ]; then
     echo "FAIL: codex command array shape off (positional-arg / stray flag / missing stdin '-'; update this guard if a flag was intentionally added)" >&2
     fail=1
   fi
@@ -123,7 +152,8 @@ fi
 echo "codex-review: model=${MODEL} mode=${MODE} label=${LABEL} timeout=${TIMEOUT_S}s" >&2
 
 # Portable hard timeout. The prompt ALWAYS reaches codex via a temp file
-# fed to `codex exec --ephemeral --model "$MODEL" -` (the `-` = read stdin). An
+# fed to `codex exec --ephemeral -c model_reasoning_effort="$CMR_CODEX_EFFORT"
+# --model "$MODEL" -` (the `-` = read stdin; via the CODEX_CMD array). An
 # earlier version fed $FULL_PROMPT as a here-string into a `bash -c`
 # that read it as an out-of-scope variable → empty prompt whenever GNU
 # timeout/gtimeout was present (the default on homebrew macOS), so codex

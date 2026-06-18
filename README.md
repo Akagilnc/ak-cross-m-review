@@ -2,10 +2,11 @@
 
 Local, pre-PR **cross-model review** skill — the executable form of the
 wiki's `cross-model-review.md`. Dispatches an independent multi-vendor
-reviewer squad against a diff in a **two-phase 顺机理 dispatch** (msg1 =
-all CLI Bash reviewers in the background; msg2 = the Claude Agent), then
-merges, grades, drift-checks and loops **as the agent judgment the wiki
-prescribes** — before code reaches a PR / `main`.
+reviewer squad against a diff — **ship-pre** in a **two-phase 顺机理
+dispatch** (msg1 = all CLI Bash reviewers in the background; msg2 = the
+Claude Agent), **per-slice** as just the Bash CLIs (`codex + agy`, no
+Claude) — then merges, grades, drift-checks and loops **as the agent
+judgment the wiki prescribes** — before code reaches a PR / `main`.
 
 **Status**: v0 prototype. Evolving.
 
@@ -27,21 +28,28 @@ for the real CLI footguns, nothing more. Single source of truth:
 (defer + cross-slice discipline in `tdd-autonomous-dev.md`). If skill
 and wiki disagree, the wiki wins.
 
-## The vendor squad — N+1+1
+## The vendor squad — N+1+1 (ship-pre) / N+1 (per-slice)
 
-Dispatched **two-phase** (wiki §并行启动, 2026-05-18 顺机理 reorder),
-against the same diff:
+The squad depends on the trigger point (wiki §谁跑 cmr, 2026-06-18):
+**ship-pre** = the full `N codex + Claude + agy` (N+1+1), dispatched
+two-phase by the main session; **per-slice** = `N codex + agy` (2-vendor,
+**no Claude** — `claude -p` credit is too tight for the high-frequency
+per-slice gate, so Claude is concentrated to the single ship-pre run).
+Against the same diff:
 
-- **1 × Claude reviewer** — via the `Agent` tool as an independent
-  subagent (zero context contamination), model = the current strongest
-  available Claude (SKILL.md Step 2 is the authority): `fable` (Claude
-  Fable 5) when up; **2026-06-13 Fable is paused → Opus 4.8 now, revert
-  when it returns**. Set the model explicitly — it does not inherit the
-  session model. This is why the skill MUST run in the **main session**:
-  Claude Code does not expose `Agent` to subagents.
+- **1 × Claude reviewer** (**ship-pre only**) — via the `Agent` tool as
+  an independent subagent (zero context contamination), model = the
+  current strongest available Claude (SKILL.md Step 2 is the authority):
+  `fable` (Claude Fable 5) when up; **2026-06-13 Fable is paused → Opus
+  4.8 now, revert when it returns**. Set the model explicitly — it does
+  not inherit the session model. This is why the skill MUST run in the
+  **main session**: Claude Code does not expose `Agent` to subagents.
 - **N × Codex** (`gpt-5.5`, via `backends/codex-review.sh`) — N scales
-  with diff size (1 / 2 / 3 for `<200` / `200–500` / `500+` lines); for
-  N≥2 each codex takes a distinct file-section slice.
+  with the diff's **effective** (core-logic) line count, excluding
+  test/fixture/lock/doc noise (1 / 2 / 3 for `<500` / `500–1500` /
+  `1500+`; thresholds raised ×2.5–3 on 2026-06-18); for N≥2 each codex
+  takes a distinct file-section slice. Reasoning effort is scenario-
+  dependent (`xhigh` ship-pre / `high` per-slice).
 - **1 × Gemini** (via `backends/gemini.sh`, which internally calls
   `agy --sandbox --print ''` — Antigravity CLI, the in-kind replacement
   after the original `gemini` CLI's 2026-06-18 EOL; locked to Gemini
