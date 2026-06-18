@@ -40,3 +40,41 @@ def test_degrades_when_codex_exits_nonzero_with_salvageable_body(tmp_path):
     # Synthetic degrade payload (compact, no spaces — see the printf).
     assert '"reviewer":"codex"' in r.stdout
     assert '"findings":[]' in r.stdout
+
+
+def _selftest(effort=None):
+    """Run `codex-review.sh --selftest`, optionally pinning CMR_CODEX_EFFORT."""
+    env = dict(os.environ)
+    if effort is not None:
+        env["CMR_CODEX_EFFORT"] = effort
+    else:
+        env.pop("CMR_CODEX_EFFORT", None)
+    return subprocess.run(
+        ["bash", str(SCRIPT), "--selftest"],
+        capture_output=True, text=True, env=env, timeout=30,
+    )
+
+
+def test_selftest_passes_with_default_xhigh_effort():
+    # Default (no env) → ship-pre xhigh; selftest green + names the pin.
+    r = _selftest()
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "model_reasoning_effort=xhigh" in r.stdout
+
+
+def test_selftest_passes_with_per_slice_high_effort():
+    # CMR_CODEX_EFFORT=high (per-slice) → selftest still green, matching
+    # the LIVE effort (not hardcoded xhigh).
+    r = _selftest("high")
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "model_reasoning_effort=high" in r.stdout
+    assert "model_reasoning_effort=xhigh" not in r.stdout
+
+
+def test_invalid_effort_is_rejected():
+    # Only high|xhigh are valid reasoning tiers for review; anything else
+    # (e.g. a typo, or `medium` which would make per-slice a rubber stamp)
+    # must hard-fail, not silently run at the wrong depth.
+    r = _selftest("medium")
+    assert r.returncode == 64, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "CMR_CODEX_EFFORT must be high|xhigh" in r.stderr

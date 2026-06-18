@@ -146,12 +146,16 @@ Gemini leg entirely after the `gemini` CLI EOL).
 reviewer (coding-tier model choice is a separate matter; do not carry
 it into review).
 
-> Orchestration law: cross-model review is ALWAYS run by the **main
-> session**. There is no "subagent runs review internally" — a subagent
-> cannot spawn the Claude reviewer (Claude Code does not expose `Agent`
-> to subagents). A slice may be *implemented* by a subagent, but its
-> per-slice review and the ship-pre review are both run here, by the
-> main session, as N+1+1.
+> Orchestration law (2026-06-18, split by trigger point): the **Claude
+> `Agent` leg can only be spawned by the main session** — a subagent
+> cannot spawn the `Agent` tool (Claude Code does not expose it to
+> subagents). So **ship-pre** review (which includes the Claude leg) is
+> run by the **main session** as `N codex + Claude(Agent) + agy` =
+> N+1+1. **per-slice** review is **NOT** run by the main session and has
+> **no Claude**: the slice's own implementing subagent runs it as
+> `N codex + agy` (N+1, all Bash CLIs, no nested-Agent problem). Only a
+> main-session-self-run slice (top level) may use a native codex
+> subagent. See Step 1 / wiki §谁跑 cmr.
 
 ## Step 2 — two-phase dispatch (wiki §并行启动, 2026-05-18 顺机理 reorder)
 
