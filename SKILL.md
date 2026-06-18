@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: Local pre-PR cross-model review — the executable form of the wiki's cross-model-review.md (tdd-autonomous-dev spine step 4 per-slice / step 5 ship-pre, Layer 1). Dispatches the v3 vendor squad (1 Claude reviewer Agent + N codex gpt-5.5 + 1 Gemini via agy = N+1+1, N by diff size) in a two-phase 顺机理 dispatch (msg1 = all CLI Bash run-in-background, msg2 = Claude Agent, no-peek invariant between), then merge / grade / drift-check / loop as the agent judgment the wiki prescribes. Use every dev cycle before a PR, so the agent runs the wiki step the same way instead of re-deciding by feel.
+description: Local pre-PR cross-model review — the executable form of the wiki's cross-model-review.md (tdd-autonomous-dev spine step 4 per-slice / step 5 ship-pre, Layer 1). The squad depends on the trigger point: ship-pre = N codex gpt-5.5 + 1 Claude Agent + 1 Gemini via agy = N+1+1, dispatched two-phase (msg1 = all CLI Bash run-in-background, msg2 = Claude Agent, no-peek between); per-slice = N codex + agy = N+1 (no Claude — credit; run by the slice's own subagent, no two-phase). N by effective (core-logic) diff lines. Then merge / grade / drift-check / loop as the agent judgment the wiki prescribes. Use every dev cycle before a PR, so the agent runs the wiki step the same way instead of re-deciding by feel.
 allowed-tools:
   - Bash
   - Read
@@ -71,10 +71,12 @@ Pre-flight gates (wiki §操作规程 / §边界):
   implement a wrong design). So an ADR / spec / contract **MUST run a
   full cmr in `doc` mode** — not "written → approved → done" — and when
   you *produce* such a doc you **proactively remind the user to review
-  it**, without waiting to be asked. Doc-mode runs the same 1+1+1
-  two-phase setup; concretely: pass mode `doc` to the backends
-  (`backends/codex-review.sh doc` / `backends/gemini.sh doc`, and the
-  Claude `Agent`) and append a **design-completeness** lens to the
+  it**, without waiting to be asked. Doc-mode dispatches the same way as
+  code (per §Step 1 / wiki §谁跑 cmr — per-slice runner = all Bash CLI;
+  ship-pre / main-session runner = two-phase + Claude via `Agent`);
+  concretely: pass mode `doc` to the backends (`backends/codex-review.sh
+  doc` / `backends/gemini.sh doc`, and the Claude `Agent` when in the
+  ship-pre form) and append a **design-completeness** lens to the
   `cmr-reviewer.md` prompt instead of the code lens — contract holes /
   state-machine deadlocks / uncovered boundary cases / undefined
   invariants / contradictions with existing ADRs. (Evidence:

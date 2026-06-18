@@ -2,10 +2,11 @@
 
 Local, pre-PR **cross-model review** skill — the executable form of the
 wiki's `cross-model-review.md`. Dispatches an independent multi-vendor
-reviewer squad against a diff in a **two-phase 顺机理 dispatch** (msg1 =
-all CLI Bash reviewers in the background; msg2 = the Claude Agent), then
-merges, grades, drift-checks and loops **as the agent judgment the wiki
-prescribes** — before code reaches a PR / `main`.
+reviewer squad against a diff — **ship-pre** in a **two-phase 顺机理
+dispatch** (msg1 = all CLI Bash reviewers in the background; msg2 = the
+Claude Agent), **per-slice** as just the Bash CLIs (`codex + agy`, no
+Claude) — then merges, grades, drift-checks and loops **as the agent
+judgment the wiki prescribes** — before code reaches a PR / `main`.
 
 **Status**: v0 prototype. Evolving.
 

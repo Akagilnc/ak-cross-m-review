@@ -1,7 +1,8 @@
 # ak-cross-m-review
 
-Local, pre-PR cross-model review skill (v3 vendor squad: N codex + 1
-Claude reviewer Agent + 1 Gemini via `agy`). `SKILL.md` is the entry — a faithful
+Local, pre-PR cross-model review skill (v3 vendor squad by trigger point:
+ship-pre = N codex + 1 Claude Agent + 1 Gemini via `agy`; per-slice =
+N codex + agy, no Claude). `SKILL.md` is the entry — a faithful
 transcription of the wiki; merge / grade / drift / termination are agent
 **judgment**, NOT a deterministic engine. `lib/` holds the single helper
 `extract_json.py`; `backends/` the corrected reviewer invocations;

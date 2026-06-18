@@ -11,7 +11,7 @@
 #      - no `--model` → review quality drifts to the CLI default
 #
 #   ✅ cat <<'PROMPT' | codex exec --ephemeral \
-#        -c model_reasoning_effort="xhigh" --model gpt-5.5 - 2>&1
+#        -c model_reasoning_effort="<high|xhigh>" --model gpt-5.5 - 2>&1
 #      - stdin pipe (the `-` means "read prompt from stdin")
 #      - `--ephemeral`: do NOT persist a session rollout file. cmr runs
 #        N codex in parallel (1+N+1); without it concurrent instances
@@ -152,8 +152,8 @@ fi
 echo "codex-review: model=${MODEL} mode=${MODE} label=${LABEL} timeout=${TIMEOUT_S}s" >&2
 
 # Portable hard timeout. The prompt ALWAYS reaches codex via a temp file
-# fed to `codex exec --ephemeral -c model_reasoning_effort="xhigh" --model
-# "$MODEL" -` (the `-` = read stdin; via the CODEX_CMD array). An
+# fed to `codex exec --ephemeral -c model_reasoning_effort="$CMR_CODEX_EFFORT"
+# --model "$MODEL" -` (the `-` = read stdin; via the CODEX_CMD array). An
 # earlier version fed $FULL_PROMPT as a here-string into a `bash -c`
 # that read it as an out-of-scope variable → empty prompt whenever GNU
 # timeout/gtimeout was present (the default on homebrew macOS), so codex
