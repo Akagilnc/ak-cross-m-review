@@ -17,9 +17,10 @@
 #        N codex in parallel (1+N+1); without it concurrent instances
 #        collide on ~/.codex/session → cross-talk (prompt A surfaces in
 #        instance B's context). Wiki §额外硬规则 #6 / codex#11435.
-#      - `-c model_reasoning_effort="xhigh"`: pin max review depth so a
+#      - `-c model_reasoning_effort=<high|xhigh>`: pin review depth so a
 #        clone / other host can't silently inherit a lower config.toml
-#        value (wiki §调用规范 reasoning-effort callout)
+#        value. Scenario-dependent (CMR_CODEX_EFFORT): ship-pre=xhigh,
+#        per-slice=high (wiki §调用规范 reasoning-effort callout)
 #      - `--model gpt-5.5` pinned: review-tier, never dev-tier spark/5.3
 #      - NO `-C`: codex runs from the current dir (the repo root)
 #      - always 2>&1 so failures are visible
@@ -54,6 +55,17 @@ MODE="${1:-code}"
 LABEL="${2:-full}"
 MODEL="${CMR_CODEX_MODEL:-gpt-5.5}"
 TIMEOUT_S="${CMR_CODEX_TIMEOUT:-600}"
+# Reasoning effort is scenario-dependent (wiki §调用规范 effort 表,
+# 2026-06-18): ship-pre 5a/5b = `xhigh` (the real gate + cross-slice
+# invariants need max depth); per-slice = `high` (cheap high-frequency
+# gate, downshifted to save codex credit — but never below `high`, else
+# per-slice becomes a rubber stamp). The caller (SKILL.md) sets
+# CMR_CODEX_EFFORT=high for per-slice; default xhigh for ship-pre.
+CMR_CODEX_EFFORT="${CMR_CODEX_EFFORT:-xhigh}"
+case "$CMR_CODEX_EFFORT" in
+  high|xhigh) ;;
+  *) echo "codex-review: error: CMR_CODEX_EFFORT must be high|xhigh, got '$CMR_CODEX_EFFORT'" >&2; exit 64 ;;
+esac
 
 # Single source of truth for the codex invocation. Every real call site
 # (timeout / gtimeout / background) AND the --selftest validation derive
@@ -63,12 +75,12 @@ TIMEOUT_S="${CMR_CODEX_TIMEOUT:-600}"
 # selftest validate a hand-copied mirror instead of the live command.)
 # Expand as "${CODEX_CMD[@]}" at call sites; the `2>&1` redirection is
 # added per-call (it is shell redirection, not part of the command).
-# `-c model_reasoning_effort="xhigh"` pins codex review at max reasoning
-# depth — codex inherits ~/.codex/config.toml's global value, so pinning
-# it in the command prevents a clone / other machine from silently
-# dropping to a lower tier (wiki §调用规范 reasoning-effort callout,
-# 2026-06-14).
-CODEX_CMD=(codex exec --ephemeral -c model_reasoning_effort="xhigh" --model "$MODEL" -)
+# `-c model_reasoning_effort=…` pins codex review depth (high|xhigh per
+# scenario, see CMR_CODEX_EFFORT above) — codex inherits ~/.codex/
+# config.toml's global value otherwise, so pinning it in the command
+# prevents a clone / other machine from silently dropping to a lower tier
+# (wiki §调用规范 reasoning-effort callout).
+CODEX_CMD=(codex exec --ephemeral -c model_reasoning_effort="$CMR_CODEX_EFFORT" --model "$MODEL" -)
 
 # --selftest: validate the REAL invocation array (not a hand-copied
 # mirror), assert it is on-convention, never call codex. Regression
@@ -83,14 +95,16 @@ if [ "${1:-}" = "--selftest" ]; then
     *"--model "*) ;;
     *) echo "FAIL: command missing --model pin" >&2; fail=1 ;;
   esac
-  # On-convention canonical form. This already pins BOTH the stdin-pipe
-  # shape AND `-c model_reasoning_effort=xhigh` (the reasoning-depth pin
-  # so a clone / other host can't inherit a lower config.toml value, wiki
-  # §调用规范) — a missing/altered pin fails this single check, so a
-  # separate xhigh guard would only double-report (online R2: gemini).
+  # On-convention canonical form. This pins BOTH the stdin-pipe shape AND
+  # `-c model_reasoning_effort=<effort>` (the reasoning-depth pin so a
+  # clone / other host can't inherit a lower config.toml value, wiki
+  # §调用规范). The effort is scenario-dependent (high|xhigh, validated at
+  # the top into CMR_CODEX_EFFORT), so the pattern matches the live value
+  # — a missing/altered pin fails this single check (a separate guard
+  # would only double-report, online R2: gemini).
   case "$CMD" in
-    *"codex exec --ephemeral -c model_reasoning_effort=xhigh --model ${MODEL} -"*) ;;
-    *) echo "FAIL: command not canonical stdin-pipe form ('codex exec --ephemeral -c model_reasoning_effort=xhigh --model X -')" >&2; fail=1 ;;
+    *"codex exec --ephemeral -c model_reasoning_effort=${CMR_CODEX_EFFORT} --model ${MODEL} -"*) ;;
+    *) echo "FAIL: command not canonical stdin-pipe form ('codex exec --ephemeral -c model_reasoning_effort=${CMR_CODEX_EFFORT} --model X -')" >&2; fail=1 ;;
   esac
   # --ephemeral mandatory: parallel codex instances collide on
   # ~/.codex/session without it (wiki §额外硬规则 #6 / codex#11435).
