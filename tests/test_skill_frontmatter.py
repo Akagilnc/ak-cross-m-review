@@ -16,7 +16,7 @@ SKILL = Path(__file__).resolve().parents[1] / "SKILL.md"
 
 
 def _frontmatter_lines():
-    txt = SKILL.read_text()
+    txt = SKILL.read_text(encoding="utf-8")
     assert txt.startswith("---\n"), "SKILL.md must open with a `---` frontmatter fence"
     body = txt[4:]
     end = body.find("\n---")
@@ -38,7 +38,7 @@ def _top_level_key_lines():
 
 
 def test_frontmatter_has_required_top_level_keys():
-    keys = [ln.split(":", 1)[0] for ln in _top_level_key_lines()]
+    keys = [ln.split(":", 1)[0].strip() for ln in _top_level_key_lines()]
     for required in ("name", "description", "allowed-tools"):
         assert required in keys, f"frontmatter missing top-level key '{required}'"
 
