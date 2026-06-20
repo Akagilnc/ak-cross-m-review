@@ -24,12 +24,15 @@ Or, if pytest is on PATH: `pytest`.
 
 Two complementary layers, both run in CI (`.github/workflows/test.yml`):
 
-1. **Unit tests (`tests/`)** — pytest. `test_extract_json.py` covers
-   `lib/extract_json.py` (the only deterministic helper: salvage findings
-   JSON from noisy CLI stdout). `test_codex_review.py` is a subprocess
-   regression test for `backends/codex-review.sh`'s degrade path (a
-   non-zero codex exit must degrade even when its error body is
-   salvageable). Real assertions, no real CLI calls.
+1. **Unit tests (`tests/`)** — pytest. `test_codex_review.py` /
+   `test_gemini.py` are subprocess regression tests for the backends'
+   degrade-vs-passthrough gate: a successful reviewer run (exit 0) — even
+   pure **prose** with no JSON — must pass through verbatim (exit 0), and
+   only a true outage (empty output, a non-zero CLI exit, agy auth-race /
+   quota) degrades with "本轮缺 X". They stub `codex` / `agy` on PATH —
+   real assertions, no real CLI calls. (There is no `extract_json` parser
+   to test — it was removed in 0.3.9.0; reviewers return prose the
+   orchestrator reads, not sentinel-JSON.)
 2. **codex-review.sh selftest** — `bash backends/codex-review.sh
    --selftest` validates the pinned invocation form (no `-C`, stdin
    pipe, `--model gpt-5.5`, `2>&1`); it is the regression guard for the
@@ -48,8 +51,8 @@ invocation forms).
 - Test files: `tests/test_<module>.py`; functions `test_<behavior>`.
 - Assert real computed values, never `assert x is not None` / existence
   smoke checks.
-- Mock nothing in the core tests — `lib/` functions are pure; feed real
-  inputs and assert exact outputs.
+- Mock nothing in the core tests — stub the reviewer CLIs (`codex` /
+  `agy`) on PATH and assert the backend's exact stdout / exit / flags.
 - New function → add a `tests/test_*.py` case. Bug fix → regression test.
   New conditional branch → test both paths.
 - Never import secrets/API keys in tests.

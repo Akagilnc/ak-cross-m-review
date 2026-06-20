@@ -4,14 +4,15 @@ The script now calls `agy` (Antigravity CLI) — the in-kind
 replacement after the original `gemini` CLI's 2026-06-18 EOL — with
 the wiki's keychain-warm + retry × 4 recipe.
 
-Two pinned behaviors:
+Pinned behaviors:
 
-1. agy exits non-zero with a JSON-ish error body that extract_json's
-   legacy salvage would patch into findings:[] exit 0 → the script
-   must STILL degrade (the G_RC half of the codex-review.sh-style
-   gate). Round-1 of the original gemini.sh fix lacked this half and
-   a rate-limited gemini slipped through as a silent zero-finding
-   approve.
+1. A successful agy run (exit 0, non-empty output) is a REAL review —
+   prose OR JSON — and is passed through verbatim for the orchestrator
+   to read with judgment. Degrade happens ONLY on a true outage: agy
+   not installed, auth-race after retries, empty output, or agy exiting
+   non-zero (quota/crash). The script does NOT gate on output FORMAT —
+   demanding sentinel-JSON dropped a valid PROSE review as "本轮缺
+   gemini" (the divergence from the wiki, which returns review prose).
 
 2. agy keeps hitting the keychain auth-race signature → the script
    retries up to 4 attempts (initial 1 + 3 retries), then degrades
@@ -50,9 +51,9 @@ def _env_with_stub(stub_dir: Path) -> dict[str, str]:
 
 def test_degrades_when_agy_exits_nonzero_with_salvageable_body(tmp_path):
     # No auth-race signature (so the retry loop breaks on attempt 1).
-    # A JSON-ish body extract_json pass-5 would patch into findings:[]
-    # exit 0 — without the G_RC gate this would slip through as a
-    # silent zero-finding approve.
+    # agy exits non-zero = a real outage (quota/crash). Even with a
+    # non-empty body, a non-zero exit must degrade — never count as a
+    # review (the G_RC gate).
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
         'echo \'{"error":"RESOURCE_EXHAUSTED 429"}\'\n'
@@ -123,10 +124,10 @@ def test_does_not_false_degrade_when_model_output_contains_auth_string(tmp_path)
         f"expected exit 0, got {r.returncode}\n"
         f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     )
-    # extract_json pretty-prints (json.dump indent=2), so assert on the
-    # parsed value, not a compact substring (the degrade path emits
-    # compact JSON; the success path does not).
-    assert json.loads(r.stdout)["findings"] == []
+    # Success → agy's review is passed through verbatim; the review body
+    # (here a clean zero-finding result) reaches the orchestrator.
+    assert '"findings":[]' in r.stdout
+    assert "本轮缺 gemini" not in r.stderr
     assert "auth race" not in r.stderr
 
 
@@ -282,19 +283,20 @@ def test_surfaces_quota_reason_when_agy_swallows_429_to_logfile(tmp_path):
     assert "Resets in 64h" in r.stderr
 
 
-def test_no_false_quota_reason_when_model_output_mentions_quota(tmp_path):
-    # Cross-model review R1 (Claude C1 + codex#2 R1, live-reproduced):
-    # the degrade-reason scan must read agy's --log-file, NOT $RAW. On
-    # the extract-fail path $RAW is the full model output, which routinely
-    # quotes the reviewed diff — so a diff that mentions quota/429 code
-    # (e.g. `check_user_quota()`) must NOT make the flag falsely claim
-    # "quota/429 — agy individual quota exhausted". agy exits 0 with
-    # sentinel-less output and an EMPTY log → extract-fail degrade with
-    # NO quota attribution. (Mirrors the auth-string false-degrade guard.)
+def test_prose_review_passes_through_not_degraded(tmp_path):
+    # THE fix (gemini side, mirrors the codex one): agy exits 0 with a
+    # PROSE review — no sentinel, no JSON. That is a REAL review (Gemini's
+    # natural output), and must be passed through verbatim with exit 0,
+    # NOT degraded to "本轮缺 gemini" as if Gemini were down. The old
+    # extract_json sentinel gate dropped exactly this. The review body
+    # here even quotes the reviewed diff's `check_user_quota()/429` — that
+    # must NOT trigger any false quota attribution either (there is no
+    # degrade path to attribute, and the reason scan only reads agy's log,
+    # never $RAW).
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
-        'echo "Reviewed diff adds: def check_user_quota(): return 429"\n'
-        'echo "no sentinel block here"\n'
+        'echo "Reviewed the diff. P2: check_user_quota() returns 429 on the"\n'
+        'echo "wrong branch — see auth.py:see. Otherwise no findings."\n'
         'exit 0\n'
     ))
     r = subprocess.run(
@@ -304,13 +306,17 @@ def test_no_false_quota_reason_when_model_output_mentions_quota(tmp_path):
         env=_env_with_stub(tmp_path / "bin"),
         timeout=60,
     )
-    assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert "本轮缺 gemini" in r.stderr  # it DOES degrade (no sentinel)
-    assert "quota" not in r.stderr, (
-        "false quota attribution: the reason scan matched 'quota' in the "
-        f"model output ($RAW) instead of agy's log. stderr={r.stderr!r}"
+    assert r.returncode == 0, (
+        f"prose review must pass through (exit 0), not degrade; got "
+        f"{r.returncode}\nstdout={r.stdout!r}\nstderr={r.stderr!r}"
     )
-    assert "429" not in r.stderr
+    assert "check_user_quota() returns 429 on the" in r.stdout, (
+        f"gemini's prose review was not passed through. stdout={r.stdout!r}"
+    )
+    assert "本轮缺 gemini" not in r.stderr, (
+        f"a real prose review was wrongly flagged as a missing vendor. "
+        f"stderr={r.stderr!r}"
+    )
 
 
 def test_quota_log_without_resets_line_still_degrades_cleanly(tmp_path):
@@ -510,7 +516,7 @@ def test_agy_steps_down_to_sonnet_when_gemini_quota_exhausted(tmp_path):
         timeout=60,
     )
     assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert json.loads(r.stdout)["findings"] == []
+    assert '"findings":[]' in r.stdout  # the fallback rung's review passed through
     assert "stepping down to next agy model" in r.stderr
     assert "Claude Sonnet 4.6 (Thinking)" in r.stderr  # the fallback note
     assert "NO Google voice this round" in r.stderr
@@ -562,7 +568,7 @@ def test_agy_does_not_step_down_when_gemini_works(tmp_path):
         timeout=60,
     )
     assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert json.loads(r.stdout)["findings"] == []
+    assert '"findings":[]' in r.stdout  # Gemini's review passed through
     assert "stepping down" not in r.stderr
     assert "NO Google voice" not in r.stderr
 

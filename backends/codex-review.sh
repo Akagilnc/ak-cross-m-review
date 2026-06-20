@@ -31,7 +31,7 @@
 #
 # Invocation:
 #   <stdin: full review prompt incl. diff> | codex-review.sh <mode> [<label>]
-#     mode  : doc | code   (passed to extract_json.py)
+#     mode  : doc | code   (review lens; echoed in the degrade payload)
 #     label : optional diagnostic tag (e.g. "section-2of3")
 #
 #   CMR_CODEX_MODEL   override review model (default: gpt-5.5)
@@ -39,17 +39,15 @@
 #   CMR_DRY_RUN=1     print the exact command that WOULD run, do not call
 #                     codex, exit 0. Used by --selftest.
 #
-# Outputs reviewer JSON (reviewer=codex) to stdout. Diagnostics to stderr.
-# On timeout / empty output: synthetic empty-findings JSON + exit 1 so the
-# orchestrator degrades and flags "本轮缺 codex" instead of silently passing.
+# On success codex's review (PROSE or JSON) is passed through VERBATIM to
+# stdout — the orchestrator reads it with judgment (wiki §「.result 是
+# review 文本」). Diagnostics to stderr. On timeout / empty output / a
+# non-zero codex exit (auth/quota/crash): synthetic empty-findings JSON +
+# exit 1 so the orchestrator degrades and flags "本轮缺 codex". The script
+# does NOT parse findings or demand a sentinel-JSON format — that gate
+# dropped codex's prose review as a phantom outage (removed here).
 
 set -euo pipefail
-
-# Resolve the shared lib (this script lives at backends/, lib/ is one
-# level up).
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROTO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-EXTRACT="$PROTO_ROOT/lib/extract_json.py"
 
 MODE="${1:-code}"
 LABEL="${2:-full}"
@@ -222,31 +220,24 @@ if [ -z "$RAW" ]; then
   exit 1
 fi
 
-# JSON-aware hard-error detection. The previous version grepped the
-# whole review body for auth/quota/rate/429 and false-degraded ANY
-# valid review that merely discussed rate-limit/quota/auth code (among
-# the defect categories codex is explicitly asked to find — it even
-# self-degraded on this repo). Instead lean on extract_json.py's
-# documented contract: it exits non-zero ONLY when it cannot find real
-# findings JSON and fell back to a synthetic empty object — i.e. codex
-# emitted an error/banner, not a review. A valid review (including a
-# clean zero-finding approve, and one whose findings quote "429" /
-# "quota") parses cleanly → exit 0 → never degraded. Zero false
-# positives by construction.
-set +e
-EXTRACTED="$(printf '%s' "$RAW" | python3 "$EXTRACT" codex "$MODE")"
-EX_RC=$?
-set -e
-if [ "$EX_RC" -ne 0 ] || [ "$RC" -ne 0 ]; then
-  # EX_RC!=0: extract_json found no real findings JSON (codex emitted an
-  # error/banner). RC!=0: codex itself exited non-zero — even when it
-  # printed a JSON error body that extract_json salvaged into findings:[]
-  # (pass-5) and exited 0. Without the RC guard, an auth/quota-failed
-  # codex would count as a valid zero-finding reviewer and could help a
-  # single real reviewer look like a converged round. A clean review
-  # always exits 0, so this stays zero-false-positive.
-  echo "codex-review: not a valid review — degrade, flag '本轮缺 codex' (extract_json rc=$EX_RC, codex exit rc=$RC)" >&2
+# Past the empty/timeout degrade above, RAW holds codex's output. The
+# ONLY remaining outage signal is codex's own exit code: a clean review
+# (prose or JSON) exits 0; auth/quota/crash exit non-zero. So degrade
+# iff rc≠0 — and otherwise pass the review THROUGH VERBATIM.
+#
+# We deliberately do NOT parse findings or require a sentinel-JSON shape.
+# Codex's strongest review is PROSE; the old extract_json sentinel gate
+# treated any prose (no sentinel) as "no findings JSON" and degraded it
+# to 本轮缺 codex — indistinguishable from a real outage, so the best
+# reviewer was repeatedly dropped over format. The wiki's model is that
+# reviewers return review text and the orchestrator (an agent) reads it
+# with judgment; this restores that. Grepping the body for auth/quota/429
+# is also wrong — a prose review legitimately discusses those as defect
+# categories (it self-degraded on this repo once). rc is the clean,
+# content-independent outage signal.
+if [ "$RC" -ne 0 ]; then
+  echo "codex-review: codex exited rc=$RC (auth/quota/crash, not a review) — degrade, flag '本轮缺 codex'" >&2
   printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
 fi
-printf '%s\n' "$EXTRACTED"
+printf '%s\n' "$RAW"

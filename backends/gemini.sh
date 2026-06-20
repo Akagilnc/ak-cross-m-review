@@ -51,7 +51,6 @@
 
 set -euo pipefail
 
-PROTO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"   # the skill's own dir — for lib/ only
 MODE="${1:-doc}"
 PRINT_TIMEOUT="${AGY_PRINT_TIMEOUT:-15m}"
 
@@ -151,9 +150,9 @@ fi
 # defense-in-depth, not the primary guard.
 AGY_PROMPT="REVIEW ONLY — HARD CONSTRAINT. Do NOT modify, create, rename,
 or delete ANY file. Do NOT run any shell command, test, build, git, or
-edit operation. You are a read-only reviewer: your ONLY output is review
-findings in the required sentinel-wrapped JSON. Touching the filesystem
-or running commands is a contract violation, not help.
+edit operation. You are a read-only reviewer: your ONLY output is your
+review (grounded prose findings). Touching the filesystem or running
+commands is a contract violation, not help.
 
 $FULL_PROMPT"
 
@@ -247,19 +246,22 @@ if [ -z "$RAW" ]; then
   exit 1
 fi
 
-# extract_json takes ONLY the sentinel-wrapped findings (Pass 0); JSON
-# echoed from the schema or quoted from the diff is structurally
-# ignored. Degrade — visibly, never silent — if EITHER extract_json
-# found no contracted findings (EX_RC) OR agy itself exited non-zero
-# (G_RC: a non-auth-race failure that still printed a salvageable
-# error body). This is the FULL codex-review.sh-style degrade gate.
-set +e
-EXTRACTED="$(printf '%s' "$RAW" | python3 "$PROTO_ROOT/lib/extract_json.py" gemini "$MODE")"
-EX_RC=$?
-set -e
-if [ "$EX_RC" -ne 0 ] || [ "$G_RC" -ne 0 ]; then
+# Past the empty-output degrade above, RAW holds agy's review. The only
+# remaining outage signal is agy's own exit code: a clean review (prose
+# or JSON) exits 0; a non-auth-race failure (quota/crash) exits non-zero.
+# Degrade — visibly, never silent — iff G_RC≠0, and otherwise pass agy's
+# review THROUGH VERBATIM for the orchestrator to read with judgment.
+#
+# We deliberately do NOT run extract_json / require a sentinel-JSON shape.
+# Gemini's review is prose; the old sentinel gate treated any prose as
+# "no findings JSON" and degraded it to 本轮缺 gemini — dropping a real
+# review over format (the divergence from the wiki, which returns review
+# text the agent reads). The degrade-reason scan still reads ONLY agy's
+# --log-file (agy_fatal_reason), never $RAW, so a review body that quotes
+# the diff's quota/429 code cannot mis-attribute a reason.
+if [ "$G_RC" -ne 0 ]; then
   REASON="$(agy_fatal_reason)"
-  echo "gemini: degrade — flag '本轮缺 gemini' (extract_json rc=$EX_RC, agy exit rc=$G_RC${REASON:+; $REASON}; agy's stderr is in the captured output per 2>&1)" >&2
+  echo "gemini: degrade — flag '本轮缺 gemini' (agy exit rc=$G_RC${REASON:+; $REASON}; agy's stderr is in the captured output per 2>&1)" >&2
   printf '{"reviewer":"gemini","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
 fi
@@ -278,4 +280,4 @@ case "$AGY_RAN_MODEL" in
     fi
     ;;
 esac
-printf '%s\n' "$EXTRACTED"
+printf '%s\n' "$RAW"
