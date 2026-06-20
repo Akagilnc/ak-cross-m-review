@@ -65,7 +65,9 @@ def test_prose_review_passes_through_not_degraded(tmp_path):
         "letting a malformed step bypass the P0/P1 gate.\\n"
         "Otherwise converged."
     )
-    codex.write_text(f"#!/bin/sh\nprintf '%s\\n' \"{prose}\"\nexit 0\n")
+    # %b (not %s) so the prose's \n become real newlines — a faithful
+    # multi-line review stub (gemini online R, medium).
+    codex.write_text(f"#!/bin/sh\nprintf '%b\\n' \"{prose}\"\nexit 0\n")
     codex.chmod(codex.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
     env = dict(os.environ)
