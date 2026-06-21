@@ -104,9 +104,11 @@ stop, not a round counter.
 SKILL.md                  the executable wiki transcription (the skill)
 backends/codex-review.sh  pins the correct `codex exec` invocation
                           (--ephemeral, no -C, stdin pipe, 2>&1) via a
-                          single CODEX_CMD array; passes a successful
-                          review through verbatim, degrades only on a true
-                          outage; --selftest is its regression guard
+                          single CODEX_CMD array; emits codex's final
+                          message only (via -o/--output-last-message — a
+                          few KB, not the ~1.5MB stdout echo+trace),
+                          degrades only on a true outage; --selftest is
+                          its regression guard
 backends/gemini.sh        calls `agy --sandbox --print ''` (post-EOL
                           gemini replacement) + warm + retry × 4 around agy's
                           keychain auth-race; passes the review through,

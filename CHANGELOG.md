@@ -4,6 +4,39 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.10.0] - 2026-06-21
+
+Emit codex's final message only, not its ~1.5MB stdout — a ~99% size cut
+for the orchestrator's merge step, with no parser.
+
+### Changed — codex review via `-o`/`--output-last-message` (`codex-review.sh`)
+`codex exec`'s stdout is the full prompt echo + reasoning trace —
+**~1.5MB** (≈375K tokens) on a real diff, almost all of it noise the
+orchestrator already has; feeding that to the merge step wastes context
+(or gets truncated from the tail, which is the review). codex's native
+**`-o <file>`** writes ONLY its final message (findings + verification +
+`CMR-VERDICT`) — a few KB, complete. The backend now adds `-o "$LASTMSG"`
+to `CODEX_CMD` and emits that file's contents on success (measured: a
+small diff went 23KB stdout → 0.7KB last-message; a real run is ~1.5MB →
+a few KB). stdout is still captured (2>&1) but only for outage
+diagnostics.
+
+This is **not** a return of the parser we removed in 0.3.9.0: we use the
+CLI's own last-message output, never tail-parse or marker-scan (codex
+echoes the prompt that *defines* any marker, so a self-written scanner
+false-positives on the echo). Extraction is not a format gate — degrade
+still fires only on a true outage: timeout/kill, codex exiting non-zero,
+or **an empty `-o` file** (rc=0 but no final message). New regression
+tests: `test_emits_last_message_not_stdout_echo`,
+`test_degrades_when_final_message_empty`; `--selftest` pins the new
+10-token array (`-o <file>` before stdin `-`). The Gemini leg (`agy
+--print`, 0–7KB, no echo) needs no trimming and is unchanged.
+
+### Changed — wiki sync (source of truth)
+`cross-model-review.md` §额外硬规则 #7 gains a clause: trim the
+echo/trace via the CLI's native output (codex `-o`), never a self-written
+parser, and extraction-miss is not a degrade.
+
 ## [0.3.9.0] - 2026-06-21
 
 Reviewers now return a **prose** review and the orchestrator reads it —
