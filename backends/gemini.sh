@@ -246,11 +246,19 @@ if [ -z "$RAW" ]; then
   exit 1
 fi
 
-# Past the empty-output degrade above, RAW holds agy's review. The only
-# remaining outage signal is agy's own exit code: a clean review (prose
-# or JSON) exits 0; a non-auth-race failure (quota/crash) exits non-zero.
-# Degrade — visibly, never silent — iff G_RC≠0, and otherwise pass agy's
-# review THROUGH VERBATIM for the orchestrator to read with judgment.
+# Past the empty-output degrade above, RAW holds agy's review. Degrade
+# — visibly, never silent — iff agy itself failed (G_RC≠0, a quota/crash
+# non-auth-race exit) OR the FINAL ladder rung's log shows quota
+# exhaustion; otherwise pass agy's review THROUGH VERBATIM for the
+# orchestrator to read with judgment.
+#
+# The quota-log check is essential: the per-rung step-down only fires
+# while a LOWER rung still exists, so the LAST rung's quota must be caught
+# here — else an exhausted Gemini leg that exits 0 with a non-empty banner
+# on stdout (RAW non-empty → the empty-output gate above is skipped) would
+# be passed through as a real review (codex online R, P2). We key on the
+# quota LOG (agy_log_has_quota) — the correct fatal signal — not on output
+# format.
 #
 # We deliberately do NOT run extract_json / require a sentinel-JSON shape.
 # Gemini's review is prose; the old sentinel gate treated any prose as
@@ -259,7 +267,7 @@ fi
 # text the agent reads). The degrade-reason scan still reads ONLY agy's
 # --log-file (agy_fatal_reason), never $RAW, so a review body that quotes
 # the diff's quota/429 code cannot mis-attribute a reason.
-if [ "$G_RC" -ne 0 ]; then
+if [ "$G_RC" -ne 0 ] || agy_log_has_quota; then
   REASON="$(agy_fatal_reason)"
   echo "gemini: degrade — flag '本轮缺 gemini' (agy exit rc=$G_RC${REASON:+; $REASON}; agy's stderr is in the captured output per 2>&1)" >&2
   printf '{"reviewer":"gemini","mode":"%s","findings":[]}\n' "$MODE"

@@ -550,6 +550,47 @@ def test_agy_leg_degrades_only_when_every_model_quota_exhausted(tmp_path):
     assert "quota" in r.stderr
 
 
+def test_final_rung_quota_with_nonempty_banner_still_degrades(tmp_path):
+    # codex online R (P2): a quota-exhausted FINAL ladder rung that exits 0
+    # but prints a NON-EMPTY banner on stdout must NOT be passed through as
+    # a real review. The empty-output gate doesn't catch it (RAW non-empty)
+    # and the per-rung step-down doesn't fire on the last rung — so the
+    # degrade gate must key on the quota LOG (agy_log_has_quota), not on
+    # rc/emptiness alone. (Before the prose-passthrough rewrite, the old
+    # extract_json sentinel gate caught this incidentally; the fix restores
+    # the protection via the correct signal.) AGY_MODEL pins ONE rung.
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'logf=""\n'
+        'while [ $# -gt 0 ]; do\n'
+        '  case "$1" in --log-file) logf="$2"; shift 2 ;; *) shift ;; esac\n'
+        'done\n'
+        '[ -n "$logf" ] && printf \'%s\\n\' '
+        '"E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$logf"\n'
+        'echo "agy: some diagnostic banner on stdout"\n'  # NON-empty stdout
+        'exit 0\n'
+    ))
+    env = _env_with_stub(tmp_path / "bin")
+    env["AGY_MODEL"] = "x-single-rung"  # one rung → no step-down masking it
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True, env=env, timeout=60,
+    )
+    assert r.returncode == 1, (
+        f"a quota-exhausted final rung with a non-empty banner must degrade, "
+        f"not pass the banner through as a review; got {r.returncode}\n"
+        f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    )
+    assert "本轮缺 gemini" in r.stderr
+    assert "quota" in r.stderr
+    # synthetic degrade payload, NOT the agy banner
+    assert json.loads(r.stdout)["findings"] == []
+    assert "some diagnostic banner" not in r.stdout, (
+        "the quota-rung banner was passed through as if it were a review"
+    )
+
+
 def test_agy_does_not_step_down_when_gemini_works(tmp_path):
     # Happy path: Gemini 3.5 Flash (no --model) returns valid findings →
     # the ladder must NOT step down (Sonnet never tried, no fallback note).

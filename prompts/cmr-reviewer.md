@@ -145,12 +145,17 @@ converged" is a valid and expected answer — it is how you vote
 **approve** (the loop terminates positively when every reviewer returns
 no findings). Do NOT invent nitpicks to look thorough.
 
-**End your review with a single verdict line**, exactly one of:
+**End your review with a single verdict line** — the last line of your
+output must be **exactly** one of these two strings, with nothing else on
+that line (no arrows, no commentary):
 
+```text
+CMR-VERDICT: converged
+CMR-VERDICT: findings
 ```
-CMR-VERDICT: converged      ← you found no defects (your approve vote)
-CMR-VERDICT: findings       ← you raised one or more issues above
-```
+
+- `CMR-VERDICT: converged` — use when you found no defects (your approve vote).
+- `CMR-VERDICT: findings` — use when you raised one or more issues above.
 
 That verdict line is the *only* fixed-format ask; everything above it is
 free prose. It lets the orchestrator tell an approve from a

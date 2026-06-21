@@ -21,7 +21,8 @@ reviewers return review text, the agent reads it); the parser was the
 skill's own over-formalization. Now `backends/codex-review.sh` /
 `gemini.sh` **pass a successful review through verbatim** and degrade
 **only on a true outage** — empty output, the CLI exiting non-zero
-(auth/quota/crash), timeout, or agy auth-race. Regression tests pin
+(auth/quota/crash), timeout, or agy auth-race after its retries are
+exhausted. Regression tests pin
 prose-passthrough on both legs (`test_prose_review_passes_through_not_degraded`).
 
 ### Removed — `lib/extract_json.py` + `tests/test_extract_json.py`
