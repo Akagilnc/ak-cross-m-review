@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.10.1] - 2026-06-22
+
+### Changed — codex review timeout default 600 → 1200s (`codex-review.sh`)
+`CMR_CODEX_TIMEOUT` defaults to **1200s** (20 min), up from 600s. Deep
+`xhigh` reviews of large cumulative diffs were brushing the 10-min wall
+and getting killed (a false "本轮缺 codex"); 20 min gives headroom. Still
+caller-overridable via the env var.
+
 ## [0.3.10.0] - 2026-06-21
 
 Emit codex's final message only, not its ~1.5MB stdout — a ~99% size cut
