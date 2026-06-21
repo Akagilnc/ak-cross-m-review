@@ -42,7 +42,7 @@
 #     label : optional diagnostic tag (e.g. "section-2of3")
 #
 #   CMR_CODEX_MODEL   override review model (default: gpt-5.5)
-#   CMR_CODEX_TIMEOUT hard wall-clock seconds before pkill (default: 600)
+#   CMR_CODEX_TIMEOUT hard wall-clock seconds before pkill (default: 1200)
 #   CMR_DRY_RUN=1     print the exact command that WOULD run, do not call
 #                     codex, exit 0. Used by --selftest.
 #
@@ -61,7 +61,7 @@ set -euo pipefail
 MODE="${1:-code}"
 LABEL="${2:-full}"
 MODEL="${CMR_CODEX_MODEL:-gpt-5.5}"
-TIMEOUT_S="${CMR_CODEX_TIMEOUT:-600}"
+TIMEOUT_S="${CMR_CODEX_TIMEOUT:-1200}"
 # Reasoning effort is scenario-dependent (wiki §调用规范 effort 表,
 # 2026-06-18): ship-pre 5a/5b = `xhigh` (the real gate + cross-slice
 # invariants need max depth); per-slice = `high` (cheap high-frequency
