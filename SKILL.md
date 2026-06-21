@@ -361,10 +361,14 @@ as "本轮缺 X", indistinguishable from an outage (the best reviewer
 repeatedly lost over format). `prompts/cmr-reviewer.md` asks for grounded
 prose ending in a `CMR-VERDICT: converged|findings` line. The backends
 (`backends/codex-review.sh` / `gemini.sh`) pass a successful review
-through **verbatim** and degrade (synthetic empty findings + nonzero exit
-+ visible "本轮缺 X" flag) **only on a true outage** — timeout, empty
-output, the CLI exiting non-zero (auth/quota/crash), or agy keychain
-auth-race (after 4 attempts). A real prose review and a missing vendor
+through and degrade (synthetic empty findings + nonzero exit + visible
+"本轮缺 X" flag) **only on a true outage** — timeout, empty output, the
+CLI exiting non-zero (auth/quota/crash), or agy keychain auth-race (after
+4 attempts). codex-review.sh emits codex's **final message only** (via
+`-o`/`--output-last-message`): codex's stdout is the full prompt echo +
+reasoning trace (~1.5MB on a real diff), so we take its native
+last-message file — a few KB, complete, no parser. (agy's `--print`
+output has no such echo, so the Gemini leg needs no trimming.) A real prose review and a missing vendor
 are thus cleanly distinguished; a failed vendor is always detectable,
 never a silent zero-finding pass, and a real review is never dropped for
 its format.
