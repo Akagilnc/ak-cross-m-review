@@ -4,6 +4,48 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.9.0] - 2026-06-21
+
+Reviewers now return a **prose** review and the orchestrator reads it —
+removing a skill-only divergence from the wiki that repeatedly dropped the
+strongest reviewer (codex) over output format.
+
+### Fixed — prose review no longer degraded as a phantom outage (backends)
+The backends piped each reviewer's stdout through a `lib/extract_json.py`
+sentinel-JSON parser and degraded to "本轮缺 X" whenever it found no
+`===CMR-FINDINGS-BEGIN===`-wrapped JSON. But codex's (and agy's) strongest
+review is **prose** — so a real, deep review with no JSON wrapper was
+treated as a missing vendor, **indistinguishable from an actual outage**.
+The wiki never asked for the sentinel (`§.result 是 review 文本`:
+reviewers return review text, the agent reads it); the parser was the
+skill's own over-formalization. Now `backends/codex-review.sh` /
+`gemini.sh` **pass a successful review through verbatim** and degrade
+**only on a true outage** — empty output, the CLI exiting non-zero
+(auth/quota/crash), timeout, or agy auth-race after its retries are
+exhausted. Regression tests pin
+prose-passthrough on both legs (`test_prose_review_passes_through_not_degraded`).
+
+### Removed — `lib/extract_json.py` + `tests/test_extract_json.py`
+The sentinel-JSON parser and its tests are deleted (no callers remain) —
+the same "no deterministic engine, this is agent judgment" stance that
+removed `merge.py` / `drift.py` in 0.2.0.0, one layer down. `python3` is
+now a **test-only** dependency; the backends call no Python at runtime.
+
+### Changed — reviewer prompt is prose-first (`prompts/cmr-reviewer.md`)
+The Output section drops the mandatory sentinel-JSON schema. Reviewers
+write grounded **prose** (severity / location / quoted offending line /
+verification / fix) and end with a single `CMR-VERDICT: converged|findings`
+line — the only fixed-format ask, so the orchestrator can tell approve
+from findings and a real review from a missing vendor at a glance.
+
+### Changed — wiki sync (source of truth)
+`cross-model-review.md` §额外硬规则 gains rule #7: reviewer output is
+prose the agent reads; never gate on JSON format; degrade only on a true
+outage. Codifies the lesson so a future skill re-sync can't drift back
+into a sentinel-JSON straitjacket. SKILL.md / README.md / CLAUDE.md /
+TESTING.md updated to match (findings channel, merge step, ships list,
+dependencies, test layers).
+
 ## [0.3.8.0] - 2026-06-18
 
 Full sync to the wiki's 2026-06-14→06-18 revision (16 commits) — a major

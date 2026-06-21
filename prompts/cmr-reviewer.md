@@ -15,8 +15,9 @@ source, not by trusting the diff in isolation.
 > NOT modify, create, rename, or delete any file. Do NOT run tests,
 > builds, git, or any command that changes state. Reading / grepping
 > source to verify a finding is expected; writing anything is a contract
-> violation. Your ONLY output is the sentinel-wrapped findings JSON
-> below — the caller applies fixes separately, never you.
+> violation. Your ONLY output is your written review (the grounded prose
+> findings described below) — the caller applies fixes separately, never
+> you.
 
 ---
 
@@ -117,53 +118,49 @@ independent call, not to pre-guess what others will say.
 
 ---
 
-## Output — sentinel-wrapped JSON
+## Output — your review (prose)
 
-Emit your findings **exactly once**, as a single JSON object, between a
-line that is exactly `===CMR-FINDINGS-BEGIN===` and a line that is
-exactly `===CMR-FINDINGS-END===`. Put nothing else between those two
-lines. Everything outside them is ignored by the orchestrator.
+Write your review as clear, grounded **prose**. There is **no required
+JSON or wrapper format** — the orchestrator is an agent and reads your
+review directly, the way it would read a human reviewer's comment. Do not
+contort your strongest analysis into a schema; just write the review.
 
-The block below is a **format reference only** — do NOT wrap it in the
-sentinels; only your real findings go between them. (This contract
-exists because JSON echoed from this schema, or quoted from the diff
-under review, was otherwise mistaken for the review itself.)
+For **each finding**, give (in whatever prose layout is clearest):
 
-```json
-{
-  "reviewer": "claude|codex|gemini",
-  "mode": "doc|code",
-  "findings": [
-    {
-      "id": "R1",
-      "severity": "critical|high|medium|low|clarity",
-      "category": "off-by-one|broken-invariant|spec-impl-mismatch|cross-section|missing-guard|security|test-claim|api-contract|...",
-      "claim_quote": "the exact line/phrase from the diff that is wrong",
-      "location": "path:line  (or hunk header)",
-      "related_locations": ["other path:line where the same error/concept appears"],
-      "verification": "what you actually ran/read and what you saw",
-      "suggested_fix": "the minimal correct change, or 'n/a' if author judgment needed"
-    }
-  ]
-}
+- **severity** — one of `critical` / `high` / `medium` / `low` /
+  `clarity` (the wiki's P0–P4; see the Severity table above).
+- **location** — `path:line` (or the hunk header).
+- **the problem** — what is wrong, in a sentence or two. **Quote the exact
+  offending line** from the diff verbatim so the fixer can locate it; if
+  you cannot quote it, you cannot ground it — drop the finding.
+- **verification** — what you actually read / grepped / traced and what
+  you saw (a finding with no grounding is a guess — see the Verification
+  section above). Reviewers that show their work are trusted more.
+- **suggested fix** — the minimal correct change, or "author judgment".
+- if the same wrong value/concept recurs **elsewhere** in the diff, name
+  every location — the fixer fixes them all, not just the first.
+
+If you find no defects, **say so plainly**. An explicit "no findings /
+converged" is a valid and expected answer — it is how you vote
+**approve** (the loop terminates positively when every reviewer returns
+no findings). Do NOT invent nitpicks to look thorough.
+
+**End your review with a single verdict line** — the last line of your
+output must be **exactly** one of these two strings, with nothing else on
+that line (no arrows, no commentary):
+
+```text
+CMR-VERDICT: converged
+CMR-VERDICT: findings
 ```
 
-Your entire answer therefore ends exactly like this (sentinels each
-alone on their own line, real findings — not this schema — between):
+- `CMR-VERDICT: converged` — use when you found no defects (your approve vote).
+- `CMR-VERDICT: findings` — use when you raised one or more issues above.
 
-```
-===CMR-FINDINGS-BEGIN===
-{"reviewer":"codex","mode":"code","findings":[]}
-===CMR-FINDINGS-END===
-```
-
-- `findings: []` (empty) is a valid, expected answer. If the change is
-  correct, return zero findings — do not invent nitpicks to look thorough.
-  An empty return is how this reviewer votes "approve" (the loop's
-  positive-termination signal is all reviewers returning empty).
-- Always fill `related_locations` when the same wrong value/concept
-  appears in more than one place in the diff — the fixer uses it to fix
-  every occurrence, not just the first.
-- `claim_quote` MUST be copied verbatim from the diff so the fixer can
-  locate it. If you cannot quote it, you cannot ground it — drop the
-  finding.
+That verdict line is the *only* fixed-format ask; everything above it is
+free prose. It lets the orchestrator tell an approve from a
+findings-review at a glance, and separates a real review (which ends with
+a verdict) from a missing/crashed reviewer (which produces no output and
+no verdict at all → the round flags "本轮缺 <you>", never a false
+approve). If you forget the line, the orchestrator still reads your prose
+— it just makes your verdict unambiguous.

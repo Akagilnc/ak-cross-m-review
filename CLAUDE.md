@@ -4,9 +4,12 @@ Local, pre-PR cross-model review skill (v3 vendor squad by trigger point:
 ship-pre = N codex + 1 Claude Agent + 1 Gemini via `agy`; per-slice =
 N codex + agy, no Claude). `SKILL.md` is the entry — a faithful
 transcription of the wiki; merge / grade / drift / termination are agent
-**judgment**, NOT a deterministic engine. `lib/` holds the single helper
-`extract_json.py`; `backends/` the corrected reviewer invocations;
-`prompts/` the reviewer/fixer prompts. See `README.md` for architecture
+**judgment**, NOT a deterministic engine. Reviewers return a **prose**
+review (no sentinel-JSON; the `lib/extract_json.py` parser was removed in
+0.3.9.0 — it dropped the strongest reviewer's prose as a phantom outage).
+`backends/` holds the corrected reviewer invocations (pass a successful
+review through verbatim, degrade only on a true outage); `prompts/` the
+reviewer/fixer prompts. See `README.md` for architecture
 and `~/WorkSpace/vault/ak-cc-wiki/wiki/concepts/cross-model-review.md`
 for the source-of-truth spec.
 

@@ -351,16 +351,23 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   (which scales reviewer *count*) — it is about not shoving a single
   >10K-line payload through one stdin pipe.
 
-Findings channel: reviewers wrap their JSON between
-`===CMR-FINDINGS-BEGIN===` / `===CMR-FINDINGS-END===` sentinels
-(`prompts/cmr-reviewer.md` enforces this); `lib/extract_json.py` takes
-**only** the sentinel block — schema echoed from the prompt or JSON
-quoted from the diff under review is structurally ignored, never
-mistaken for the review. `backends/codex-review.sh` / `gemini.sh`
-degrade cleanly (synthetic empty findings + nonzero exit + visible
-"本轮缺 X" flag) on timeout / auth / quota / no-sentinel / agy keychain
-auth-race (after 4 attempts), so a failed or non-compliant vendor is
-always detectable, never a silent zero-finding pass.
+Findings channel: reviewers return their review as **prose** (the wiki
+model — §「.result 是 review 文本」: a reviewer returns review text and
+the orchestrator, an agent, reads it with judgment). There is **no
+sentinel-JSON wrapper and no `extract_json` parse** — that gate was a
+divergence from the wiki: it demanded the strongest reviewer's prose be a
+JSON shape, and when codex/agy naturally answered in prose it was dropped
+as "本轮缺 X", indistinguishable from an outage (the best reviewer
+repeatedly lost over format). `prompts/cmr-reviewer.md` asks for grounded
+prose ending in a `CMR-VERDICT: converged|findings` line. The backends
+(`backends/codex-review.sh` / `gemini.sh`) pass a successful review
+through **verbatim** and degrade (synthetic empty findings + nonzero exit
++ visible "本轮缺 X" flag) **only on a true outage** — timeout, empty
+output, the CLI exiting non-zero (auth/quota/crash), or agy keychain
+auth-race (after 4 attempts). A real prose review and a missing vendor
+are thus cleanly distinguished; a failed vendor is always detectable,
+never a silent zero-finding pass, and a real review is never dropped for
+its format.
 
 Prompt templates: feed every reviewer `prompts/cmr-reviewer.md` + the
 diff; the fixer (Step 7) uses `prompts/cmr-fixer.md` (the 3-part defer
@@ -419,8 +426,12 @@ dev-tier spark / 5.3-codex / sonnet. See wiki §降级链.
 
 ## Step 4 — merge + grade (agent judgment, not a deterministic engine)
 
-Collect every reviewer's findings (use `lib/extract_json.py` to pull the
-JSON out of each CLI's stdout). Then, as judgment:
+Collect every reviewer's review by **reading each CLI's stdout directly**
+— it is prose (or whatever the reviewer wrote); read it the way you would
+a human reviewer's comment, taking its `CMR-VERDICT:` line and its
+grounded findings. A backend that degraded (nonzero exit + "本轮缺 X")
+is a MISSING vendor for this round, not an approve — do not count it as a
+zero-finding concur. Then, as judgment:
 
 - Group findings that describe the same issue across reviewers.
 - Grade each P0 / P1 / P2 / P3 / P4. Reviewers emit

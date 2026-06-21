@@ -1,10 +1,18 @@
-"""Regression test for the codex-review.sh degrade gap (Codex [P2]).
+"""Regression tests for backends/codex-review.sh.
 
-A codex that exits non-zero but prints a JSON error body — which
-extract_json.py salvages into findings:[] and exits 0 — must STILL be
-treated as a degraded vendor (exit 1 + synthetic empty findings).
-Otherwise an auth/quota-failed codex silently counts as a valid
-zero-finding reviewer."""
+Two pinned behaviors around the degrade gate:
+
+1. A codex that exits NON-ZERO is a real outage (auth/quota/crash) and
+   must degrade (exit 1 + synthetic empty findings), even if it printed a
+   salvageable-looking body. Otherwise a failed codex silently counts as
+   a valid zero-finding reviewer.
+
+2. A codex that exits ZERO with a PROSE review (no JSON, no sentinel)
+   must be PASSED THROUGH verbatim (exit 0), NOT degraded. Codex's
+   strongest review is prose; the old sentinel-JSON gate dropped it as if
+   codex were down — the divergence from the wiki (§「.result 是 review
+   文本」: reviewers return prose, the orchestrator reads it) that lost the
+   strongest reviewer to a format technicality across many rounds."""
 
 import os
 import stat
@@ -18,8 +26,8 @@ def test_degrades_when_codex_exits_nonzero_with_salvageable_body(tmp_path):
     stub_dir = tmp_path / "bin"
     stub_dir.mkdir()
     codex = stub_dir / "codex"
-    # Prints a JSON object with no `findings` (extract_json pass-5
-    # salvages it → findings:[] → exit 0) but the process exits 1.
+    # Prints a JSON-ish error body but the process exits 1 — a real
+    # outage (auth/quota/crash). Must degrade, never count as a review.
     codex.write_text('#!/bin/sh\necho \'{"error":"quota exceeded"}\'\nexit 1\n')
     codex.chmod(codex.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
@@ -40,6 +48,48 @@ def test_degrades_when_codex_exits_nonzero_with_salvageable_body(tmp_path):
     # Synthetic degrade payload (compact, no spaces — see the printf).
     assert '"reviewer":"codex"' in r.stdout
     assert '"findings":[]' in r.stdout
+
+
+def test_prose_review_passes_through_not_degraded(tmp_path):
+    # THE fix: codex's natural, strongest output is a PROSE review (no
+    # JSON, no sentinel). It exits 0. The script must pass that prose
+    # through verbatim and exit 0 — NOT degrade it to "本轮缺 codex" as if
+    # codex were down. (The old extract_json sentinel gate did exactly
+    # that, dropping the strongest reviewer over format.)
+    stub_dir = tmp_path / "bin"
+    stub_dir.mkdir()
+    codex = stub_dir / "codex"
+    prose = (
+        "I reviewed the diff. One real issue:\\n"
+        "P1: route.ts:96 route() treats a non-reviewer output as 0 findings, "
+        "letting a malformed step bypass the P0/P1 gate.\\n"
+        "Otherwise converged."
+    )
+    # %b (not %s) so the prose's \n become real newlines — a faithful
+    # multi-line review stub (gemini online R, medium).
+    codex.write_text(f"#!/bin/sh\nprintf '%b\\n' \"{prose}\"\nexit 0\n")
+    codex.chmod(codex.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+
+    env = dict(os.environ)
+    env["PATH"] = f"{stub_dir}{os.pathsep}{env['PATH']}"
+    env["CMR_CODEX_TIMEOUT"] = "15"
+
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True, env=env, timeout=60,
+    )
+    assert r.returncode == 0, (
+        f"prose review must pass through (exit 0), not degrade; got "
+        f"{r.returncode}\nstdout={r.stdout!r}\nstderr={r.stderr!r}"
+    )
+    assert "route() treats a non-reviewer output" in r.stdout, (
+        f"codex's prose review was not passed through. stdout={r.stdout!r}"
+    )
+    assert "本轮缺 codex" not in r.stderr, (
+        f"a real prose review was wrongly flagged as a missing vendor. "
+        f"stderr={r.stderr!r}"
+    )
 
 
 def _selftest(effort=None):

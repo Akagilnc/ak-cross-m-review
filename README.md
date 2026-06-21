@@ -104,21 +104,25 @@ stop, not a round counter.
 SKILL.md                  the executable wiki transcription (the skill)
 backends/codex-review.sh  pins the correct `codex exec` invocation
                           (--ephemeral, no -C, stdin pipe, 2>&1) via a
-                          single CODEX_CMD array + clean degrade;
-                          --selftest is its regression guard
+                          single CODEX_CMD array; passes a successful
+                          review through verbatim, degrades only on a true
+                          outage; --selftest is its regression guard
 backends/gemini.sh        calls `agy --sandbox --print ''` (post-EOL
                           gemini replacement) + warm + retry × 4 around agy's
-                          keychain auth-race; visible degrade flag
-lib/extract_json.py       salvage findings JSON from noisy CLI stdout
-prompts/cmr-reviewer.md   reviewer prompt template
+                          keychain auth-race; passes the review through,
+                          visible degrade flag on outage only
+prompts/cmr-reviewer.md   reviewer prompt template (grounded prose review)
 prompts/cmr-fixer.md      fixer prompt template (3-part defer protocol)
 ```
 
-That is the whole surface. Merge / drift / termination are performed by
-the agent per the wiki signals — there is intentionally no `merge.py` /
-`drift.py` deterministic engine (removed in 0.2.0.0; it was the source
-of the recurring orchestration bugs and contradicted the wiki's
-"this is judgment, thresholds are non-portable").
+That is the whole surface. Reviewers return a **prose** review and the
+agent reads / merges / drift-checks / terminates per the wiki signals —
+there is intentionally no deterministic engine: no `merge.py` / `drift.py`
+(removed in 0.2.0.0) and, since 0.3.9.0, no `lib/extract_json.py`
+sentinel-JSON parser either. That parser demanded the strongest
+reviewer's prose be a JSON shape and dropped it as a phantom outage when
+it wasn't — the same over-formalization, one layer down, that the wiki
+warns against ("this is judgment, thresholds are non-portable").
 
 ## Origin
 
@@ -142,8 +146,9 @@ of the wiki's cross-model-review step.
   `gemini` CLI 2026-06-18 EOL. Locked to Gemini 3.5 Flash; has a
   documented keychain auth-race the backend works around with warm +
   retry × 4 (upstream issue google-antigravity/antigravity-cli#51).
-- `python3` ≥ 3.11 — `lib/extract_json.py`
 - `jq` — shell pipelines
+- `python3` ≥ 3.11 — **tests only** (`pytest`); the backends no longer
+  call Python at runtime (the `extract_json.py` parser was removed)
 
 All three CLIs are subscription-authed in the author's setup; no API
 keys needed.
