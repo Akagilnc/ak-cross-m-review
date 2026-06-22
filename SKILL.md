@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: Local pre-PR cross-model review — the executable form of the wiki's cross-model-review.md (tdd-autonomous-dev spine step 4 per-slice / step 5 ship-pre, Layer 1). The squad depends on the trigger point — ship-pre uses N codex gpt-5.5 + 1 Claude Agent + 1 Gemini via agy = N+1+1, dispatched two-phase (msg1 = all CLI Bash run-in-background, msg2 = Claude Agent, no-peek between); per-slice uses N codex + agy = N+1 (no Claude — credit; run by the slice's own subagent, no two-phase). N by effective (core-logic) diff lines. Then merge / grade / drift-check / loop as the agent judgment the wiki prescribes. Use every dev cycle before a PR, so the agent runs the wiki step the same way instead of re-deciding by feel.
+description: Local pre-PR cross-model review — the executable form of the wiki's cross-model-review.md (tdd-autonomous-dev spine step 4 per-slice / step 5–6 ship-pre, Layer 1). The squad depends on the trigger point — ship-pre uses N codex gpt-5.5 + 1 Claude Agent + 1 Gemini via agy = N+1+1, dispatched two-phase (msg1 = all CLI Bash run-in-background, msg2 = Claude Agent, no-peek between); per-slice uses N codex + agy = N+1 (no Claude — credit; run by the slice's own subagent, no two-phase). N by effective (core-logic) diff lines. Then merge / grade / drift-check / loop as the agent judgment the wiki prescribes. Use every dev cycle before a PR, so the agent runs the wiki step the same way instead of re-deciding by feel.
 allowed-tools:
   - Bash
   - Read
@@ -39,7 +39,7 @@ Invocation:
 - **`per-slice`** (tdd spine step 4, after a slice's baseline commit) —
   within-slice lens: local logic / naming / test coverage / single-slice
   spec-impl consistency. Scope = that slice's commit range.
-- **`ship-pre`** (tdd spine step 5, all slices done) — cross-slice lens:
+- **`ship-pre`** (tdd spine step 5–6: completeness then correctness, all slices done) — cross-slice lens:
   cross-slice spec-impl contradictions / shared type & interface
   invariants / global logic after merge. Scope = whole-PR cumulative
   diff vs base (default `main`, fallback `master`).
@@ -86,6 +86,25 @@ Pre-flight gates (wiki §操作规程 / §边界):
   ming-salvage-sim ADR 0008 — a *design doc* — took multiple cmr rounds
   to converge, each catching a real spec-level hole like a
   poison-payload soft-lock that no code read would surface.)
+- **Completeness-audit discipline (ship-pre Step 5, wiki 2026-06-22):**
+  the completeness lens checks *the spec was fully delivered*, and **green
+  tests / a pipeline that runs end-to-end are NOT completeness evidence**
+  — they exercise outer behavior, not whether each load-bearing spec
+  decision actually landed (#244: S8 + 612 tests green, yet the coder
+  hand-rolled the TDD prompt and never wired the mandated discipline). So
+  audit **constraints / delegations / exemptions**, not just features; and
+  for any "X isn't verified because Y backstops it", **verify Y is
+  actually wired** — an unbacked exemption is an `UNVERIFIED-GAP`, not
+  done. Detail (CONFORMS / VIOLATES / UNVERIFIED-GAP rubric) lives spine-
+  side: wiki [[tdd-autonomous-dev]] §Step 5 + [[verification-scope-vacuum]].
+- **The two ship-pre gates are SEPARATE sequential passes — never merge
+  them (wiki a70f97b «严禁合一次 cmr 闸»):** completeness (Step 5,
+  spec-delivered lens) runs **first and must pass**, *then* correctness
+  (Step 6, defect lens) runs on the now-complete diff. Do NOT run both
+  lenses in one cmr / one prompt — conflating them makes **both** shallow
+  (the completeness lens stops looking for "what's missing" and the
+  correctness lens stops grounding each defect; see wiki
+  [[gate-lens-heterogeneity]]). Different lens, different prompt, in order.
 
 ## Step 1 — setup: who runs it decides the squad + the N table
 
@@ -157,10 +176,13 @@ it into review).
 > subagents). So **ship-pre** review (which includes the Claude leg) is
 > run by the **main session** as `N codex + Claude(Agent) + agy` =
 > N+1+1. **per-slice** review is **NOT** run by the main session and has
-> **no Claude**: the slice's own implementing subagent runs it as
-> `N codex + agy` (N+1, all Bash CLIs, no nested-Agent problem). Only a
-> main-session-self-run slice (top level) may use a native codex
-> subagent. See Step 1 / wiki §谁跑 cmr.
+> **no Claude**: every slice is implemented by a clean-context subagent
+> (2026-06-19: the old main-session-self-run-small-slices exception is
+> removed), so per-slice review **always** runs inside that subagent — a
+> **nested layer** — as `N codex + agy` (N+1) with **every leg a Bash
+> CLI** (nested Agent / native-subagent spawning is forbidden on both
+> hosts). The native codex-subagent path exists **only for ship-pre** (the
+> main-session top level). See Step 1 / wiki §谁跑 cmr.
 
 ## Step 2 — two-phase dispatch (wiki §并行启动, 2026-05-18 顺机理 reorder)
 
@@ -210,7 +232,7 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
 
 > **Reasoning-effort reality, per leg** (wiki §调用规范) — the legs run
 > at very different reasoning depths:
-> - **codex** = `xhigh` for **ship-pre 5a/5b** / `high` for **per-slice**
+> - **codex** = `xhigh` for **ship-pre completeness/correctness (spine Step 5/6)** / `high` for **per-slice**
 >   (downshifted 2026-06-18 to save credit — but never below `high`, else
 >   per-slice becomes a rubber stamp; `CMR_CODEX_EFFORT`, pinned via `-c`
 >   so a clone can't inherit a lower config.toml value).
@@ -218,7 +240,7 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
 >   default and **cannot be dialed up** — the `Agent` tool exposes no
 >   effort param, and `ultrathink` in a subagent prompt is inert literal
 >   text (claude-code#25669).
-> - **Claude `claude -p`** (only main=Codex 5a one-pass now) = default
+> - **Claude `claude -p`** (only main=Codex completeness one-pass, spine Step 5, now) = default
 >   effort. **`--effort max` was RETRACTED** (2026-06-18): it does give
 >   ≈5× depth, but `claude -p` billing on isolated/capped credit (the
 >   6/15 policy is paused but may restart) burns 5× tokens too fast.
@@ -241,9 +263,11 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   workdir), never `codex review --base B "PROMPT"` (can't pass both).
   *(main=Codex host only: the codex leg runs as a Codex **native
   subagent** with per-agent `model`/`model_reasoning_effort`/
-  `developer_instructions`, NOT `codex exec` — except in a nested
-  context (a slice-implementing subagent), where nesting is forbidden so
-  it falls back to `codex exec`. Wiki §主=Codex codex reviewer 腿走原生
+  `developer_instructions`, NOT `codex exec` — but this native-subagent
+  path is **ship-pre only** (top level); per-slice slices are always
+  implemented by a clean-context subagent (nested, 2026-06-19), where
+  subagent-spawning is forbidden, so the per-slice codex leg always falls
+  back to `codex exec`. Wiki §主=Codex codex reviewer 腿走原生
   subagent, hypothesis. This skill executes main=Claude, where the codex
   leg is always `codex exec` via this backend.)*
 - **Gemini** — only via `backends/gemini.sh`, which calls
@@ -298,7 +322,7 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   *reviewed repo itself* is under a dot-path (e.g. reviewing from a
   `.claude/worktrees/...` checkout) the Gemini leg is diff-only;
   `gemini.sh` warns (does not degrade). For full agy grep-grounding
-  (esp. the 5a completeness audit) review from a non-hidden checkout.
+  (esp. the completeness audit, spine Step 5) review from a non-hidden checkout.
   The backend handles agy's keychain auth-race with warm + retry (4
   attempts total = initial 1 + 3 retries; each attempt pre-warms
   `Antigravity Safe Storage` keychain item). All 4 failing → emit the
@@ -413,7 +437,7 @@ negatives on keychain / GUI logins) — use a live smoke:
 `printf 'Return exactly: CLAUDE_OK\n' | claude -p --output-format json
 --disable-slash-commands --tools ""` (`.result == "CLAUDE_OK"` → up,
 priority 1; failure / timeout → degrade). After the smoke passes, the
-actual Claude **review** call (the main=Codex 5a one-pass) is
+actual Claude **review** call (the main=Codex completeness one-pass, spine Step 5) is
 `cat "$PROMPT_FILE" | claude -p --model claude-opus-4-8 --output-format
 json --disable-slash-commands` — note three things: **(a)** pin
 `--model claude-opus-4-8` (= current strongest available Claude; revert
@@ -470,16 +494,16 @@ category, reviewer count, first claim quote); count the rest.
 - Upgraded 1+N+1, 3 vendors present: **(N+2)/(N+2) concur**.
 - One vendor degraded (1+1+1 → 2 reviewers): **2/2 concur + flag**.
 - **By-design 2-vendor (no Claude)**: **per-slice (both hosts)** and the
-  **main=Codex 5b** are fixed `codex + agy` (Claude dropped for credit,
+  **main=Codex correctness (spine Step 6)** are fixed `codex + agy` (Claude dropped for credit,
   Step 1 / wiki §谁跑 cmr) → **(N+1)/(N+1) concur + flag `不用 Claude
   (credit)`**, scored the same as a "missing 1 vendor" round. (ship-pre
-  5a and main=Claude 5b are still 1+1+1, not this row.)
+  completeness (Step 5) and main=Claude correctness (Step 6) are still 1+1+1, not this row.)
 - Upgraded-state single-vendor loss (1+N+1):
   - Claude **or** Gemini missing → N+1 reviewers: **(N+1)/(N+1) concur + flag**.
   - **All codex missing** → falls back to 1+0+1 = 2 reviewers (Claude + Gemini): **2/2 concur + flag `升级态缺 codex，已退化`**.
   - codex partial-instance loss (N→N′): **(N′+2)/(N′+2) concur + flag `codex 实例数 N→N′`**.
 - Only 1 vendor ran (no outside voice — e.g. codex+gemini both down → Claude only; or claude+gemini both down → codex only): **NOT positive** — no cross-family check; needs human review or wait for vendor recovery.
-  - > **Explicit exception: main=Codex per-slice / 5b + agy down → codex solo is POSITIVE, don't block.** Those scenarios are already Claude-less (`codex + agy`), and agy's small quota frequently 429s; when agy is the only one left and it drops, run **codex solo**, count it as positive termination, and flag `单腿 codex (agy down)，无 cross-vendor，质量降级` (optionally re-run when agy recovers, but do not stall the dev loop — waiting on agy isn't worth it). **This relaxation is ONLY here** — not for main=Claude / 5a / or when another cross-family vendor is still available.
+  - > **Explicit exception: main=Codex per-slice / correctness (Step 6) + agy down → codex solo is POSITIVE, don't block.** Those scenarios are already Claude-less (`codex + agy`), and agy's small quota frequently 429s; when agy is the only one left and it drops, run **codex solo**, count it as positive termination, and flag `单腿 codex (agy down)，无 cross-vendor，质量降级` (optionally re-run when agy recovers, but do not stall the dev loop — waiting on agy isn't worth it). **This relaxation is ONLY here** — not for main=Claude / completeness (Step 5) / or when another cross-family vendor is still available.
 
 **Hard stop (do not continue):** bug count not converging → the
 implementation method or architecture needs rework, not another patch.
