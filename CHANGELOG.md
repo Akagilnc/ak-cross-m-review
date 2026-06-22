@@ -4,6 +4,40 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.11.0] - 2026-06-22
+
+### Changed — wiki sync: spine 5a/5b → Step 5/6 + per-slice always nested
+Sync to two `cross-model-review.md` commits (2026-06-19) that landed
+after the 0.3.8.0 sync:
+
+- **a70f97b** — the ship-pre spine sub-steps split: `5a/5b` are now
+  independent **Step 5 (completeness) / Step 6 (correctness)** (ship →
+  spine Step 7, pr-review → Step 8). SKILL.md relabels every `5a/5b`, and
+  the `spine step 5 ship-pre` references (description / scenario list /
+  README), to `step 5–6` / `completeness/correctness (spine Step 5/6)` —
+  spelled out, NOT bare "Step 5/6", to avoid colliding with the skill's
+  own Step-N headers. Also adds the **«严禁合一次 cmr 闸»** discipline: the
+  two ship-pre gates (completeness Step 5 → correctness Step 6) are
+  separate sequential passes with different lenses; merging them into one
+  prompt makes both shallow (wiki gate-lens-heterogeneity).
+- **be396aa** — every slice is now implemented by a clean-context
+  subagent (the old main-session-self-runs-small-slices exception is
+  removed), so **per-slice review always runs nested → every leg is a
+  Bash CLI**; the native codex-subagent path is **ship-pre only**.
+  SKILL.md Step 1 (谁跑 cmr) + the codex-leg note updated.
+- **dec9de6** (2026-06-22) — the Step-5 completeness audit gains a
+  PRD-compliance dimension. The transferable principle is folded into the
+  skill's completeness lens: **green tests / a pipeline that runs
+  end-to-end are NOT completeness evidence**; audit constraints /
+  delegations / exemptions, not just features; for any "X exempt because Y
+  backstops it", verify Y is wired (else `UNVERIFIED-GAP`, not done). The
+  full CONFORMS/VIOLATES/UNVERIFIED-GAP rubric stays spine-side
+  ([[tdd-autonomous-dev]] §Step 5 / new [[verification-scope-vacuum]]),
+  which the cmr skill references but does not transcribe.
+
+Prose / terminology sync only — no code or test change (28 tests still
+pass; selftest green).
+
 ## [0.3.10.1] - 2026-06-22
 
 ### Changed — codex review timeout default 600 → 1200s (`codex-review.sh`)

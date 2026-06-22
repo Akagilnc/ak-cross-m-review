@@ -87,7 +87,7 @@ does not carry.
 - `--range` — explicit `A..B` commit range (one slice's commits).
 - `--diff` — review a pre-computed diff file.
 - `--scenario` — `per-slice` (tdd spine step 4, within-slice lens) or
-  `ship-pre` (step 5, cross-slice cumulative diff vs base).
+  `ship-pre` (step 5–6: completeness then correctness, cross-slice cumulative diff vs base).
 
 There is no `--rounds` cap: the wiki's drift detection decides when to
 stop, not a round counter.
