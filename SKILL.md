@@ -97,6 +97,17 @@ Pre-flight gates (wiki §操作规程 / §边界):
   actually wired** — an unbacked exemption is an `UNVERIFIED-GAP`, not
   done. Detail (CONFORMS / VIOLATES / UNVERIFIED-GAP rubric) lives spine-
   side: wiki [[tdd-autonomous-dev]] §Step 5 + [[verification-scope-vacuum]].
+- **Two more Step-5 rules against a *hollowed-out* gate (wiki 2026-06-23,
+  #330):** (a) **chase the reference chain** — ground against the
+  authority the spec itself names, not just the local plan-file: "build
+  per X / faithful to X" → pull **X** in as the checklist (PRD cites ADR
+  0008 → pull ADR 0008; PRD says "actually run the wiki TDD flow" → pull
+  the wiki spine and check fidelity). Not hardcoded-wiki — whatever the
+  spec swears fealty to. (b) **Exercise the behavioral keys, don't
+  static-read them** — a gate / fix-loop / guard / state-machine must be
+  RUN with an injected defect (see anti-pattern #15); the author's green
+  tests are not evidence. These two are what a static 2-3-model Step 5
+  misses (it shares one "read the diff" prompt → input-bias).
 - **The two ship-pre gates are SEPARATE sequential passes — never merge
   them (wiki a70f97b «严禁合一次 cmr 闸»):** completeness (Step 5,
   spec-delivered lens) runs **first and must pass**, *then* correctness
@@ -701,3 +712,4 @@ lands it into the PR body `## Deferred Findings`
 12. **A reviewer that writes** — relying on `--sandbox` alone to keep an agentic CLI (agy) read-only. It edits files / runs commands anyway (first-run: rewrote tracked files + ran pytest mid-review). The prompt MUST forbid writes ("REVIEW ONLY, do not modify any file, do not run commands"); a review that mutates the repo under review is the defect, even when the mutation is correct.
 13. **Over-claiming "mechanical" to skip /diagnosing-bugs** — waving a fix through as mechanical on "it's simple / one line / obvious / I'm confident." Default is non-trivial; mechanical is a closed high-bar allowlist that touches zero executing code (Step 7). A changed flag / guard / condition / quoting fix is non-trivial no matter how small. Skipping classification = non-trivial = `/diagnosing-bugs` required.
 14. **Narrowing a later round into a "did last round's P1 close?" spot-check** — every round must full-re-review the current full diff; prior-finding acceptance is only a tail item. Narrowing drops the regression the fix introduced + the surface last round missed, and fakes a low finding count that breaks the Step 5/6 convergence read. See Step 7 "Every round = full re-review."
+15. **Static-reading a behavioral gate counts as reviewing it** (wiki §反模式 #11, 2026-06-23) — for a load-bearing **gate / fix-loop / guard / state-machine**, "looks right / matches spec / tests pass" CANNOT tell a real gate from a **hollowed-out** one (same-looking code, both return `converged`). Such mechanisms MUST be **exercised**: run it, inject a known defect, and assert the mechanism actually fires (a cmr gate: a planted cross-slice bug must drive **catch → fix → re-cmr → concur**; if it still returns `converged` with the poison in, the gate is fake). The author's green tests are NOT evidence (coding-author blind spot). Worst case — 2-3 reviewers sharing one "review the diff" prompt all do static reads and all miss the behavioral defect (input-bias; cross-model can't fix it — change the prompt to "run the gate / verify behavior", not "read the diff"). Evidence: #330 (an orchestrator's integration cmr hollowed to a single no-loop pass slipped past a 2-3-model Step 5). Wiki [[verification-scope-vacuum]] + [[reviewer-as-system-under-test]].
