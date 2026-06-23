@@ -38,8 +38,15 @@ what the findings identify, nothing more.
   escape the loop (that is the #1 anti-pattern). (This overrides any
   reading of "critical/high cannot be deferred" — non-trivial routing to
   /diagnosing-bugs is not what that rule was guarding against.)
-- **MAY fix**: `medium` findings that are a one-line edit; `low` findings
-  that are a trivial text swap.
+- **SHOULD fix by default** (wiki `e6615db`, 2026-06-23): `medium` / `low`
+  findings that are cheap and low-risk — **fix them** (then the self-check
+  二连), do NOT bank them as backlog debt. Filing an issue for a nit ≈
+  never fixing it; the context is here now and the post-push bots re-review
+  it anyway. **Defer is ONLY for** a finding that is genuinely
+  out-of-scope, needs a design decision, or is high-risk enough to warrant
+  its own PR — never "we hit round 3, so defer the rest." If fixing the
+  mediums keeps surfacing **new** findings (drift), THEN stop and defer the
+  remainder — the drift triple governs the stop, not a round counter.
 - **MUST NOT fix**: `clarity` findings (author judgment); any finding
   whose `suggested_fix` is `n/a`/empty; any finding where reviewers
   disagreed on the correction; anything that would require inventing new

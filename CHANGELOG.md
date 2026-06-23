@@ -4,6 +4,31 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.12.0] - 2026-06-23
+
+### Changed — wiki sync: Step-5 exercise/grounding + fix-loop defer + anti-pattern #11
+Two cmr-relevant wiki commits (2026-06-23, post-0.3.11.0):
+
+- **e3999be** — the cmr page gains **anti-pattern #11** and Step 5 gains
+  two rules against a *hollowed-out* gate:
+  - **Exercise behavioral keys, don't static-read them** — a gate /
+    fix-loop / guard / state-machine must be RUN with an injected defect;
+    "looks right / matches spec / tests pass" can't tell a real gate from
+    a hollow one (both return `converged`). The author's green tests are
+    not evidence. 2-3 reviewers sharing one "read the diff" prompt all
+    miss behavioral defects (input-bias). → SKILL.md **anti-pattern #15**
+    + the Step-5 completeness lens.
+  - **Chase the reference chain** — ground against the authority the spec
+    itself names ("faithful to X" → pull X in as the checklist), not just
+    the local plan-file. → SKILL.md Step-5 lens. Evidence: #330.
+- **e6615db** — fix-loop defer policy: cheap / low-risk `medium`/`low`
+  findings are **fixed by default** (+ the self-check二连), NOT banked as
+  backlog debt; **defer only** out-of-scope / needs-design / high-risk-own-
+  PR, never "we hit round N"; the drift triple still governs the stop. →
+  prompts/cmr-fixer.md.
+
+Prose / prompt sync only — no code change (28 tests pass; selftest green).
+
 ## [0.3.11.0] - 2026-06-22
 
 ### Changed — wiki sync: spine 5a/5b → Step 5/6 + per-slice always nested
