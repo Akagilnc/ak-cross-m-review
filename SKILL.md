@@ -39,22 +39,22 @@ Invocation:
 
 > **Prefer the two named gate skills, not `--lens` by hand.** Each gate is
 > its own one-line skill that just calls this engine with the right lens:
-> **`cmr-completeness`** (Step-5 completeness) and **`cmr-correctness`**
+> **`ak-cmr-completeness`** (Step-5 completeness) and **`ak-cmr-correctness`**
 > (per-slice / Step-6 correctness). Pick the skill that names what you
 > mean — that is how the lens stays explicit and never gets forgotten,
 > mis-set, or merged into the other pass. `--lens` here is the **internal
 > switch** those wrappers pass; invoke it directly only for advanced use.
 > **One invocation runs ONE lens** (no auto-both); a finished change runs
-> **`cmr-completeness` first** (must pass), **then `cmr-correctness`**.
+> **`ak-cmr-completeness` first** (must pass), **then `ak-cmr-correctness`**.
 
 - **`per-slice`** (tdd spine step 4, after a slice's baseline commit) —
   within-slice lens: local logic / naming / test coverage / single-slice
   spec-impl consistency. Scope = that slice's commit range. Lens =
-  **correctness** (via `cmr-correctness`).
+  **correctness** (via `ak-cmr-correctness`).
 - **`ship-pre`** (tdd spine step 5–6, all slices done) — cross-slice.
   Scope = whole-PR cumulative diff vs base (default `main`, fallback
-  `master`). **Two gates, run as two skills in order**: `cmr-completeness`
-  (Step 5 — must reach `CMR-VERDICT: complete`), then `cmr-correctness`
+  `master`). **Two gates, run as two skills in order**: `ak-cmr-completeness`
+  (Step 5 — must reach `CMR-VERDICT: complete`), then `ak-cmr-correctness`
   (Step 6). Never one merged prompt (§«严禁合一», below).
 
 If `--scenario` is omitted, default to **ship-pre** (the wider, safer
@@ -439,10 +439,10 @@ correctness prompt → the Step-5 completeness gate silently never ran):
 
 Each is fed verbatim + the diff (+ the spec for the completeness lens).
 They are templates, not control logic. A single invocation feeds **one**
-lens (set by `--lens`, which the gate skills `cmr-completeness` /
-`cmr-correctness` pass). A finished change runs the two gates as **two
-skill invocations in order** — `cmr-completeness` first (must reach
-`CMR-VERDICT: complete`), then `cmr-correctness` (§Step 0 «严禁合一»);
+lens (set by `--lens`, which the gate skills `ak-cmr-completeness` /
+`ak-cmr-correctness` pass). A finished change runs the two gates as **two
+skill invocations in order** — `ak-cmr-completeness` first (must reach
+`CMR-VERDICT: complete`), then `ak-cmr-correctness` (§Step 0 «严禁合一»);
 per-slice is correctness only.
 
 ## Step 3 — degradation (never silent)

@@ -80,14 +80,14 @@ does not carry.
 There are **two named gate skills** — pick the one that names what you
 mean, so the lens is always explicit:
 
-- **`cmr-correctness`** — the correctness gate (find real defects, P0–P4).
+- **`ak-cmr-correctness`** — the correctness gate (find real defects, P0–P4).
   Per-slice, and the second ship-pre gate.
-- **`cmr-completeness`** — the completeness gate (was the spec fully
+- **`ak-cmr-completeness`** — the completeness gate (was the spec fully
   delivered? + exercise the behavioral keys). The first ship-pre gate
   (Step 5), and design-doc review.
 
-On a finished change run `cmr-completeness` first (it must reach
-`CMR-VERDICT: complete`), then `cmr-correctness`. Each is a thin wrapper
+On a finished change run `ak-cmr-completeness` first (it must reach
+`CMR-VERDICT: complete`), then `ak-cmr-correctness`. Each is a thin wrapper
 over the engine below; install all three with `scripts/install-skills.sh`.
 
 The engine itself:
@@ -121,9 +121,9 @@ stop, not a round counter.
 
 ```
 SKILL.md                  the engine — the executable wiki transcription
-skills/cmr-completeness/  the completeness gate (thin named wrapper →
+skills/ak-cmr-completeness/  the completeness gate (thin named wrapper →
                           engine with --lens completeness)
-skills/cmr-correctness/   the correctness gate (thin named wrapper →
+skills/ak-cmr-correctness/   the correctness gate (thin named wrapper →
                           engine with --lens correctness)
 scripts/install-skills.sh symlinks all three into ~/.claude/skills/
 backends/codex-review.sh  pins the correct `codex exec` invocation
