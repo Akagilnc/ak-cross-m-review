@@ -42,7 +42,14 @@
 #     label : optional diagnostic tag (e.g. "section-2of3")
 #
 #   CMR_CODEX_MODEL   override review model (default: gpt-5.5)
-#   CMR_CODEX_TIMEOUT hard wall-clock seconds before pkill (default: 1200)
+#   CMR_CODEX_TIMEOUT IDLE/silence seconds before pkill — kill only after
+#                     this long with NO new stdout/stderr (a hang), NOT a
+#                     total wall-clock cap. A codex still streaming its
+#                     reasoning/trace runs as long as it needs. Default 480
+#                     (= 8min, wiki §额外硬规则 #4: "8min 无输出 → kill",
+#                     deep reasoning / large diffs go silent for minutes
+#                     before the first token; 8min < agy --print-timeout 15m).
+#   CMR_CODEX_IDLE_POLL  watchdog poll interval seconds (default 5).
 #   CMR_DRY_RUN=1     print the exact command that WOULD run, do not call
 #                     codex, exit 0. Used by --selftest.
 #
@@ -61,7 +68,11 @@ set -euo pipefail
 MODE="${1:-code}"
 LABEL="${2:-full}"
 MODEL="${CMR_CODEX_MODEL:-gpt-5.5}"
-TIMEOUT_S="${CMR_CODEX_TIMEOUT:-1200}"
+# IDLE/silence timeout — seconds with NO new output before we call it a hang
+# and kill (NOT a total wall-clock cap). Default 480 = 8min (wiki §额外硬规则
+# #4). A streaming codex is never killed for total runtime.
+IDLE_TIMEOUT="${CMR_CODEX_TIMEOUT:-480}"
+IDLE_POLL="${CMR_CODEX_IDLE_POLL:-5}"
 # Reasoning effort is scenario-dependent (wiki §调用规范 effort 表,
 # 2026-06-18): ship-pre 5a/5b = `xhigh` (the real gate + cross-slice
 # invariants need max depth); per-slice = `high` (cheap high-frequency
@@ -174,71 +185,68 @@ if [ "${CMR_DRY_RUN:-0}" = "1" ]; then
   exit 0
 fi
 
-echo "codex-review: model=${MODEL} mode=${MODE} label=${LABEL} timeout=${TIMEOUT_S}s" >&2
+echo "codex-review: model=${MODEL} mode=${MODE} label=${LABEL} idle-timeout=${IDLE_TIMEOUT}s" >&2
 
-# Portable hard timeout. The prompt ALWAYS reaches codex via a temp file
-# fed to `codex exec --ephemeral -c model_reasoning_effort="$CMR_CODEX_EFFORT"
-# --model "$MODEL" -` (the `-` = read stdin; via the CODEX_CMD array). An
-# earlier version fed $FULL_PROMPT as a here-string into a `bash -c`
-# that read it as an out-of-scope variable → empty prompt whenever GNU
-# timeout/gtimeout was present (the default on homebrew macOS), so codex
-# silently never ran. Fixed: one stdin path for every branch, real
-# timeout (rc 124/137/143) treated as degrade, and the no-coreutils
-# fallback kills only THIS codex + its children (never a global
+# IDLE-based hang detection (wiki §额外硬规则 #4) — NOT a total wall-clock
+# cap. A hang = codex produces NO new stdout/stderr for $IDLE_TIMEOUT
+# seconds; a codex still streaming its reasoning/trace (deep reasoning +
+# large diffs go silent for minutes before the first token, then stream)
+# must NEVER be killed merely for taking long in total. We run codex in the
+# background, capture combined output to a file, and watch that file's size:
+# the watchdog kills ONLY after the size hasn't grown for $IDLE_TIMEOUT
+# seconds. Pure bash (no `timeout(1)` total-cap dependency, works on every
+# host). The kill is SCOPED to this codex + its children — never a global
 # `pkill -f 'codex exec'`, which would take down sibling parallel codex
-# reviewers and unrelated user codex runs).
+# reviewers and unrelated user runs. (The prompt always reaches codex via a
+# temp file on stdin — `-` in CODEX_CMD; never a here-string into bash -c,
+# the old bug that fed an empty prompt under GNU timeout.)
+#
+# Caveat: idle is measured by stdout/stderr GROWTH. If codex fully buffers
+# stdout (no incremental flush) it could look idle while working; the 8min
+# default is generous enough that any periodic flush keeps it alive, and
+# codex exec streams its progress in practice.
 PROMPT_TMP="$(mktemp)"
-trap 'rm -f "$PROMPT_TMP" "$LASTMSG"' EXIT
+TMP_OUT="$(mktemp)"
+trap 'rm -f "$PROMPT_TMP" "$LASTMSG" "$TMP_OUT"' EXIT
 printf '%s' "$FULL_PROMPT" > "$PROMPT_TMP"
 
-RAW=""
-RC=0
-if command -v timeout >/dev/null 2>&1; then
-  set +e
-  RAW="$(timeout "${TIMEOUT_S}s" "${CODEX_CMD[@]}" < "$PROMPT_TMP" 2>&1)"
-  RC=$?
-  set -e
-elif command -v gtimeout >/dev/null 2>&1; then
-  set +e
-  RAW="$(gtimeout "${TIMEOUT_S}s" "${CODEX_CMD[@]}" < "$PROMPT_TMP" 2>&1)"
-  RC=$?
-  set -e
-else
-  # No coreutils timeout: background codex, scoped-kill on timeout.
-  # A flag file records that the watchdog fired, so a codex that traps
-  # TERM and exits 0 *after* the deadline is still treated as a timeout
-  # (not a false success). KILL escalation if TERM is ignored.
-  TMP_OUT="$(mktemp)"
-  TIMED_OUT="$(mktemp)"; rm -f "$TIMED_OUT"
-  trap 'rm -f "$PROMPT_TMP" "$LASTMSG" "$TMP_OUT" "$TIMED_OUT"' EXIT
-  "${CODEX_CMD[@]}" < "$PROMPT_TMP" >"$TMP_OUT" 2>&1 &
-  CODEX_PID=$!
-  ( sleep "$TIMEOUT_S"
-    if kill -0 "$CODEX_PID" 2>/dev/null; then
-      : > "$TIMED_OUT"
-      echo "codex-review: timeout ${TIMEOUT_S}s — killing pid $CODEX_PID + children (scoped, not global)" >&2
-      pkill -TERM -P "$CODEX_PID" 2>/dev/null || true
-      kill  -TERM "$CODEX_PID" 2>/dev/null || true
-      sleep 2
-      pkill -KILL -P "$CODEX_PID" 2>/dev/null || true
-      kill  -KILL "$CODEX_PID" 2>/dev/null || true
-    fi ) &
-  WATCH_PID=$!
-  set +e
-  wait "$CODEX_PID"
-  RC=$?
-  set -e
-  kill "$WATCH_PID" 2>/dev/null || true
-  RAW="$(cat "$TMP_OUT" 2>/dev/null || true)"
-  [ -f "$TIMED_OUT" ] && RC=124   # watchdog fired → force the degrade path
-  rm -f "$TMP_OUT" "$TIMED_OUT"
-fi
+"${CODEX_CMD[@]}" < "$PROMPT_TMP" > "$TMP_OUT" 2>&1 &
+CODEX_PID=$!
+TIMED_OUT=0
+last_size=-1
+idle=0
+while kill -0 "$CODEX_PID" 2>/dev/null; do
+  sleep "$IDLE_POLL"
+  size=$(wc -c < "$TMP_OUT" 2>/dev/null || echo 0)
+  if [ "$size" -eq "$last_size" ]; then
+    idle=$(( idle + IDLE_POLL ))
+  else
+    idle=0
+    last_size=$size
+  fi
+  if [ "$idle" -ge "$IDLE_TIMEOUT" ]; then
+    TIMED_OUT=1
+    echo "codex-review: no output for ${IDLE_TIMEOUT}s (idle/hang, not total time) — killing pid $CODEX_PID + children (scoped, not global)" >&2
+    pkill -TERM -P "$CODEX_PID" 2>/dev/null || true
+    kill  -TERM "$CODEX_PID" 2>/dev/null || true
+    sleep 2
+    pkill -KILL -P "$CODEX_PID" 2>/dev/null || true
+    kill  -KILL "$CODEX_PID" 2>/dev/null || true
+    break
+  fi
+done
+set +e
+wait "$CODEX_PID"
+RC=$?
+set -e
+[ "$TIMED_OUT" -eq 1 ] && RC=124   # idle watchdog fired → force the degrade path
+RAW="$(cat "$TMP_OUT" 2>/dev/null || true)"
 
 # Outage signals, in order. We emit codex's FINAL MESSAGE (the `-o`
 # file) on success — NOT $RAW (the full stdout echo+trace, kept only so a
 # failure's diagnostics aren't lost). Three true-outage cases degrade:
 #
-#  1. timeout/kill (rc 124 = timeout(1)/watchdog; 137/143 = SIGKILL/TERM)
+#  1. idle/hang kill (rc 124 = our idle watchdog; 137/143 = SIGKILL/TERM)
 #     — a partial -o file from a killed codex must NEVER count as a review.
 #  2. codex exited non-zero (auth/quota/crash). rc is the clean,
 #     content-independent outage signal; we do NOT grep the body for

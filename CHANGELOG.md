@@ -4,6 +4,31 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.13.0] - 2026-06-24
+
+### Fixed — codex hang detection is IDLE-based, not total wall-clock (`codex-review.sh`)
+The backend ran `timeout <N>s codex exec` — a **total wall-clock cap** that
+killed codex after N seconds even while it was still streaming tokens. The
+wiki canonical (§额外硬规则 #4) is an **idle / silence** rule: a hang =
+> 8min with **no new stdout/stderr** → kill; a codex still producing output
+runs as long as it needs (deep reasoning / large diffs go silent for
+minutes before the first token, then stream). The total-time cap was a
+long-standing drift — and the earlier 600 → 1200 bump (v0.3.10.1) tuned the
+wrong axis (a value on a mechanism that was itself wrong).
+
+Replaced the `timeout(1)` total cap with a pure-bash **idle watchdog**:
+codex runs in the background, its combined output file is watched for
+growth, and it is scoped-killed only after `CMR_CODEX_TIMEOUT` seconds of
+**no new output** (the var is now an **idle/silence** timeout, default
+**480 = 8min**; `CMR_CODEX_IDLE_POLL` sets the poll interval). A streaming
+codex is never killed for total runtime. Regression tests:
+`test_streaming_codex_survives_when_total_time_exceeds_idle_window` (the
+old total cap killed it),
+`test_silent_codex_killed_after_idle_window`. SKILL.md doc corrected (it
+still described a `600s` total cap).
+
+30 tests pass; selftest green.
+
 ## [0.3.12.0] - 2026-06-23
 
 ### Changed — wiki sync: Step-5 exercise/grounding + fix-loop defer + anti-pattern #11

@@ -370,11 +370,13 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   *live-smoke* is a `claude -p` probe too — both are outside this ban,
   which is only about dispatching the reviewer in the main=Claude flow.)
 - Always `2>&1`. Run from the repo root, no `-C`. The backends
-  self-time-out (`backends/codex-review.sh`: `CMR_CODEX_TIMEOUT`,
-  default 600s, scoped kill of its own pid tree) and degrade
-  automatically — you rarely need to intervene. If you must kill a hung
-  reviewer, kill ONLY its specific pid; **never a global `pkill -f
-  codex`** (msg1 launched N parallel codex reviewers — a global pkill
+  self-time-out on an **idle/hang** (`backends/codex-review.sh`:
+  `CMR_CODEX_TIMEOUT` = seconds of NO output before kill, default 480s =
+  8min per wiki §额外硬规则 #4 — **not** a total wall-clock cap, so a codex
+  still streaming runs as long as it needs; scoped kill of its own pid
+  tree) and degrade automatically — you rarely need to intervene. If you
+  must kill a hung reviewer, kill ONLY its specific pid; **never a global
+  `pkill -f codex`** (msg1 launched N parallel codex reviewers — a global pkill
   takes the siblings down too). **Hang judgment = > 8min** (not 3min) of
   no stdout/stderr (wiki §额外硬规则 #4, 2026-06-18): deep reasoning /
   large diffs routinely think silently for several minutes before the

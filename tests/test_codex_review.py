@@ -127,6 +127,46 @@ def test_degrades_when_final_message_empty(tmp_path):
     assert "本轮缺 codex" in r.stderr
 
 
+def test_streaming_codex_survives_when_total_time_exceeds_idle_window(tmp_path):
+    # Wiki §额外硬规则 #4: a hang is N seconds of NO stdout/stderr, NOT total
+    # wall-clock. A codex that keeps streaming (a line every 1s for 5s) must
+    # NOT be killed even though its TOTAL runtime (5s) exceeds the idle
+    # window (2s) — only SILENCE longer than the window is a hang. (Under the
+    # old `timeout 2s` total-cap this stub was killed at 2s; the idle
+    # watchdog must let it finish.)
+    _codex_stub(tmp_path / "bin", (
+        'for i in 1 2 3 4 5; do echo "reasoning chunk $i"; sleep 1; done\n'
+        '[ -n "$OUT" ] && printf \'%b\\n\' "P2 minor nit. CMR-VERDICT: findings" > "$OUT"\n'
+        "exit 0\n"
+    ))
+    r = _run_codex(tmp_path / "bin", CMR_CODEX_TIMEOUT="2", CMR_CODEX_IDLE_POLL="1")
+    assert r.returncode == 0, (
+        f"a continuously-streaming codex must survive past the idle window "
+        f"(total runtime > window is fine — only silence is a hang); got "
+        f"{r.returncode}\nstdout={r.stdout!r}\nstderr={r.stderr!r}"
+    )
+    assert "P2 minor nit" in r.stdout
+    assert "本轮缺 codex" not in r.stderr
+
+
+def test_silent_codex_killed_after_idle_window(tmp_path):
+    # The flip side: a codex that goes SILENT (one line, then no output for
+    # longer than the idle window) is a hang → scoped-killed → degrade. It
+    # must fire at ~the idle window (~2s), NOT wait for the stub's 30s sleep.
+    _codex_stub(tmp_path / "bin", (
+        'echo "first reasoning line"\n'
+        "sleep 30\n"   # then silent, far longer than the idle window
+        "exit 0\n"
+    ))
+    r = _run_codex(tmp_path / "bin", CMR_CODEX_TIMEOUT="2", CMR_CODEX_IDLE_POLL="1")
+    assert r.returncode == 1, (
+        f"a silent (hung) codex must degrade; got {r.returncode}\n"
+        f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    )
+    assert "本轮缺 codex" in r.stderr
+    assert '"findings":[]' in r.stdout
+
+
 def _selftest(effort=None):
     """Run `codex-review.sh --selftest`, optionally pinning CMR_CODEX_EFFORT."""
     env = dict(os.environ)
