@@ -37,28 +37,34 @@ Invocation:
                     [--lens completeness|correctness]
 ```
 
+> **Prefer the two named gate skills, not `--lens` by hand.** Each gate is
+> its own one-line skill that just calls this engine with the right lens:
+> **`cmr-completeness`** (Step-5 completeness) and **`cmr-correctness`**
+> (per-slice / Step-6 correctness). Pick the skill that names what you
+> mean — that is how the lens stays explicit and never gets forgotten,
+> mis-set, or merged into the other pass. `--lens` here is the **internal
+> switch** those wrappers pass; invoke it directly only for advanced use.
+> **One invocation runs ONE lens** (no auto-both); a finished change runs
+> **`cmr-completeness` first** (must pass), **then `cmr-correctness`**.
+
 - **`per-slice`** (tdd spine step 4, after a slice's baseline commit) —
   within-slice lens: local logic / naming / test coverage / single-slice
   spec-impl consistency. Scope = that slice's commit range. Lens =
-  **correctness** only.
+  **correctness** (via `cmr-correctness`).
 - **`ship-pre`** (tdd spine step 5–6, all slices done) — cross-slice.
   Scope = whole-PR cumulative diff vs base (default `main`, fallback
-  `master`). Runs **BOTH lenses, in order**: **Step 5 completeness first**
-  (`prompts/cmr-completeness.md` — must reach `CMR-VERDICT: complete`),
-  **then Step 6 correctness** (`prompts/cmr-reviewer.md`). Two passes, two
-  prompts — never one merged prompt (§«严禁合一», below).
+  `master`). **Two gates, run as two skills in order**: `cmr-completeness`
+  (Step 5 — must reach `CMR-VERDICT: complete`), then `cmr-correctness`
+  (Step 6). Never one merged prompt (§«严禁合一», below).
 
 If `--scenario` is omitted, default to **ship-pre** (the wider, safer
-lens — reviewing more than a slice is fail-safe; reviewing less is not).
+scope — reviewing more than a slice is fail-safe; reviewing less is not).
 
-- **`--lens`** selects which prompt the squad is fed, and is the executable
-  switch between the two gates: **`correctness`** (default) feeds
-  `cmr-reviewer.md` (find defects, P0–P4); **`completeness`** feeds
-  `cmr-completeness.md` (was the spec fully delivered? + exercise the
-  behavioral keys). `--scenario ship-pre` runs completeness then
-  correctness automatically; pass `--lens` only to run **one** gate in
-  isolation (e.g. re-run just the completeness audit). Per-slice is always
-  correctness. (Before 0.3.14.0 the completeness lens had no prompt file at
+- **`--lens`** (internal switch the gate skills set) picks which prompt the
+  squad is fed: **`correctness`** (default) feeds `cmr-reviewer.md` (find
+  defects, P0–P4); **`completeness`** feeds `cmr-completeness.md` (was the
+  spec fully delivered? + exercise the behavioral keys). One invocation =
+  one lens. (Before 0.3.14.0 the completeness lens had no prompt file at
   all — only prose — so ship-pre could dispatch nothing but correctness and
   the Step-5 gate silently never ran. See §Step 1 "Prompt templates".)
 
@@ -432,9 +438,12 @@ correctness prompt → the Step-5 completeness gate silently never ran):
 - **`prompts/cmr-fixer.md`** = the fixer (Step 7, the defer protocol).
 
 Each is fed verbatim + the diff (+ the spec for the completeness lens).
-They are templates, not control logic. **ship-pre dispatches BOTH lenses,
-in order — completeness first (must reach `CMR-VERDICT: complete`), then
-correctness** (§Step 0 «严禁合一»); per-slice is correctness only.
+They are templates, not control logic. A single invocation feeds **one**
+lens (set by `--lens`, which the gate skills `cmr-completeness` /
+`cmr-correctness` pass). A finished change runs the two gates as **two
+skill invocations in order** — `cmr-completeness` first (must reach
+`CMR-VERDICT: complete`), then `cmr-correctness` (§Step 0 «严禁合一»);
+per-slice is correctness only.
 
 ## Step 3 — degradation (never silent)
 

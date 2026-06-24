@@ -26,18 +26,28 @@ cmr only ever exercising correctness — not worker laziness.
   injected defect — green tests are not completeness evidence), with its
   own verdict line `CMR-VERDICT: complete | gaps`. It carries the full
   rubric that previously lived as scattered prose (dec9de6 / e3999be).
-- **Lens selector** (SKILL.md): `--scenario ship-pre` now dispatches BOTH
-  prompts in order (completeness → correctness); a new `[--lens
-  completeness|correctness]` runs one gate in isolation. Step 1 "Prompt
-  templates" names which prompt per gate; the Step-0 completeness blocks
-  collapse to a pointer at the prompt (de-dup).
-- **Tests** `tests/test_prompts.py`: both lenses exist as distinct,
-  dispatchable artifacts; the completeness prompt carries both verdict
-  scales + the chase-reference / exercise / green-≠-evidence rules + its
-  verdict line; SKILL.md wires the completeness prompt in (guards against
-  regressing to prose-only). No backend / engine change.
+- **Two named gate skills** (`skills/cmr-completeness/`,
+  `skills/cmr-correctness/`) — the user-facing entry points. Each is a
+  thin one-line wrapper that invokes the `ak-cross-m-review` engine with
+  `--lens completeness` / `--lens correctness`. The agent picks the skill
+  that **names** what it means (completeness vs correctness) instead of
+  trusting a `--lens` flag it might forget, mis-set, or merge into the
+  other pass — that explicitness is the point. The engine keeps `--lens`
+  as the **internal** switch the wrappers pass; **one invocation runs ONE
+  lens** (no auto-both). A finished change runs `cmr-completeness` first
+  (must pass), then `cmr-correctness`. `scripts/install-skills.sh` symlinks
+  all three into `~/.claude/skills/`. SKILL.md Step 1 "Prompt templates"
+  names which prompt per gate; the Step-0 completeness blocks collapse to a
+  pointer at the prompt (de-dup).
+- **Tests**: `tests/test_prompts.py` (both lens prompts exist as distinct
+  dispatchable artifacts; completeness prompt carries both verdict scales +
+  chase-reference / exercise / green-≠-evidence rules + its verdict line) +
+  `tests/test_gate_skills.py` (both gate skills exist, name themselves,
+  delegate to the engine with the right lens, stay thin, and the install
+  script links all three). No backend / engine change — the engine
+  machinery is shared, never duplicated.
 
-34 tests pass; selftest green.
+40 tests pass; selftest green.
 
 ## [0.3.13.0] - 2026-06-24
 
