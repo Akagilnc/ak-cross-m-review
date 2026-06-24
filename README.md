@@ -113,8 +113,14 @@ backends/gemini.sh        calls `agy --sandbox --print ''` (post-EOL
                           gemini replacement) + warm + retry × 4 around agy's
                           keychain auth-race; passes the review through,
                           visible degrade flag on outage only
-prompts/cmr-reviewer.md   reviewer prompt template (grounded prose review)
-prompts/cmr-fixer.md      fixer prompt template (3-part defer protocol)
+prompts/cmr-reviewer.md   correctness lens — find real defects (P0–P4);
+                          per-slice + ship-pre Step 6
+prompts/cmr-completeness.md  completeness lens — was the spec fully
+                          delivered? clause-by-clause DONE/PARTIAL +
+                          CONFORMS/VIOLATES/UNVERIFIED-GAP, chase the
+                          reference chain, exercise behavioral keys;
+                          ship-pre Step 5 + design-doc review
+prompts/cmr-fixer.md      fixer prompt template (defer protocol)
 ```
 
 That is the whole surface. Reviewers return a **prose** review and the

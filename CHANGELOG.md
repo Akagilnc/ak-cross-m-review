@@ -4,6 +4,41 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.14.0] - 2026-06-24
+
+### Added — the completeness lens is now an EXECUTABLE prompt (`prompts/cmr-completeness.md`)
+The Step-5 completeness gate never actually ran. The only dispatchable
+reviewer prompt was `cmr-reviewer.md` — hardcoded to the **correctness**
+lens ("find real correctness defects"). The completeness lens existed
+**only as prose** in SKILL.md ("append a design-completeness lens to
+cmr-reviewer.md"), with no artifact and no selector — so `--scenario
+ship-pre`, which is supposed to run completeness THEN correctness, could
+operationally dispatch nothing but correctness. The "两道分跑 / 严禁合一"
+discipline was unenforceable because half of it (the completeness pass)
+had no prompt to dispatch. This is the structural root cause of a ship-pre
+cmr only ever exercising correctness — not worker laziness.
+
+- **New `prompts/cmr-completeness.md`** — the executable completeness lens:
+  audit each spec clause for delivery (DONE/PARTIAL/NOT-DONE for features +
+  CONFORMS/VIOLATES/UNVERIFIED-GAP for constraints/delegations/exemptions),
+  **chase the reference chain** (ground against the authority the spec
+  names), **exercise behavioral keys** (run a gate/fix-loop/guard with an
+  injected defect — green tests are not completeness evidence), with its
+  own verdict line `CMR-VERDICT: complete | gaps`. It carries the full
+  rubric that previously lived as scattered prose (dec9de6 / e3999be).
+- **Lens selector** (SKILL.md): `--scenario ship-pre` now dispatches BOTH
+  prompts in order (completeness → correctness); a new `[--lens
+  completeness|correctness]` runs one gate in isolation. Step 1 "Prompt
+  templates" names which prompt per gate; the Step-0 completeness blocks
+  collapse to a pointer at the prompt (de-dup).
+- **Tests** `tests/test_prompts.py`: both lenses exist as distinct,
+  dispatchable artifacts; the completeness prompt carries both verdict
+  scales + the chase-reference / exercise / green-≠-evidence rules + its
+  verdict line; SKILL.md wires the completeness prompt in (guards against
+  regressing to prose-only). No backend / engine change.
+
+34 tests pass; selftest green.
+
 ## [0.3.13.0] - 2026-06-24
 
 ### Fixed — codex hang detection is IDLE-based, not total wall-clock (`codex-review.sh`)

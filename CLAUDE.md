@@ -9,7 +9,10 @@ review (no sentinel-JSON; the `lib/extract_json.py` parser was removed in
 0.3.9.0 — it dropped the strongest reviewer's prose as a phantom outage).
 `backends/` holds the corrected reviewer invocations (pass a successful
 review through verbatim, degrade only on a true outage); `prompts/` the
-reviewer/fixer prompts. See `README.md` for architecture
+two review lenses — `cmr-reviewer.md` (correctness, P0–P4) and
+`cmr-completeness.md` (was the spec fully delivered? — added 0.3.14.0; it
+was prose-only before, so ship-pre's Step-5 gate never actually ran) —
+plus `cmr-fixer.md`. See `README.md` for architecture
 and `~/WorkSpace/vault/ak-cc-wiki/wiki/concepts/cross-model-review.md`
 for the source-of-truth spec.
 
