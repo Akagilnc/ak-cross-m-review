@@ -4,8 +4,8 @@
 # Three skills ship from this one repo:
 #   - ak-cross-m-review  (the engine; repo root)   — already symlinked in
 #                         most setups; this script (re)links it too.
-#   - cmr-completeness    (the completeness gate; skills/cmr-completeness/)
-#   - cmr-correctness     (the correctness  gate; skills/cmr-correctness/)
+#   - ak-cmr-completeness    (the completeness gate; skills/ak-cmr-completeness/)
+#   - ak-cmr-correctness     (the correctness  gate; skills/ak-cmr-correctness/)
 #
 # Claude Code discovers a skill as `~/.claude/skills/<name>/SKILL.md`, one
 # level deep — so each skill needs its OWN entry there. The two gate skills
@@ -35,6 +35,6 @@ link() {
 
 echo "Installing cross-model-review skills into $SKILLS_DIR:"
 link "ak-cross-m-review" "$REPO_ROOT"
-link "cmr-completeness"  "$REPO_ROOT/skills/cmr-completeness"
-link "cmr-correctness"   "$REPO_ROOT/skills/cmr-correctness"
+link "ak-cmr-completeness"  "$REPO_ROOT/skills/ak-cmr-completeness"
+link "ak-cmr-correctness"   "$REPO_ROOT/skills/ak-cmr-correctness"
 echo "Done. Restart / re-scan skills if your client caches the list."

@@ -11,8 +11,8 @@ two-gate entry point can't silently regress.
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-COMPLETENESS = ROOT / "skills" / "cmr-completeness" / "SKILL.md"
-CORRECTNESS = ROOT / "skills" / "cmr-correctness" / "SKILL.md"
+COMPLETENESS = ROOT / "skills" / "ak-cmr-completeness" / "SKILL.md"
+CORRECTNESS = ROOT / "skills" / "ak-cmr-correctness" / "SKILL.md"
 INSTALL = ROOT / "scripts" / "install-skills.sh"
 
 
@@ -25,13 +25,13 @@ def _frontmatter(path: Path) -> str:
 
 
 def test_both_gate_skills_exist():
-    assert COMPLETENESS.is_file(), "cmr-completeness gate skill missing"
-    assert CORRECTNESS.is_file(), "cmr-correctness gate skill missing"
+    assert COMPLETENESS.is_file(), "ak-cmr-completeness gate skill missing"
+    assert CORRECTNESS.is_file(), "ak-cmr-correctness gate skill missing"
 
 
 def test_gate_skills_name_themselves():
-    assert "name: cmr-completeness" in _frontmatter(COMPLETENESS)
-    assert "name: cmr-correctness" in _frontmatter(CORRECTNESS)
+    assert "name: ak-cmr-completeness" in _frontmatter(COMPLETENESS)
+    assert "name: ak-cmr-correctness" in _frontmatter(CORRECTNESS)
 
 
 def test_completeness_gate_delegates_with_completeness_lens():
@@ -59,5 +59,5 @@ def test_gate_skills_stay_thin():
 
 def test_install_script_links_all_three():
     txt = INSTALL.read_text(encoding="utf-8")
-    for name in ("ak-cross-m-review", "cmr-completeness", "cmr-correctness"):
+    for name in ("ak-cross-m-review", "ak-cmr-completeness", "ak-cmr-correctness"):
         assert name in txt, f"install-skills.sh does not link {name}"

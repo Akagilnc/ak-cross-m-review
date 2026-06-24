@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.14.1] - 2026-06-24
+
+### Changed — rename gate skills to the `ak-cmr-` namespace
+The two gate skills shipped in 0.3.14.0 as `cmr-completeness` /
+`cmr-correctness` — off-namespace next to the engine `ak-cross-m-review`.
+Renamed to **`ak-cmr-completeness`** / **`ak-cmr-correctness`** (skill dirs,
+frontmatter `name:`, wrapper bodies, `install-skills.sh`, SKILL.md / README
+references, and `tests/test_gate_skills.py`). The **prompt file**
+`prompts/cmr-completeness.md` is unchanged — it is a prompt artifact, not a
+skill. `install-skills.sh` now links `ak-cmr-completeness` /
+`ak-cmr-correctness`; re-run it to refresh the symlinks.
+
 ## [0.3.14.0] - 2026-06-24
 
 ### Added — the completeness lens is now an EXECUTABLE prompt (`prompts/cmr-completeness.md`)
@@ -27,7 +39,8 @@ cmr only ever exercising correctness — not worker laziness.
   own verdict line `CMR-VERDICT: complete | gaps`. It carries the full
   rubric that previously lived as scattered prose (dec9de6 / e3999be).
 - **Two named gate skills** (`skills/cmr-completeness/`,
-  `skills/cmr-correctness/`) — the user-facing entry points. Each is a
+  `skills/cmr-correctness/` — renamed to `ak-cmr-*` in 0.3.14.1) — the
+  user-facing entry points. Each is a
   thin one-line wrapper that invokes the `ak-cross-m-review` engine with
   `--lens completeness` / `--lens correctness`. The agent picks the skill
   that **names** what it means (completeness vs correctness) instead of
