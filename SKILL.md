@@ -34,18 +34,39 @@ Invocation:
 ```
 /ak-cross-m-review [--base BRANCH] [--range A..B] [--diff FILE]
                     [--scenario per-slice|ship-pre]
+                    [--lens completeness|correctness]
 ```
+
+> **Prefer the two named gate skills, not `--lens` by hand.** Each gate is
+> its own one-line skill that just calls this engine with the right lens:
+> **`cmr-completeness`** (Step-5 completeness) and **`cmr-correctness`**
+> (per-slice / Step-6 correctness). Pick the skill that names what you
+> mean — that is how the lens stays explicit and never gets forgotten,
+> mis-set, or merged into the other pass. `--lens` here is the **internal
+> switch** those wrappers pass; invoke it directly only for advanced use.
+> **One invocation runs ONE lens** (no auto-both); a finished change runs
+> **`cmr-completeness` first** (must pass), **then `cmr-correctness`**.
 
 - **`per-slice`** (tdd spine step 4, after a slice's baseline commit) —
   within-slice lens: local logic / naming / test coverage / single-slice
-  spec-impl consistency. Scope = that slice's commit range.
-- **`ship-pre`** (tdd spine step 5–6: completeness then correctness, all slices done) — cross-slice lens:
-  cross-slice spec-impl contradictions / shared type & interface
-  invariants / global logic after merge. Scope = whole-PR cumulative
-  diff vs base (default `main`, fallback `master`).
+  spec-impl consistency. Scope = that slice's commit range. Lens =
+  **correctness** (via `cmr-correctness`).
+- **`ship-pre`** (tdd spine step 5–6, all slices done) — cross-slice.
+  Scope = whole-PR cumulative diff vs base (default `main`, fallback
+  `master`). **Two gates, run as two skills in order**: `cmr-completeness`
+  (Step 5 — must reach `CMR-VERDICT: complete`), then `cmr-correctness`
+  (Step 6). Never one merged prompt (§«严禁合一», below).
 
 If `--scenario` is omitted, default to **ship-pre** (the wider, safer
-lens — reviewing more than a slice is fail-safe; reviewing less is not).
+scope — reviewing more than a slice is fail-safe; reviewing less is not).
+
+- **`--lens`** (internal switch the gate skills set) picks which prompt the
+  squad is fed: **`correctness`** (default) feeds `cmr-reviewer.md` (find
+  defects, P0–P4); **`completeness`** feeds `cmr-completeness.md` (was the
+  spec fully delivered? + exercise the behavioral keys). One invocation =
+  one lens. (Before 0.3.14.0 the completeness lens had no prompt file at
+  all — only prose — so ship-pre could dispatch nothing but correctness and
+  the Step-5 gate silently never ran. See §Step 1 "Prompt templates".)
 
 Build the reviewed diff with plain git (`git diff <base>...HEAD`, or
 `git diff <range>`, or the `--diff` file). No diff state machine — it is
@@ -77,37 +98,28 @@ Pre-flight gates (wiki §操作规程 / §边界):
   it**, without waiting to be asked. Doc-mode dispatches the same way as
   code (per §Step 1 / wiki §谁跑 cmr — per-slice runner = all Bash CLI;
   ship-pre / main-session runner = two-phase + Claude via `Agent`);
-  concretely: pass mode `doc` to the backends (`backends/codex-review.sh
-  doc` / `backends/gemini.sh doc`, and the Claude `Agent` when in the
-  ship-pre form) and append a **design-completeness** lens to the
-  `cmr-reviewer.md` prompt instead of the code lens — contract holes /
-  state-machine deadlocks / uncovered boundary cases / undefined
+  concretely: feed **`prompts/cmr-completeness.md`** (the completeness
+  lens — NOT the correctness `cmr-reviewer.md`) + the doc, dispatched the
+  same way (per-slice runner = all Bash CLI; ship-pre = two-phase + Claude
+  via `Agent`). For a design doc the completeness lens reads as: contract
+  holes / state-machine deadlocks / uncovered boundary cases / undefined
   invariants / contradictions with existing ADRs. (Evidence:
   ming-salvage-sim ADR 0008 — a *design doc* — took multiple cmr rounds
   to converge, each catching a real spec-level hole like a
   poison-payload soft-lock that no code read would surface.)
-- **Completeness-audit discipline (ship-pre Step 5, wiki 2026-06-22):**
-  the completeness lens checks *the spec was fully delivered*, and **green
-  tests / a pipeline that runs end-to-end are NOT completeness evidence**
-  — they exercise outer behavior, not whether each load-bearing spec
-  decision actually landed (#244: S8 + 612 tests green, yet the coder
-  hand-rolled the TDD prompt and never wired the mandated discipline). So
-  audit **constraints / delegations / exemptions**, not just features; and
-  for any "X isn't verified because Y backstops it", **verify Y is
-  actually wired** — an unbacked exemption is an `UNVERIFIED-GAP`, not
-  done. Detail (CONFORMS / VIOLATES / UNVERIFIED-GAP rubric) lives spine-
-  side: wiki [[tdd-autonomous-dev]] §Step 5 + [[verification-scope-vacuum]].
-- **Two more Step-5 rules against a *hollowed-out* gate (wiki 2026-06-23,
-  #330):** (a) **chase the reference chain** — ground against the
-  authority the spec itself names, not just the local plan-file: "build
-  per X / faithful to X" → pull **X** in as the checklist (PRD cites ADR
-  0008 → pull ADR 0008; PRD says "actually run the wiki TDD flow" → pull
-  the wiki spine and check fidelity). Not hardcoded-wiki — whatever the
-  spec swears fealty to. (b) **Exercise the behavioral keys, don't
-  static-read them** — a gate / fix-loop / guard / state-machine must be
-  RUN with an injected defect (see anti-pattern #15); the author's green
-  tests are not evidence. These two are what a static 2-3-model Step 5
-  misses (it shares one "read the diff" prompt → input-bias).
+- **The completeness gate (ship-pre Step 5) is its own EXECUTABLE lens —
+  `prompts/cmr-completeness.md`** (before 0.3.14.0 it was only prose here,
+  so a ship-pre run could dispatch nothing but the correctness prompt and
+  the completeness gate silently never ran). It checks *was the spec fully
+  delivered?* clause by clause — DONE/PARTIAL/NOT-DONE for features +
+  CONFORMS/VIOLATES/UNVERIFIED-GAP for constraints/delegations/exemptions —
+  **chasing the reference chain** (ground against the authority the spec
+  names, not just the local plan-file) and **exercising** behavioral keys
+  (gate / fix-loop / guard / state-machine: RUN them with an injected
+  defect; anti-pattern #15). **Green tests / a pipeline that runs are NOT
+  completeness evidence** (#244: S8 + 612 tests green, yet the mandated
+  discipline was never wired). The full rubric IS that prompt; spine
+  source: wiki [[tdd-autonomous-dev]] §Step 5 + [[verification-scope-vacuum]].
 - **The two ship-pre gates are SEPARATE sequential passes — never merge
   them (wiki a70f97b «严禁合一次 cmr 闸»):** completeness (Step 5,
   spec-delivered lens) runs **first and must pass**, *then* correctness
@@ -410,10 +422,28 @@ are thus cleanly distinguished; a failed vendor is always detectable,
 never a silent zero-finding pass, and a real review is never dropped for
 its format.
 
-Prompt templates: feed every reviewer `prompts/cmr-reviewer.md` + the
-diff; the fixer (Step 7) uses `prompts/cmr-fixer.md` (the 3-part defer
-protocol). They are templates, not control logic — adjust the lens line
-per scenario (per-slice vs ship-pre).
+Prompt templates — **the lens you feed IS an executable prompt file, not
+a prose instruction to improvise** (the earlier gap: the completeness lens
+existed only as prose here, so a ship-pre run could only ever dispatch the
+correctness prompt → the Step-5 completeness gate silently never ran):
+
+- **`prompts/cmr-reviewer.md`** = the **correctness** lens (find real
+  defects, P0–P4). Feed it for **per-slice** and the **ship-pre Step 6
+  correctness gate**.
+- **`prompts/cmr-completeness.md`** = the **completeness** lens (was the
+  spec fully delivered? clause-by-clause DONE/PARTIAL/NOT-DONE +
+  CONFORMS/VIOLATES/UNVERIFIED-GAP, chase the reference chain, **exercise
+  behavioral keys**). Feed it for the **ship-pre Step 5 completeness gate**
+  and for **design-doc (ADR/spec) review** (`mode doc`).
+- **`prompts/cmr-fixer.md`** = the fixer (Step 7, the defer protocol).
+
+Each is fed verbatim + the diff (+ the spec for the completeness lens).
+They are templates, not control logic. A single invocation feeds **one**
+lens (set by `--lens`, which the gate skills `cmr-completeness` /
+`cmr-correctness` pass). A finished change runs the two gates as **two
+skill invocations in order** — `cmr-completeness` first (must reach
+`CMR-VERDICT: complete`), then `cmr-correctness` (§Step 0 «严禁合一»);
+per-slice is correctness only.
 
 ## Step 3 — degradation (never silent)
 

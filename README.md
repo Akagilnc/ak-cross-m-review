@@ -77,17 +77,36 @@ does not carry.
 
 ## Usage
 
+There are **two named gate skills** — pick the one that names what you
+mean, so the lens is always explicit:
+
+- **`cmr-correctness`** — the correctness gate (find real defects, P0–P4).
+  Per-slice, and the second ship-pre gate.
+- **`cmr-completeness`** — the completeness gate (was the spec fully
+  delivered? + exercise the behavioral keys). The first ship-pre gate
+  (Step 5), and design-doc review.
+
+On a finished change run `cmr-completeness` first (it must reach
+`CMR-VERDICT: complete`), then `cmr-correctness`. Each is a thin wrapper
+over the engine below; install all three with `scripts/install-skills.sh`.
+
+The engine itself:
+
 ```
 /ak-cross-m-review [--base BRANCH] [--range A..B] [--diff FILE]
                    [--scenario per-slice|ship-pre]
+                   [--lens completeness|correctness]
 ```
 
 - `--base` — base branch for the cumulative diff (default `main`,
   fallback `master`).
 - `--range` — explicit `A..B` commit range (one slice's commits).
 - `--diff` — review a pre-computed diff file.
-- `--scenario` — `per-slice` (tdd spine step 4, within-slice lens) or
-  `ship-pre` (step 5–6: completeness then correctness, cross-slice cumulative diff vs base).
+- `--scenario` — `per-slice` (tdd spine step 4, within-slice) or
+  `ship-pre` (step 5–6, cross-slice cumulative diff vs base).
+- `--lens` — `correctness` (default) or `completeness`; the **internal**
+  switch the two gate skills set. One invocation runs one lens. Prefer the
+  named gate skills over setting this by hand.
 
 There is no `--rounds` cap: the wiki's drift detection decides when to
 stop, not a round counter.
@@ -101,7 +120,12 @@ stop, not a round counter.
 ## What ships in this repo
 
 ```
-SKILL.md                  the executable wiki transcription (the skill)
+SKILL.md                  the engine — the executable wiki transcription
+skills/cmr-completeness/  the completeness gate (thin named wrapper →
+                          engine with --lens completeness)
+skills/cmr-correctness/   the correctness gate (thin named wrapper →
+                          engine with --lens correctness)
+scripts/install-skills.sh symlinks all three into ~/.claude/skills/
 backends/codex-review.sh  pins the correct `codex exec` invocation
                           (--ephemeral, no -C, stdin pipe, 2>&1) via a
                           single CODEX_CMD array; emits codex's final
@@ -113,8 +137,14 @@ backends/gemini.sh        calls `agy --sandbox --print ''` (post-EOL
                           gemini replacement) + warm + retry × 4 around agy's
                           keychain auth-race; passes the review through,
                           visible degrade flag on outage only
-prompts/cmr-reviewer.md   reviewer prompt template (grounded prose review)
-prompts/cmr-fixer.md      fixer prompt template (3-part defer protocol)
+prompts/cmr-reviewer.md   correctness lens — find real defects (P0–P4);
+                          per-slice + ship-pre Step 6
+prompts/cmr-completeness.md  completeness lens — was the spec fully
+                          delivered? clause-by-clause DONE/PARTIAL +
+                          CONFORMS/VIOLATES/UNVERIFIED-GAP, chase the
+                          reference chain, exercise behavioral keys;
+                          ship-pre Step 5 + design-doc review
+prompts/cmr-fixer.md      fixer prompt template (defer protocol)
 ```
 
 That is the whole surface. Reviewers return a **prose** review and the

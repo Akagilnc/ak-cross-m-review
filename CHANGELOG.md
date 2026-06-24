@@ -4,6 +4,51 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.14.0] - 2026-06-24
+
+### Added — the completeness lens is now an EXECUTABLE prompt (`prompts/cmr-completeness.md`)
+The Step-5 completeness gate never actually ran. The only dispatchable
+reviewer prompt was `cmr-reviewer.md` — hardcoded to the **correctness**
+lens ("find real correctness defects"). The completeness lens existed
+**only as prose** in SKILL.md ("append a design-completeness lens to
+cmr-reviewer.md"), with no artifact and no selector — so `--scenario
+ship-pre`, which is supposed to run completeness THEN correctness, could
+operationally dispatch nothing but correctness. The "两道分跑 / 严禁合一"
+discipline was unenforceable because half of it (the completeness pass)
+had no prompt to dispatch. This is the structural root cause of a ship-pre
+cmr only ever exercising correctness — not worker laziness.
+
+- **New `prompts/cmr-completeness.md`** — the executable completeness lens:
+  audit each spec clause for delivery (DONE/PARTIAL/NOT-DONE for features +
+  CONFORMS/VIOLATES/UNVERIFIED-GAP for constraints/delegations/exemptions),
+  **chase the reference chain** (ground against the authority the spec
+  names), **exercise behavioral keys** (run a gate/fix-loop/guard with an
+  injected defect — green tests are not completeness evidence), with its
+  own verdict line `CMR-VERDICT: complete | gaps`. It carries the full
+  rubric that previously lived as scattered prose (dec9de6 / e3999be).
+- **Two named gate skills** (`skills/cmr-completeness/`,
+  `skills/cmr-correctness/`) — the user-facing entry points. Each is a
+  thin one-line wrapper that invokes the `ak-cross-m-review` engine with
+  `--lens completeness` / `--lens correctness`. The agent picks the skill
+  that **names** what it means (completeness vs correctness) instead of
+  trusting a `--lens` flag it might forget, mis-set, or merge into the
+  other pass — that explicitness is the point. The engine keeps `--lens`
+  as the **internal** switch the wrappers pass; **one invocation runs ONE
+  lens** (no auto-both). A finished change runs `cmr-completeness` first
+  (must pass), then `cmr-correctness`. `scripts/install-skills.sh` symlinks
+  all three into `~/.claude/skills/`. SKILL.md Step 1 "Prompt templates"
+  names which prompt per gate; the Step-0 completeness blocks collapse to a
+  pointer at the prompt (de-dup).
+- **Tests**: `tests/test_prompts.py` (both lens prompts exist as distinct
+  dispatchable artifacts; completeness prompt carries both verdict scales +
+  chase-reference / exercise / green-≠-evidence rules + its verdict line) +
+  `tests/test_gate_skills.py` (both gate skills exist, name themselves,
+  delegate to the engine with the right lens, stay thin, and the install
+  script links all three). No backend / engine change — the engine
+  machinery is shared, never duplicated.
+
+40 tests pass; selftest green.
+
 ## [0.3.13.0] - 2026-06-24
 
 ### Fixed — codex hang detection is IDLE-based, not total wall-clock (`codex-review.sh`)
