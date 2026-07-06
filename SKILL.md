@@ -148,9 +148,9 @@ tight to run Claude on the high-frequency per-slice gate):
   invariants need max depth — the default). This is the two-phase
   dispatch (Step 2).
 
-Strongest review model (both scenarios): Claude leg = current strongest
-available Claude (Step 2 authority: `fable` up / `opus` Opus-4.8 while
-Fable paused — ship-pre only); codex `gpt-5.5`; Gemini = `agy` locked to
+Strongest review model (both scenarios): Claude leg = `opus` (Opus 4.8) —
+cmr does not use Fable (Step 2 recorded rule; ship-pre only); codex
+`gpt-5.5`; Gemini = `agy` locked to
 3.5 Flash (the documented exception). Only codex instantiates by diff
 size (the agy/Claude legs are always ×1 on the full diff).
 
@@ -183,9 +183,9 @@ size (the agy/Claude legs are always ×1 on the full diff).
 > (For per-slice the totals lose the Claude leg → `N+1` not `N+1+1`; a
 > small per-slice diff = codex(full) + agy.)
 
-**Strongest review model only** — Anthropic = the current strongest
-available Claude (Step 2 is the authority: `claude-fable-5` when up;
-**Fable paused 2026-06-13 → `claude-opus-4-8` now**), OpenAI `gpt-5.5`;
+**Strongest review model only** — Anthropic = **`claude-opus-4-8`**
+(Opus 4.8; Step 2 is the authority — **cmr does not use Fable**, recorded
+rule there), OpenAI `gpt-5.5`;
 **Gemini is the documented exception** (locked to 3.5 Flash via `agy` —
 wiki trade-off: keep 3-vendor cross-family coverage over dropping the
 Gemini leg entirely after the `gemini` CLI EOL).
@@ -232,9 +232,9 @@ every Bash CLI reviewer tool call, ALL with `run_in_background: true`:
   diff slices) + 1 × `Bash` `gemini.sh` (full diff) = **N+1 bg jobs**.
 
 **msg2 — the very next message; first content MUST be the Agent call.**
-1 × `Agent` tool call (Claude reviewer subagent, model per the
-Claude-reviewer invocation form below — `fable` when up, else `opus`/Opus
-4.8 while Fable is paused; full-diff reviewer prompt). The Agent runs
+1 × `Agent` tool call (Claude reviewer subagent, model = `opus` (Opus
+4.8) per the Claude-reviewer invocation form below — cmr does not use
+Fable; full-diff reviewer prompt). The Agent runs
 foreground (the turn blocks here) while msg1's bg CLIs continue running.
 
 **no-peek invariant** (the one thing prose still has to enforce):
@@ -359,18 +359,22 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   net stays until that stops recurring. (The wiki note is the one that's
   out of date here; flag it for correction.)
 - **Claude reviewer** — the `Agent` tool, full-diff reviewer prompt,
-  model = **the current strongest available Claude**. This bullet is the
-  ONE authoritative place for the Claude leg's model — flip only it when
-  Fable pauses / returns:
-  - `fable` (Claude Fable 5) when available;
-  - **2026-06-13 Fable is paused → use `opus` (Opus 4.8) now; revert to
-    `fable` when it returns** (wiki §操作规程 model table).
+  model = **`opus` (Claude Opus 4.8)**. This bullet is the ONE
+  authoritative place for the Claude leg's model.
   - The model MUST be set **explicitly** on the `Agent` call — it does
     **NOT** inherit the session model. (A dev-tier session would
     otherwise silently drag the reviewer below the strongest-review-model
     rule; you got lucky only if the session itself ran Opus 4.8.)
-  - `fable` additionally needs Claude Code v2.1.170+; on an older client
-    where it isn't selectable, `opus` is the same current baseline.
+
+  > **⚠ RECORDED RULE — cmr does NOT use Fable on any leg; the Claude leg
+  > is Opus 4.8, period (user decision 2026-06-24).** Even when Claude
+  > Fable 5 is available, cmr will not dispatch it: Fable's quota is too
+  > scarce for a high-frequency review gate. This is a **deliberate
+  > skill-vs-wiki divergence** — the wiki (§操作规程 model table) says "use
+  > the strongest available Claude = Fable when up", which is the *ideal*;
+  > the skill's *operational decision* is Opus 4.8. **Do NOT re-add Fable
+  > on a wiki re-sync** (same standing-divergence handling as the agy
+  > warm+retry). Revisit only if the user changes the decision.
 
   Never the headless `claude -p` path **for the Claude reviewer in this
   (main = Claude) flow** (rate-limit + 25min timeout footgun, plus the
@@ -457,14 +461,13 @@ v3 requires all 3 vendors. If one is unavailable, run with the rest and
 | gemini (no repo context) | Claude + codex + Gemini (diff-only) | `gemini WITHOUT repo context` — cmr ran from a hidden (dot) path (e.g. `.claude/worktrees/...`); agy refuses hidden workspace folders. Warn, not a leg drop; rerun from a non-hidden path for full context. |
 | 1 of N codex | Claude + (N−1) codex + Gemini | `codex 实例 N→N−1` |
 | codex + gemini both | Claude only (fallback, no outside voice) | `本轮无 outside voice — 需人工补 review` |
-| **Fable 5 safeguards trigger** (<5% of sessions; security / bio / chem / distillation topics auto-route to Opus 4.8 — Anthropic docs. NOT a leg failure: squad stays 1+1+1, the Claude leg just ran on Opus 4.8; does NOT trigger any other degradation. Flag for finding-consistency transparency — a same-model R1→R2 comparison now has one Opus run mixed in.) | Claude (Opus 4.8) + codex + Gemini | `Claude leg = Opus 4.8 (Fable safeguards trigger)` |
-| **Client < Claude Code v2.1.170** (the `fable` alias is not selectable on older clients. NOT a leg failure: dispatch the Claude leg with `model: opus` (Opus 4.8) instead of hard-failing; squad stays 1+1+1. Upgrade the client to restore the strongest Fable tier.) | Claude (Opus 4.8) + codex + Gemini | `Claude leg = Opus 4.8 (client < v2.1.170, no fable)` |
 
-> **Fable paused (2026-06-13):** the Claude leg's current baseline IS
-> Opus 4.8 (Step 2 is the authority), so the two Fable-specific rows
-> above are **dormant** until Fable returns — Opus 4.8 is the default
-> right now, not a degradation. When Fable is back they re-activate as
-> Fable→Opus fallbacks.
+> **No Fable rows here (decision 2026-06-24):** the Claude leg is Opus 4.8
+> by decision — cmr never dispatches Fable (Step 2 is the authority, see
+> the recorded rule there). So the old Fable-specific degrade rows (Fable
+> safeguards auto-routing to Opus; the `fable` alias needing client
+> v2.1.170+) no longer apply — there is no Fable leg to fall back FROM.
+> Opus 4.8 is simply the Claude leg, not a degradation.
 
 **If the main session is Codex** (not the wiki's primary scenario, but
 symmetric — wiki §降级链 "主 session = Codex"):
@@ -483,8 +486,8 @@ priority 1; failure / timeout → degrade). After the smoke passes, the
 actual Claude **review** call (the main=Codex completeness one-pass, spine Step 5) is
 `cat "$PROMPT_FILE" | claude -p --model claude-opus-4-8 --output-format
 json --disable-slash-commands` — note three things: **(a)** pin
-`--model claude-opus-4-8` (= current strongest available Claude; revert
-to `claude-fable-5` when Fable returns) so a default-model drift can't
+`--model claude-opus-4-8` (the Claude leg; cmr does not use Fable — Step 2
+recorded rule) so a default-model drift can't
 quietly downgrade the reviewer; **(b) NO `--effort max`** — it was
 retracted (it gives ≈5× depth but `claude -p` billing on isolated/capped
 credit burns too fast); **(c) NO `--tools ""`** — the tool-kill is ONLY
@@ -738,7 +741,7 @@ lands it into the PR body `## Deferred Findings`
 6. **Two-phase dispatch violations** (**ship-pre only** — the two-phase rule governs the main-session-orchestrated case where Claude runs via `Agent`; per-slice is `codex + agy` 2-Bash with no Agent, so it doesn't apply) — peeking at any CLI output between msg1 and msg2, or emitting anything other than the Agent call as msg2's first content, or mixing Agent + Bash in a single message (the old 逆机理 rule the two-phase replaced). All collapse to silent serialization.
 7. Drift hit → rationalize "one more round" — the infinite-loop entrance.
 8. Silent vendor degrade — always flag "本轮缺 X".
-9. v2 N × Claude (opus / fable) split sections — violates current quota allocation.
+9. v2 N × Claude (opus) split sections — violates current quota allocation.
 10. Treating N/N concur as ship-ready — category error (Step 5).
 11. `gemini -p` headless (CLI stopped serving 2026-06-18) or `agy --dangerously-skip-permissions` (re-consents high scope, breaks headless auth) — use `backends/gemini.sh`, which pins `agy --sandbox --print ''` + the warm-retry recipe. Also dead: `agy -p --sandbox` (1.0.7 flag-parse made `-p` swallow `--sandbox` as the prompt value → sandbox never engaged).
 12. **A reviewer that writes** — relying on `--sandbox` alone to keep an agentic CLI (agy) read-only. It edits files / runs commands anyway (first-run: rewrote tracked files + ran pytest mid-review). The prompt MUST forbid writes ("REVIEW ONLY, do not modify any file, do not run commands"); a review that mutates the repo under review is the defect, even when the mutation is correct.
