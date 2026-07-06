@@ -3,7 +3,7 @@
 The doc-mode defenses (constitution kill-axis, fix-classification ledger,
 bloat audit line, full confirmation-round early stop, round-10 escalation
 gate, dead-leg standing degrade, self-check 三连) are a skill-local
-RECORDED RULE (user decision 2026-07-06) pending wiki upstream. A wiki
+RECORDED RULE (user decision 2026-07-06; upstreamed same day). A wiki
 re-sync must not silently drop them — the round gate N=10 itself was set
 at cmr's founding and then forgotten by later versions; these tests are
 the memory that prevents a second forgetting.
@@ -45,7 +45,9 @@ def test_doc_mode_section_exists_and_is_recorded_rule():
         "doc-mode discipline must be marked a recorded rule so a wiki "
         "re-sync does not silently drop it"
     )
-    assert "pending wiki upstream" in sec
+    assert "upstreamed to the wiki 2026-07-06" in sec, (
+        "the banner must record that (and when) the upstream landed"
+    )
     assert "NOT drop this section on a wiki re-sync" in sec, (
         "the do-not-drop instruction is the operative half of the marker"
     )
@@ -197,6 +199,47 @@ def test_completeness_prompt_carries_doc_mode_addendum():
     assert "In code mode this section does not apply" in txt
 
 
+def test_wiki_wins_contract_carries_recorded_rule_exception():
+    """The unconditional wiki-wins contract contradicted the RECORDED RULE
+    do-not-drop blocks (cmr correctness r2 P1): a re-sync operator had two
+    incompatible instructions. The contract sentence in BOTH surfaces must
+    carry the recorded-rule exception."""
+    skill = _skill_text()
+    start = skill.index("the wiki wins")
+    contract = skill[start : start + 400]
+    assert "RECORDED" in contract, (
+        "SKILL.md's wiki-wins sentence must state the RECORDED RULE "
+        "exception, or re-sync has two incompatible instructions"
+    )
+    readme = _norm((ROOT / "README.md").read_text(encoding="utf-8"))
+    rstart = readme.index("the wiki wins")
+    assert "RECORDED" in readme[rstart : rstart + 400], (
+        "README's wiki-wins sentence must state the same exception"
+    )
+
+
+def test_no_stale_pending_upstream_claims():
+    """The doc-mode discipline + 15min hang rule WERE upstreamed to the
+    wiki on 2026-07-06 (vault b5495e8 / da04ff5 / e06bcfe). Claims that
+    the wiki 'still says 8min' or that upstream is 'pending' are now
+    false statements and must not survive in SKILL.md or the backend."""
+    skill = _skill_text()
+    assert "pending wiki upstream" not in skill, (
+        "stale: the upstream landed 2026-07-06 — say 'upstreamed', don't "
+        "claim pending"
+    )
+    assert "still says 8min" not in skill
+    backend = _norm(
+        (ROOT / "backends" / "codex-review.sh").read_text(encoding="utf-8")
+    )
+    assert "still says 8min" not in backend
+    assert "pending wiki upstream" not in backend
+    assert "pending upstream" not in backend
+    # the do-not-drop guard itself STAYS (it protects against a re-sync
+    # from a stale wiki checkout; the golden hash enforces it)
+    assert "NOT drop this section on a wiki re-sync" in skill
+
+
 def test_golden_freeze_of_doc_mode_texts():
     """Exhaustive tail-stop (fix-coverage-drift centralization, round 2).
 
@@ -214,7 +257,7 @@ def test_golden_freeze_of_doc_mode_texts():
 
     sec = _doc_mode_section()
     assert hashlib.sha256(sec.encode()).hexdigest() == (
-        "ebec66d6c548de844ab37d045da3e858d58bfdac7715bf001e60af529d49538a"
+        "ac5a91cd3e16206ae7f99eebaa790d88e8e48c7ff28315a6dd89b3b3673432c6"
     ), (
         "SKILL.md doc-mode section text changed — if intentional, update "
         "this hash in the same commit (see docstring); if you did not "

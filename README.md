@@ -26,7 +26,9 @@ The skill keeps it that way: prose procedure + thin invocation guards
 for the real CLI footguns, nothing more. Single source of truth:
 `~/WorkSpace/vault/ak-cc-wiki/wiki/concepts/cross-model-review.md`
 (defer + cross-slice discipline in `tdd-autonomous-dev.md`). If skill
-and wiki disagree, the wiki wins.
+and wiki disagree, the wiki wins — except blocks marked ⚠ RECORDED RULE
+/ RECORDED divergence (deliberate, user-decided divergences; reconcile
+those by their decision record, never silently overwrite them wiki-ward).
 
 ## The vendor squad — N+1+1 (ship-pre) / N+1 (per-slice)
 

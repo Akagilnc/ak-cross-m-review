@@ -21,7 +21,11 @@ of truth**:
 discipline in `tdd-autonomous-dev.md` §切片内纪律). The wiki frames
 merge / grade / drift / termination as **agent judgment**, not a
 deterministic engine — this file keeps it that way. If this file and the
-wiki ever disagree, the wiki wins; re-sync, do not fork behavior.
+wiki ever disagree, the wiki wins; re-sync, do not fork behavior — with
+ONE exception: blocks marked **⚠ RECORDED RULE / RECORDED divergence**
+are deliberate, user-decided divergences (or same-day-upstreamed rules a
+stale wiki checkout may not show yet). Reconcile those against their
+decision record; never silently overwrite them wiki-ward.
 
 It is **Layer 1** (local, pre-PR). It does not replace Layer 3
 (`pr-review-loop`). It does not commit / push / open a PR — the caller
@@ -401,11 +405,12 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   stdout/stderr (user decision 2026-07-06; escalation history 3min →
   8min → 15min — deep reasoning / large diffs think silently for many
   minutes before the first byte, and an xhigh codex was false-killed at
-  the 8min threshold too, twice. ⚠ RECORDED divergence: wiki §额外硬规则
-  #4 still says 8min — pending wiki upstream, do not regress on re-sync.
-  900s matches agy's `--print-timeout 15m`, which gemini.sh already
-  passes for the same reason). rate / quota / limit → the backend
-  degrades and flags "本轮缺 X"; do not retry by hand.
+  the 8min threshold too, twice. Wiki §额外硬规则 #4 was updated to
+  15min the same day (vault `b5495e8`) — skill and wiki are in sync; do
+  not regress either side on a re-sync. 900s matches agy's
+  `--print-timeout 15m`, which gemini.sh already passes for the same
+  reason). rate / quota / limit → the backend degrades and flags
+  "本轮缺 X"; do not retry by hand.
 - **Huge diff (> 10K lines): segment the prompt** to avoid saturating the
   pipe buffer (wiki §额外硬规则 #3). This is separate from the N-table
   (which scales reviewer *count*) — it is about not shoving a single
@@ -740,12 +745,13 @@ lands it into the PR body `## Deferred Findings`
 
 ## Doc mode discipline (design-text reviews — the additive-runaway defense)
 
-> **⚠ RECORDED RULE (user decision 2026-07-06, pending wiki upstream).**
-> Skill-local until synced into the wiki's `cross-model-review.md`; do
-> NOT drop this section on a wiki re-sync. The round-gate value **10**
-> restores cmr's original founding setting (it had been silently
-> forgotten by later versions — which is exactly why these tests-pinned
-> rules exist).
+> **⚠ RECORDED RULE — upstreamed to the wiki 2026-07-06 (user decision
+> same day; vault `b5495e8` / `da04ff5` / `e06bcfe`).** Do
+> NOT drop this section on a wiki re-sync (a re-sync from a stale wiki
+> checkout would erase it; the golden-hash test enforces this). The
+> round-gate value **10** restores cmr's original founding setting (it
+> had been silently forgotten by later versions — which is exactly why
+> these tests-pinned rules exist).
 
 Applies **ONLY when the thing under review is a design text** (ADR /
 spec / contract / plan — the Step 0 doc-mode bullet, completeness lens).

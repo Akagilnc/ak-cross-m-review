@@ -16,9 +16,9 @@ Escalation history: 3min → 8min → **15min**.
 - `backends/codex-review.sh`: `CMR_CODEX_TIMEOUT` default 480 → **900**
   (still IDLE/silence-based, never a total wall-clock cap; scoped kill
   unchanged). Now matches agy's `--print-timeout 15m`.
-- `SKILL.md` Step 2: hang judgment 8min → 15min, marked as a **⚠ RECORDED
-  divergence** from wiki §额外硬规则 #4 (still "8min") — pending wiki
-  upstream, do not regress on re-sync.
+- `SKILL.md` Step 2: hang judgment 8min → 15min. Wiki §额外硬规则 #4 was
+  updated to 15min the same day (vault `b5495e8`) — skill and wiki in
+  sync; do not regress either side on a re-sync.
 - `tests/test_codex_review.py::test_default_idle_timeout_is_900s` pins
   the default (red at 480, green at 900).
 - NOTE (outside this repo, for the user): `~/.claude/CLAUDE.md:35`
@@ -27,12 +27,24 @@ Escalation history: 3min → 8min → **15min**.
   this line — it sits outside the byte-identical SHARED block, so only
   the one file needs the edit.)
 
-54 tests pass (53 at this entry's commit; the round-2 golden-freeze
-test landed after); selftest green.
+- wiki-wins contract qualified (correctness-gate r2 P1): the SKILL.md
+  intro + README "the wiki wins" sentences now carry the ⚠ RECORDED RULE
+  exception — deliberate, user-decided divergences reconcile by their
+  decision record, never silently overwritten wiki-ward (the
+  unconditional contract contradicted the do-not-drop blocks). Stale
+  "pending wiki upstream" / "wiki still says 8min" claims corrected:
+  the doc-mode discipline + 15min WERE upstreamed the same day (vault
+  `b5495e8` / `da04ff5` / `e06bcfe`). Pinned by
+  `test_wiki_wins_contract_carries_recorded_rule_exception` +
+  `test_no_stale_pending_upstream_claims`.
+
+Suite green at every commit on this branch (56 tests at ship; selftest
+green — exact counts live in `pytest` output, not here, after the count
+line itself drew a completeness finding when it went stale).
 
 ## [0.3.15.0] - 2026-07-06
 
-### Added — doc-mode discipline: the additive-runaway defense (RECORDED RULE, pending wiki upstream)
+### Added — doc-mode discipline: the additive-runaway defense (RECORDED RULE; upstreamed to the wiki same day)
 
 A review of a **design text** is structurally additive — every finding
 adds text, every fix grows the reviewable surface. Evidence #440: 34
@@ -76,7 +88,7 @@ Origin: Fable's 5 doc-mode proposals, re-assessed quality-first.
 - `prompts/cmr-completeness.md` gains a scoped **Doc mode addendum**
   (constitution check + kill-axis + anti-minutes; explicitly licensed to
   subtract; code mode skips it).
-- `tests/test_doc_mode.py` (13 tests) pins every element above so a wiki
+- `tests/test_doc_mode.py` pins every element above so a wiki
   re-sync cannot silently drop the section — per-element real-value pins
   for diagnosability, plus a **golden-hash freeze** of the entire
   normalized doc-mode section + prompt addendum (the fix-coverage-drift
