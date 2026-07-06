@@ -21,11 +21,14 @@ Escalation history: 3min → 8min → **15min**.
   upstream, do not regress on re-sync.
 - `tests/test_codex_review.py::test_default_idle_timeout_is_900s` pins
   the default (red at 480, green at 900).
-- NOTE (outside this repo, for the user): the global rule files
-  `~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md` still say "hang 判定 =
-  > 8min" and must be updated together (byte-identical constraint).
+- NOTE (outside this repo, for the user): `~/.claude/CLAUDE.md:35`
+  (Claude 特有 section) still says "hang 判定 = > 8min" — update it to
+  15min. (Correction 2026-07-06: `~/.codex/AGENTS.md` does NOT carry
+  this line — it sits outside the byte-identical SHARED block, so only
+  the one file needs the edit.)
 
-53 tests pass; selftest green.
+54 tests pass (53 at this entry's commit; the round-2 golden-freeze
+test landed after); selftest green.
 
 ## [0.3.15.0] - 2026-07-06
 
