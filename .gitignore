@@ -21,3 +21,10 @@ venv/
 .idea/
 .cmr-gate/
 .review-unconverged.log
+
+# Local agent / tool state (per-machine, never committed)
+.claude/
+.antigravitycli/
+
+# Timestamped backup files (foo.bak-YYYYMMDD-HHMMSS)
+*.bak-20*
