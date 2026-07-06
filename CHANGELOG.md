@@ -6,7 +6,7 @@ All notable changes to this project are documented here. Format follows
 
 ## [0.3.15.1] - 2026-07-06
 
-### Changed — codex idle-timeout default 480s → 900s (user decision; recorded wiki divergence)
+### Changed — codex idle-timeout default 480s → 900s (user decision; wiki updated to 15min the same day — in sync)
 
 An xhigh codex reviewer was false-killed at the 8min idle threshold again
 (the same failure mode that killed the 3min threshold): deep-reasoning /
@@ -21,11 +21,11 @@ Escalation history: 3min → 8min → **15min**.
   sync; do not regress either side on a re-sync.
 - `tests/test_codex_review.py::test_default_idle_timeout_is_900s` pins
   the default (red at 480, green at 900).
-- NOTE (outside this repo, for the user): `~/.claude/CLAUDE.md:35`
-  (Claude 特有 section) still says "hang 判定 = > 8min" — update it to
-  15min. (Correction 2026-07-06: `~/.codex/AGENTS.md` does NOT carry
-  this line — it sits outside the byte-identical SHARED block, so only
-  the one file needs the edit.)
+- NOTE (outside this repo, for the user): the "hang 判定 = > 8min" line
+  in `~/.claude/CLAUDE.md` (Claude 特有 section; no line number — the
+  file shifts) needs updating to 15min. (Correction 2026-07-06:
+  `~/.codex/AGENTS.md` does NOT carry this line — it sits outside the
+  byte-identical SHARED block, so only the one file needs the edit.)
 
 - wiki-wins contract qualified (correctness-gate r2 P1): the SKILL.md
   intro + README "the wiki wins" sentences now carry the ⚠ RECORDED RULE
@@ -48,7 +48,7 @@ line itself drew a completeness finding when it went stale).
 
 A review of a **design text** is structurally additive — every finding
 adds text, every fix grows the reviewable surface. Evidence #440: 34
-rounds, 121 fixes (7% original-design / **58% fix-fix** / 23% invented
+rounds, 121 fixes (7% original-defect / **58% fix-fix** / 23% invented
 mechanisms), 2.4× body bloat, majority-complete at round 3 ignored for
 ~30 more rounds — and **the Step 6 drift triple never fired once**
 (quantity drift watches "count not decreasing"; a doc runaway resolves
@@ -69,7 +69,7 @@ Origin: Fable's 5 doc-mode proposals, re-assessed quality-first.
     (c) early stop: majority-complete + zero original findings → one
     **FULL confirmation round** (no anti-pattern-#14 exception — the
     spot-check variant was rejected), again majority-complete AND again
-    zero original-design findings → converged (a fresh original finding
+    zero original-defect findings → converged (a fresh original finding
     in the confirmation round blocks convergence — the same blocker-free
     predicate applies at trigger AND terminal; correctness-gate P1 fix); (d) **round gate at 10 = escalation checkpoint, NOT a
     hard cap** — escalate to the user with the ledger, user rules

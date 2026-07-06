@@ -111,16 +111,27 @@ def test_early_stop_keeps_full_rereview_no_ap14_exception():
     )
     # the trigger condition and the terminal state, not just the mechanism
     assert "majority of legs judge `complete`" in sec
-    assert "zero original-design findings" in sec
+    assert "zero original-defect findings" in sec, (
+        "the early-stop predicate must use the LEDGER's key "
+        "(original-defect) — a second name for the same category makes "
+        "the measuring instrument ambiguous"
+    )
+    assert "original-design" not in sec, (
+        "unified vocabulary: the taxonomy key is original-defect; no "
+        "synonym drift"
+    )
     assert "converged, stop" in sec
     # the TERMINAL condition must carry the SAME blocker-free predicate as
     # the trigger — "again majority-complete" alone would let a
-    # confirmation round converge while swallowing a fresh original-design
+    # confirmation round converge while swallowing a fresh original-defect
     # finding raised by the dissenting leg (cmr correctness P1, 2026-07-06)
-    terminal = sec[sec.index("Confirmation round") : sec.index("converged, stop")]
-    assert "zero original-design findings" in terminal, (
+    terminal = sec[
+        sec.index("Confirmation round again majority-complete")
+        : sec.index("converged, stop")
+    ]
+    assert "zero original-defect findings" in terminal, (
         "the confirmation round's convergence must require zero "
-        "original-design findings again, not bare majority-complete"
+        "original-defect findings again, not bare majority-complete"
     )
 
 
@@ -235,6 +246,18 @@ def test_no_stale_pending_upstream_claims():
     assert "still says 8min" not in backend
     assert "pending wiki upstream" not in backend
     assert "pending upstream" not in backend
+    # r3 residue (same class, new surface — centralize the scan): the
+    # sibling test file's comments and the CHANGELOG heading must not
+    # keep the divergence alive either
+    sibling = _norm(
+        (ROOT / "tests" / "test_codex_review.py").read_text(encoding="utf-8")
+    )
+    assert "still says 8min" not in sibling
+    changelog = _norm((ROOT / "CHANGELOG.md").read_text(encoding="utf-8"))
+    assert "recorded wiki divergence" not in changelog, (
+        "the 0.3.15.1 heading must not call it a live divergence — the "
+        "wiki was updated the same day (in sync)"
+    )
     # the do-not-drop guard itself STAYS (it protects against a re-sync
     # from a stale wiki checkout; the golden hash enforces it)
     assert "NOT drop this section on a wiki re-sync" in skill
@@ -257,7 +280,7 @@ def test_golden_freeze_of_doc_mode_texts():
 
     sec = _doc_mode_section()
     assert hashlib.sha256(sec.encode()).hexdigest() == (
-        "ac5a91cd3e16206ae7f99eebaa790d88e8e48c7ff28315a6dd89b3b3673432c6"
+        "eccdd4d72aa770c5ef4551419f56c3ba91050720fdfda0801be8bb6048b5e732"
     ), (
         "SKILL.md doc-mode section text changed — if intentional, update "
         "this hash in the same commit (see docstring); if you did not "

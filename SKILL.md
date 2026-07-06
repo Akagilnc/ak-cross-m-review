@@ -798,14 +798,14 @@ review can only ever make the text longer.
   by fix-fix / invention → STOP, escalate to the user with the ledger.
 - **(c) Early stop via a FULL confirmation round (no #14 exception).**
   A round where the **majority of legs judge `complete`** AND the ledger
-  shows **zero original-design findings** → the next round is a
+  shows **zero original-defect findings** → the next round is a
   **confirmation round that is still a FULL re-review** (anti-pattern
   #14 stays fully intact — the spot-check variant was considered and
   rejected: one full round costs nothing against the ~30 wasted ones it
   prevents, and it keeps the fresh-full-read guarantee). Confirmation
   round again majority-complete **AND the ledger again showing zero
-  original-design findings** → **converged, stop**. A fresh
-  original-design finding in the confirmation round → NOT converged:
+  original-defect findings** → **converged, stop**. A fresh
+  original-defect finding in the confirmation round → NOT converged:
   fix it and the loop continues (the early-stop arm must re-qualify
   from scratch — bare majority-complete never converges on its own,
   or the dissenting leg's real finding gets swallowed).

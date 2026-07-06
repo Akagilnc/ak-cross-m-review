@@ -208,8 +208,8 @@ def test_invalid_effort_is_rejected():
 def test_default_idle_timeout_is_900s():
     # User decision 2026-07-06 after an xhigh codex was false-killed at the
     # 8min threshold: the IDLE default is 900s = 15min (escalation history
-    # 3min → 8min → 15min). The wiki (§额外硬规则 #4) still says 8min —
-    # recorded divergence; this pin stops a wiki re-sync from silently
+    # 3min → 8min → 15min). The wiki (§额外硬规则 #4) was updated to 15min
+    # the same day — in sync; this pin stops a wiki re-sync from silently
     # regressing the default to 480 (or the ancient 180).
     src = SCRIPT.read_text(encoding="utf-8")
     assert 'IDLE_TIMEOUT="${CMR_CODEX_TIMEOUT:-900}"' in src, (
