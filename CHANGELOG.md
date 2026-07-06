@@ -4,6 +4,29 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.15.1] - 2026-07-06
+
+### Changed — codex idle-timeout default 480s → 900s (user decision; recorded wiki divergence)
+
+An xhigh codex reviewer was false-killed at the 8min idle threshold again
+(the same failure mode that killed the 3min threshold): deep-reasoning /
+large-diff runs go silent for many minutes before the first byte.
+Escalation history: 3min → 8min → **15min**.
+
+- `backends/codex-review.sh`: `CMR_CODEX_TIMEOUT` default 480 → **900**
+  (still IDLE/silence-based, never a total wall-clock cap; scoped kill
+  unchanged). Now matches agy's `--print-timeout 15m`.
+- `SKILL.md` Step 2: hang judgment 8min → 15min, marked as a **⚠ RECORDED
+  divergence** from wiki §额外硬规则 #4 (still "8min") — pending wiki
+  upstream, do not regress on re-sync.
+- `tests/test_codex_review.py::test_default_idle_timeout_is_900s` pins
+  the default (red at 480, green at 900).
+- NOTE (outside this repo, for the user): the global rule files
+  `~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md` still say "hang 判定 =
+  > 8min" and must be updated together (byte-identical constraint).
+
+53 tests pass; selftest green.
+
 ## [0.3.15.0] - 2026-07-06
 
 ### Added — doc-mode discipline: the additive-runaway defense (RECORDED RULE, pending wiki upstream)

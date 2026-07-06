@@ -45,10 +45,14 @@
 #   CMR_CODEX_TIMEOUT IDLE/silence seconds before pkill — kill only after
 #                     this long with NO new stdout/stderr (a hang), NOT a
 #                     total wall-clock cap. A codex still streaming its
-#                     reasoning/trace runs as long as it needs. Default 480
-#                     (= 8min, wiki §额外硬规则 #4: "8min 无输出 → kill",
-#                     deep reasoning / large diffs go silent for minutes
-#                     before the first token; 8min < agy --print-timeout 15m).
+#                     reasoning/trace runs as long as it needs. Default 900
+#                     (= 15min, user decision 2026-07-06: an xhigh codex
+#                     was false-killed at the 8min threshold too — deep
+#                     reasoning / large diffs go silent for MANY minutes
+#                     before the first token. Escalation history: 3min →
+#                     8min → 15min. ⚠ diverges from wiki §额外硬规则 #4
+#                     (still "8min") — pending wiki upstream, do not
+#                     regress on re-sync. Matches agy --print-timeout 15m).
 #   CMR_CODEX_IDLE_POLL  watchdog poll interval seconds (default 5).
 #   CMR_DRY_RUN=1     print the exact command that WOULD run, do not call
 #                     codex, exit 0. Used by --selftest.
@@ -69,9 +73,11 @@ MODE="${1:-code}"
 LABEL="${2:-full}"
 MODEL="${CMR_CODEX_MODEL:-gpt-5.5}"
 # IDLE/silence timeout — seconds with NO new output before we call it a hang
-# and kill (NOT a total wall-clock cap). Default 480 = 8min (wiki §额外硬规则
-# #4). A streaming codex is never killed for total runtime.
-IDLE_TIMEOUT="${CMR_CODEX_TIMEOUT:-480}"
+# and kill (NOT a total wall-clock cap). Default 900 = 15min (user decision
+# 2026-07-06 after an 8min false-kill; wiki §额外硬规则 #4 still says 8min —
+# recorded divergence, pending upstream). A streaming codex is never killed
+# for total runtime.
+IDLE_TIMEOUT="${CMR_CODEX_TIMEOUT:-900}"
 IDLE_POLL="${CMR_CODEX_IDLE_POLL:-5}"
 # Reasoning effort is scenario-dependent (wiki §调用规范 effort 表,
 # 2026-06-18): ship-pre 5a/5b = `xhigh` (the real gate + cross-slice
@@ -202,7 +208,7 @@ echo "codex-review: model=${MODEL} mode=${MODE} label=${LABEL} idle-timeout=${ID
 # the old bug that fed an empty prompt under GNU timeout.)
 #
 # Caveat: idle is measured by stdout/stderr GROWTH. If codex fully buffers
-# stdout (no incremental flush) it could look idle while working; the 8min
+# stdout (no incremental flush) it could look idle while working; the 15min
 # default is generous enough that any periodic flush keeps it alive, and
 # codex exec streams its progress in practice.
 PROMPT_TMP="$(mktemp)"

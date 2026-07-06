@@ -391,18 +391,21 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   which is only about dispatching the reviewer in the main=Claude flow.)
 - Always `2>&1`. Run from the repo root, no `-C`. The backends
   self-time-out on an **idle/hang** (`backends/codex-review.sh`:
-  `CMR_CODEX_TIMEOUT` = seconds of NO output before kill, default 480s =
-  8min per wiki §额外硬规则 #4 — **not** a total wall-clock cap, so a codex
-  still streaming runs as long as it needs; scoped kill of its own pid
-  tree) and degrade automatically — you rarely need to intervene. If you
-  must kill a hung reviewer, kill ONLY its specific pid; **never a global
+  `CMR_CODEX_TIMEOUT` = seconds of NO output before kill, default 900s =
+  15min — **not** a total wall-clock cap, so a codex still streaming runs
+  as long as it needs; scoped kill of its own pid tree) and degrade
+  automatically — you rarely need to intervene. If you must kill a hung
+  reviewer, kill ONLY its specific pid; **never a global
   `pkill -f codex`** (msg1 launched N parallel codex reviewers — a global pkill
-  takes the siblings down too). **Hang judgment = > 8min** (not 3min) of
-  no stdout/stderr (wiki §额外硬规则 #4, 2026-06-18): deep reasoning /
-  large diffs routinely think silently for several minutes before the
-  first byte, so a 3min threshold kept false-killing live processes; 8min
-  is still under agy's `--print-timeout 15m`. rate / quota / limit → the
-  backend degrades and flags "本轮缺 X"; do not retry by hand.
+  takes the siblings down too). **Hang judgment = > 15min** of no
+  stdout/stderr (user decision 2026-07-06; escalation history 3min →
+  8min → 15min — deep reasoning / large diffs think silently for many
+  minutes before the first byte, and an xhigh codex was false-killed at
+  the 8min threshold too, twice. ⚠ RECORDED divergence: wiki §额外硬规则
+  #4 still says 8min — pending wiki upstream, do not regress on re-sync.
+  900s matches agy's `--print-timeout 15m`, which gemini.sh already
+  passes for the same reason). rate / quota / limit → the backend
+  degrades and flags "本轮缺 X"; do not retry by hand.
 - **Huge diff (> 10K lines): segment the prompt** to avoid saturating the
   pipe buffer (wiki §额外硬规则 #3). This is separate from the N-table
   (which scales reviewer *count*) — it is about not shoving a single
