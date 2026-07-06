@@ -56,8 +56,10 @@ Origin: Fable's 5 doc-mode proposals, re-assessed quality-first.
     death line** (legit growth continues, fix-fix growth escalates);
     (c) early stop: majority-complete + zero original findings → one
     **FULL confirmation round** (no anti-pattern-#14 exception — the
-    spot-check variant was rejected), again majority-complete →
-    converged; (d) **round gate at 10 = escalation checkpoint, NOT a
+    spot-check variant was rejected), again majority-complete AND again
+    zero original-design findings → converged (a fresh original finding
+    in the confirmation round blocks convergence — the same blocker-free
+    predicate applies at trigger AND terminal; correctness-gate P1 fix); (d) **round gate at 10 = escalation checkpoint, NOT a
     hard cap** — escalate to the user with the ledger, user rules
     continue/close; code mode keeps no-cap. **10 restores cmr's original
     founding value** (user decision 2026-07-06; it had been silently

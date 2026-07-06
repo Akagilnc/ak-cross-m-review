@@ -111,6 +111,15 @@ def test_early_stop_keeps_full_rereview_no_ap14_exception():
     assert "majority of legs judge `complete`" in sec
     assert "zero original-design findings" in sec
     assert "converged, stop" in sec
+    # the TERMINAL condition must carry the SAME blocker-free predicate as
+    # the trigger — "again majority-complete" alone would let a
+    # confirmation round converge while swallowing a fresh original-design
+    # finding raised by the dissenting leg (cmr correctness P1, 2026-07-06)
+    terminal = sec[sec.index("Confirmation round") : sec.index("converged, stop")]
+    assert "zero original-design findings" in terminal, (
+        "the confirmation round's convergence must require zero "
+        "original-design findings again, not bare majority-complete"
+    )
 
 
 def test_round_gate_is_10_and_escalates_not_terminates():
@@ -205,7 +214,7 @@ def test_golden_freeze_of_doc_mode_texts():
 
     sec = _doc_mode_section()
     assert hashlib.sha256(sec.encode()).hexdigest() == (
-        "e27e9b04c44d1fd31e813c050fdd3f30478d8d9da555bf64edf046e7cc1fcbea"
+        "ebec66d6c548de844ab37d045da3e858d58bfdac7715bf001e60af529d49538a"
     ), (
         "SKILL.md doc-mode section text changed — if intentional, update "
         "this hash in the same commit (see docstring); if you did not "

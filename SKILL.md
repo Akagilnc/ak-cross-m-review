@@ -797,7 +797,12 @@ review can only ever make the text longer.
   #14 stays fully intact — the spot-check variant was considered and
   rejected: one full round costs nothing against the ~30 wasted ones it
   prevents, and it keeps the fresh-full-read guarantee). Confirmation
-  round again majority-complete → **converged, stop**.
+  round again majority-complete **AND the ledger again showing zero
+  original-design findings** → **converged, stop**. A fresh
+  original-design finding in the confirmation round → NOT converged:
+  fix it and the loop continues (the early-stop arm must re-qualify
+  from scratch — bare majority-complete never converges on its own,
+  or the dissenting leg's real finding gets swallowed).
 - **(d) Round gate at 10 — an escalation checkpoint, NOT a hard cap.**
   Doc mode reaching **round 10** without convergence → stop dispatching
   and **escalate to the user with the ledger + current state**; the user
