@@ -38,9 +38,10 @@ Escalation history: 3min → 8min → **15min**.
   `test_wiki_wins_contract_carries_recorded_rule_exception` +
   `test_no_stale_pending_upstream_claims`.
 
-Suite green at every commit on this branch (56 tests at ship; selftest
-green — exact counts live in `pytest` output, not here, after the count
-line itself drew a completeness finding when it went stale).
+Suite green at every commit on this branch; selftest green. Exact test
+counts live in `pytest` output, not here — the count line itself drew a
+completeness finding when it went stale, and a with-count restatement
+of this very rule drew the next one.
 
 ## [0.3.15.0] - 2026-07-06
 
@@ -66,10 +67,10 @@ Origin: Fable's 5 doc-mode proposals, re-assessed quality-first.
     `original-defect / fix-fix / invention` (the measuring instrument,
     lands first); (b) **1.5× bloat line as a ledger-audit trigger, not a
     death line** (legit growth continues, fix-fix growth escalates);
-    (c) early stop: majority-complete + zero original findings → one
+    (c) early stop: majority-complete + zero original-defect findings → one
     **FULL confirmation round** (no anti-pattern-#14 exception — the
     spot-check variant was rejected), again majority-complete AND again
-    zero original-defect findings → converged (a fresh original finding
+    zero original-defect findings → converged (a fresh original-defect finding
     in the confirmation round blocks convergence — the same blocker-free
     predicate applies at trigger AND terminal; correctness-gate P1 fix); (d) **round gate at 10 = escalation checkpoint, NOT a
     hard cap** — escalate to the user with the ledger, user rules
