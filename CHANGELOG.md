@@ -71,8 +71,14 @@ Origin: Fable's 5 doc-mode proposals, re-assessed quality-first.
 - `prompts/cmr-completeness.md` gains a scoped **Doc mode addendum**
   (constitution check + kill-axis + anti-minutes; explicitly licensed to
   subtract; code mode skips it).
-- `tests/test_doc_mode.py` (12 tests) pins every element above so a wiki
-  re-sync cannot silently drop the section.
+- `tests/test_doc_mode.py` (13 tests) pins every element above so a wiki
+  re-sync cannot silently drop the section — per-element real-value pins
+  for diagnosability, plus a **golden-hash freeze** of the entire
+  normalized doc-mode section + prompt addendum (the fix-coverage-drift
+  centralization from review rounds 1-2: phrase-by-phrase pinning is
+  structurally non-exhaustive, so the tail is closed by an exact-content
+  hash; editing the section means updating the hash in the same commit —
+  a visible, conscious act).
 
 ## [0.3.14.2] - 2026-06-24
 

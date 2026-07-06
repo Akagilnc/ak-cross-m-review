@@ -46,6 +46,9 @@ def test_doc_mode_section_exists_and_is_recorded_rule():
         "re-sync does not silently drop it"
     )
     assert "pending wiki upstream" in sec
+    assert "NOT drop this section on a wiki re-sync" in sec, (
+        "the do-not-drop instruction is the operative half of the marker"
+    )
 
 
 def test_doc_mode_scoped_to_design_text_only():
@@ -61,6 +64,10 @@ def test_constitution_kill_axis_and_delete_outranks_patch():
         "the constitution list must land on packet page one, not be an "
         "optional footnote"
     )
+    assert (
+        "the project's already-decided ADRs + the user's explicitly "
+        "stated principles"
+    ) in sec, "the constitution's two concrete sources must stay named"
     assert "second mission" in sec
     assert "DELETE" in sec
     assert "outranks a patch finding" in sec, (
@@ -110,9 +117,9 @@ def test_round_gate_is_10_and_escalates_not_terminates():
     sec = _doc_mode_section()
     assert "round 10" in sec, "the round-gate value is the user's decided 10"
     assert "NOT a hard cap" in sec
-    assert "escalate to the user with the ledger" in sec, (
-        "reaching the gate must escalate with the ledger, never silently "
-        "stop or auto-terminate"
+    assert "escalate to the user with the ledger + current state" in sec, (
+        "reaching the gate must escalate with the ledger AND the current "
+        "state, never silently stop or auto-terminate"
     )
     assert "never auto-terminate" in sec
     # the gate is resumable: the user rules both ways
@@ -127,6 +134,10 @@ def test_dead_leg_standing_degrade():
     assert "2 consecutive dead rounds" in sec
     assert "stop re-dispatching" in sec
     assert "standing-DEGRADED" in sec
+    assert "in every subsequent round report" in sec, (
+        "the standing flag must recur every round, or a silently absent "
+        "leg reads as a zero-finding approve"
+    )
     assert "re-probe" in sec, (
         "a standing-degraded leg must get one recovery probe at the "
         "escalation checkpoint, not be dropped forever"
@@ -136,6 +147,10 @@ def test_dead_leg_standing_degrade():
 def test_self_check_becomes_sanlian():
     sec = _doc_mode_section()
     assert "三连" in sec
+    assert "mandatory self-check 二连 with a third check" in sec, (
+        "三连 must be defined as extending the existing mandatory 二连, "
+        "not replacing it"
+    )
     assert "mechanism itself actually hold" in sec
     assert "contradiction with sibling issues" in sec
 
@@ -171,6 +186,40 @@ def test_completeness_prompt_carries_doc_mode_addendum():
     assert "change the conclusion" in txt
     # scoped: code mode skips the addendum
     assert "In code mode this section does not apply" in txt
+
+
+def test_golden_freeze_of_doc_mode_texts():
+    """Exhaustive tail-stop (fix-coverage-drift centralization, round 2).
+
+    Rounds 1-2 each found ANOTHER unpinned sub-phrase — phrase-by-phrase
+    pinning is structurally non-exhaustive (a reviewer can always name a
+    sixth word). This golden hash freezes the ENTIRE normalized doc-mode
+    section and prompt addendum: dropping or rewording ANYTHING fails
+    here, even wording no per-element test names. Editing the section is
+    still allowed — deliberately: recompute and update the constant in
+    the same commit, which is exactly the visible, conscious act the
+    RECORDED RULE demands (vs. the silent forgetting that lost N=10).
+    Recompute: python3 -c "import hashlib;t=open('SKILL.md').read();n=' '.join(t.split());s=n[n.index('## Doc mode discipline'):n.index('## Anti-patterns')];print(hashlib.sha256(s.encode()).hexdigest())"
+    """
+    import hashlib
+
+    sec = _doc_mode_section()
+    assert hashlib.sha256(sec.encode()).hexdigest() == (
+        "e27e9b04c44d1fd31e813c050fdd3f30478d8d9da555bf64edf046e7cc1fcbea"
+    ), (
+        "SKILL.md doc-mode section text changed — if intentional, update "
+        "this hash in the same commit (see docstring); if you did not "
+        "edit it, a re-sync just silently mutated the recorded rule"
+    )
+
+    txt = _norm(COMPLETENESS.read_text(encoding="utf-8"))
+    add = txt[txt.index("## Doc mode addendum") : txt.index("## The gate")]
+    assert hashlib.sha256(add.encode()).hexdigest() == (
+        "48bd9e6d0e0f5d270cff439f2efbaf84e6158516a987f1bd4dd2389628b7e3d6"
+    ), (
+        "cmr-completeness.md doc-mode addendum changed — if intentional, "
+        "update this hash in the same commit; if not, investigate"
+    )
 
 
 def test_step0_points_at_doc_mode_discipline():
