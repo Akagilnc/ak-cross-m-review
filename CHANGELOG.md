@@ -4,6 +4,53 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.15.0] - 2026-07-06
+
+### Added — doc-mode discipline: the additive-runaway defense (RECORDED RULE, pending wiki upstream)
+
+A review of a **design text** is structurally additive — every finding
+adds text, every fix grows the reviewable surface. Evidence #440: 34
+rounds, 121 fixes (7% original-design / **58% fix-fix** / 23% invented
+mechanisms), 2.4× body bloat, majority-complete at round 3 ignored for
+~30 more rounds — and **the Step 6 drift triple never fired once**
+(quantity drift watches "count not decreasing"; a doc runaway resolves
+findings every round while the text grows, so the triple is blind to it).
+Origin: Fable's 5 doc-mode proposals, re-assessed quality-first.
+
+- `SKILL.md` new **§Doc mode discipline** (design-text reviews ONLY;
+  code-diff mode untouched):
+  - **① Constitution packet + kill-axis** — dispatcher collects the
+    project's decided ADRs + user-stated principles onto packet page one;
+    legs get a second mission to find should-not-exist mechanisms and
+    recommend **DELETE, which outranks patching** (subtraction must be
+    explicitly licensed — an add-only lens can only lengthen the text).
+  - **② Ledger + stop signals** — (a) per-round fix classification
+    `original-defect / fix-fix / invention` (the measuring instrument,
+    lands first); (b) **1.5× bloat line as a ledger-audit trigger, not a
+    death line** (legit growth continues, fix-fix growth escalates);
+    (c) early stop: majority-complete + zero original findings → one
+    **FULL confirmation round** (no anti-pattern-#14 exception — the
+    spot-check variant was rejected), again majority-complete →
+    converged; (d) **round gate at 10 = escalation checkpoint, NOT a
+    hard cap** — escalate to the user with the ledger, user rules
+    continue/close; code mode keeps no-cap. **10 restores cmr's original
+    founding value** (user decision 2026-07-06; it had been silently
+    forgotten — `tests/test_doc_mode.py` now pins it).
+  - **③ Anti-minutes-ification** — a doc fix changes the conclusion,
+    never appends per-round argumentation to the body; body length
+    decrease-only by default.
+  - **④ Dead-leg standing degrade** — 2 consecutive dead rounds → stop
+    re-dispatching; `standing-DEGRADED` in every round report; re-probe
+    at the escalation checkpoint (#440: gemini 429'd empty six rounds
+    and was re-dispatched every time).
+  - **⑤ Self-check 三连** — doc mode adds "fix mechanism itself holds +
+    no new contradiction with sibling issues" to the mandatory 二连.
+- `prompts/cmr-completeness.md` gains a scoped **Doc mode addendum**
+  (constitution check + kill-axis + anti-minutes; explicitly licensed to
+  subtract; code mode skips it).
+- `tests/test_doc_mode.py` (12 tests) pins every element above so a wiki
+  re-sync cannot silently drop the section.
+
 ## [0.3.14.2] - 2026-06-24
 
 ### Changed — the Claude leg is Opus 4.8; cmr no longer uses Fable (recorded rule)
