@@ -4,6 +4,29 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.3.14.2] - 2026-06-24
+
+### Changed — the Claude leg is Opus 4.8; cmr no longer uses Fable (recorded rule)
+Operational decision (user, 2026-06-24): given Fable's quota scarcity, cmr
+will **not dispatch Claude Fable 5 on any leg** — the Claude reviewer leg
+is **`claude-opus-4-8` (Opus 4.8), period**, even when Fable is available.
+This is a **deliberate skill-vs-wiki divergence**: the wiki (§操作规程
+model table) says "use the strongest available Claude = Fable when up",
+which is the *ideal*; the skill's operational choice is Opus 4.8.
+
+- SKILL.md: the Step-2 Claude-leg model bullet drops the "fable when up /
+  revert to fable / needs client v2.1.170+" machinery and pins Opus 4.8,
+  with a prominent **⚠ RECORDED RULE** callout stating the divergence and
+  **"do NOT re-add Fable on a wiki re-sync"** (same standing-divergence
+  handling as the kept agy warm+retry). The two Fable-specific degrade
+  rows (Fable-safeguards auto-routing to Opus; the `fable` alias needing
+  client v2.1.170+) are removed — there is no Fable leg to fall back FROM.
+  README.md matches; anti-pattern #9's "opus / fable" → "opus".
+- No behavior change to the dispatch/merge/loop engine; the Claude leg
+  simply runs Opus 4.8 unconditionally now.
+
+40 tests pass; selftest green.
+
 ## [0.3.14.1] - 2026-06-24
 
 ### Changed — rename gate skills to the `ak-cmr-` namespace

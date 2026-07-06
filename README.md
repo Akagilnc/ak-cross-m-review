@@ -38,11 +38,11 @@ per-slice gate, so Claude is concentrated to the single ship-pre run).
 Against the same diff:
 
 - **1 × Claude reviewer** (**ship-pre only**) — via the `Agent` tool as
-  an independent subagent (zero context contamination), model = the
-  current strongest available Claude (SKILL.md Step 2 is the authority):
-  `fable` (Claude Fable 5) when up; **2026-06-13 Fable is paused → Opus
-  4.8 now, revert when it returns**. Set the model explicitly — it does
-  not inherit the session model. This is why the skill MUST run in the
+  an independent subagent (zero context contamination), model =
+  **`claude-opus-4-8`** (Opus 4.8). **cmr does not use Fable** (quota
+  scarcity) — a deliberate skill-vs-wiki divergence recorded in SKILL.md
+  Step 2. Set the model explicitly — it does not inherit the session
+  model. This is why the skill MUST run in the
   **main session**: Claude Code does not expose `Agent` to subagents.
 - **N × Codex** (`gpt-5.5`, via `backends/codex-review.sh`) — N scales
   with the diff's **effective** (core-logic) line count, excluding
