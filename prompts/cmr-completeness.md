@@ -116,6 +116,29 @@ more models do not fix it; **running** the mechanism does).
 
 ---
 
+## Doc mode addendum (ONLY when the thing under review is a design text)
+
+When the change under review is itself a **design text** (ADR / spec /
+contract / plan) rather than a code diff, you carry a **second mission**
+on top of the clause-by-clause delivery audit. (In code mode this section
+does not apply — skip it.)
+
+- **Constitution check + kill-axis.** Page one of your dispatch packet is
+  the **constitution list**: the project's already-decided ADRs + the
+  user's explicitly stated principles. Hunt for mechanisms in the doc
+  that **violate the constitution or should not exist at all**, and
+  recommend **DELETE** — a subtraction finding, with the violated
+  constitution entry named as evidence. A DELETE finding **outranks a
+  patch finding** on the same mechanism: do not propose patches to a
+  mechanism you judge should not exist. Completeness pressure is
+  structurally additive (every gap you find adds text); you are
+  **explicitly licensed to subtract**.
+- **Anti-minutes discipline.** Suggest fixes that **change the
+  conclusion**, never fixes that append argumentation prose to the body.
+  Flag any section that reads as round-by-round argumentation / meeting
+  minutes rather than decision text — that is bloat surface, and
+  shrinking the body is a valid finding.
+
 ## The gate
 
 **Pass = zero NOT-DONE, zero PARTIAL, zero VIOLATES, zero UNVERIFIED-GAP.**

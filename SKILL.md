@@ -21,7 +21,11 @@ of truth**:
 discipline in `tdd-autonomous-dev.md` §切片内纪律). The wiki frames
 merge / grade / drift / termination as **agent judgment**, not a
 deterministic engine — this file keeps it that way. If this file and the
-wiki ever disagree, the wiki wins; re-sync, do not fork behavior.
+wiki ever disagree, the wiki wins; re-sync, do not fork behavior — with
+ONE exception: blocks marked **⚠ RECORDED RULE / RECORDED divergence**
+are deliberate, user-decided divergences (or same-day-upstreamed rules a
+stale wiki checkout may not show yet). Reconcile those against their
+decision record; never silently overwrite them wiki-ward.
 
 It is **Layer 1** (local, pre-PR). It does not replace Layer 3
 (`pr-review-loop`). It does not commit / push / open a PR — the caller
@@ -106,7 +110,11 @@ Pre-flight gates (wiki §操作规程 / §边界):
   invariants / contradictions with existing ADRs. (Evidence:
   ming-salvage-sim ADR 0008 — a *design doc* — took multiple cmr rounds
   to converge, each catching a real spec-level hole like a
-  poison-payload soft-lock that no code read would surface.)
+  poison-payload soft-lock that no code read would surface.) Doc mode
+  ALSO carries its own loop discipline — **§Doc mode discipline** below
+  (constitution kill-axis, fix-classification ledger, bloat audit line,
+  full confirmation-round early stop, round-10 escalation gate) — the
+  additive-runaway defense. Code-diff mode is untouched by that section.
 - **The completeness gate (ship-pre Step 5) is its own EXECUTABLE lens —
   `prompts/cmr-completeness.md`** (before 0.3.14.0 it was only prose here,
   so a ship-pre run could dispatch nothing but the correctness prompt and
@@ -387,18 +395,22 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   which is only about dispatching the reviewer in the main=Claude flow.)
 - Always `2>&1`. Run from the repo root, no `-C`. The backends
   self-time-out on an **idle/hang** (`backends/codex-review.sh`:
-  `CMR_CODEX_TIMEOUT` = seconds of NO output before kill, default 480s =
-  8min per wiki §额外硬规则 #4 — **not** a total wall-clock cap, so a codex
-  still streaming runs as long as it needs; scoped kill of its own pid
-  tree) and degrade automatically — you rarely need to intervene. If you
-  must kill a hung reviewer, kill ONLY its specific pid; **never a global
+  `CMR_CODEX_TIMEOUT` = seconds of NO output before kill, default 900s =
+  15min — **not** a total wall-clock cap, so a codex still streaming runs
+  as long as it needs; scoped kill of its own pid tree) and degrade
+  automatically — you rarely need to intervene. If you must kill a hung
+  reviewer, kill ONLY its specific pid; **never a global
   `pkill -f codex`** (msg1 launched N parallel codex reviewers — a global pkill
-  takes the siblings down too). **Hang judgment = > 8min** (not 3min) of
-  no stdout/stderr (wiki §额外硬规则 #4, 2026-06-18): deep reasoning /
-  large diffs routinely think silently for several minutes before the
-  first byte, so a 3min threshold kept false-killing live processes; 8min
-  is still under agy's `--print-timeout 15m`. rate / quota / limit → the
-  backend degrades and flags "本轮缺 X"; do not retry by hand.
+  takes the siblings down too). **Hang judgment = > 15min** of no
+  stdout/stderr (user decision 2026-07-06; escalation history 3min →
+  8min → 15min — deep reasoning / large diffs think silently for many
+  minutes before the first byte, and an xhigh codex was false-killed at
+  the 8min threshold too, twice. Wiki §额外硬规则 #4 was updated to
+  15min the same day (vault `b5495e8`) — skill and wiki are in sync; do
+  not regress either side on a re-sync. 900s matches agy's
+  `--print-timeout 15m`, which gemini.sh already passes for the same
+  reason). rate / quota / limit → the backend degrades and flags
+  "本轮缺 X"; do not retry by hand.
 - **Huge diff (> 10K lines): segment the prompt** to avoid saturating the
   pipe buffer (wiki §额外硬规则 #3). This is separate from the N-table
   (which scales reviewer *count*) — it is about not shoving a single
@@ -730,6 +742,110 @@ optional): ① explicit P2/P3/P4 (not "minor") ② a specific 1–2 sentence
 reason (not generic) ③ accumulate to deferred staging; `gstack-ship`
 lands it into the PR body `## Deferred Findings`
 (`- [ ] [P2] <summary> — <reason> — <expected timing>`).
+
+## Doc mode discipline (design-text reviews — the additive-runaway defense)
+
+> **⚠ RECORDED RULE — upstreamed to the wiki 2026-07-06 (user decision
+> same day; vault `b5495e8` / `da04ff5` / `e06bcfe`).** Do
+> NOT drop this section on a wiki re-sync (a re-sync from a stale wiki
+> checkout would erase it; the golden-hash test enforces this). The
+> round-gate value **10** restores cmr's original founding setting (it
+> had been silently forgotten by later versions — which is exactly why
+> these tests-pinned rules exist).
+
+Applies **ONLY when the thing under review is a design text** (ADR /
+spec / contract / plan — the Step 0 doc-mode bullet, completeness lens).
+Code-diff mode keeps every existing rule unchanged.
+
+**Why doc mode needs its own defense (evidence: #440).** A review of a
+DESIGN TEXT is structurally **additive** — every finding suggests adding
+text, every fix grows the reviewable surface. #440 ran 34 rounds: of 121
+fixes, 7% fixed the original design, **58% fixed the review's own
+earlier fixes**, 23% were mechanisms the review itself invented; the
+text bloated 2.4×; at round 3, 3/4 legs had already judged `complete`
+and the loop still ran ~30 more full rounds. **The Step 6 drift triple
+never fired once in 34 rounds** — quantity drift watches "findings count
+not decreasing", and a runaway doc review *resolves* findings every
+round (count keeps falling) while the text grows and fixes fix fixes.
+The triple is structurally blind to additive-text runaway, so doc mode
+adds the defenses below. 标 vs 本: ①③ + the ledger are the **root**
+fixes (they stop the runaway from being generated); the bloat line and
+the round gate are **backstops** for when the roots fail.
+
+### ① Constitution packet + kill-axis (root fix)
+
+Before doc-mode round 1 the dispatcher MUST collect a **constitution
+list** — the project's already-decided ADRs + the user's explicitly
+stated principles — and put it on **page one of the review packet**.
+Every leg's prompt then carries a **second mission** (the doc-mode
+addendum in `prompts/cmr-completeness.md`): besides finding what is
+missing, find **mechanisms that violate the constitution or should not
+exist at all** and recommend **DELETE**. A DELETE finding **outranks a
+patch finding** on the same mechanism. Rationale: a completeness lens is
+structurally add-only; subtraction must be explicitly licensed or the
+review can only ever make the text longer.
+
+### ② Fix-classification ledger + stop signals
+
+- **(a) Ledger — the measuring instrument, lands first.** Every round
+  intro MUST carry the previous round's fix classification:
+  **original-defect / fix-fix / invention** (原始缺陷 / fix修fix / 加戏).
+  Without the ledger none of the signals below is measurable.
+- **(b) Bloat line = audit trigger, NOT a death line.** Reviewed text
+  grows past **1.5×** its round-1 size → audit the ledger. Growth driven
+  by original-defect fixes → legitimate: note it in the round report and
+  continue (a genuinely complex design may lawfully grow). Growth driven
+  by fix-fix / invention → STOP, escalate to the user with the ledger.
+- **(c) Early stop via a FULL confirmation round (no #14 exception).**
+  A round where the **majority of legs judge `complete`** AND the ledger
+  shows **zero original-defect findings** → the next round is a
+  **confirmation round that is still a FULL re-review** (anti-pattern
+  #14 stays fully intact — the spot-check variant was considered and
+  rejected: one full round costs nothing against the ~30 wasted ones it
+  prevents, and it keeps the fresh-full-read guarantee). Confirmation
+  round again majority-complete **AND the ledger again showing zero
+  original-defect findings** → **converged, stop**. A fresh
+  original-defect finding in the confirmation round → NOT converged:
+  fix it and the loop continues (the early-stop arm must re-qualify
+  from scratch — bare majority-complete never converges on its own,
+  or the dissenting leg's real finding gets swallowed).
+- **(d) Round gate at 10 — an escalation checkpoint, NOT a hard cap.**
+  Doc mode reaching **round 10** without convergence → stop dispatching
+  and **escalate to the user with the ledger + current state**; the user
+  rules "genuinely complex — continue" (the loop resumes, next window)
+  or "runaway — close". Never a silent stop, never auto-terminate. A
+  #440-style ledger (58% fix-fix) indicts itself; a genuinely complex
+  design is not framed by the number. Code/correctness mode keeps the
+  no-cap rule (`3 rounds is not a hard cap`, Step 6) unchanged — there
+  the drift triple CAN see runaway; here it demonstrably cannot.
+
+### ③ Anti-minutes-ification (fix output discipline)
+
+A design-text fix **changes the conclusion** — it does not append
+per-round argumentation to the doc/issue body. Argumentation and history
+go to comments or the review ledger. Body length defaults to
+**decrease-only**; an increase requires a stated justification in the
+round report. (#440's bloat engine was exactly per-fix mechanism prose
+appended to the body — every append enlarged the attackable surface.)
+
+### ④ Dead-leg standing degrade
+
+A leg returning empty / 429 / an error pattern is DEGRADED for the round
+(Step 3 flag + out of the concur denominator — already the rule). Doc
+mode adds: **2 consecutive dead rounds → stop re-dispatching that leg**;
+mark **`standing-DEGRADED`** in every subsequent round report (never
+counted as a zero-finding approve); re-probe it once at the ②(d)
+escalation checkpoint — recovered → rejoin. (Evidence: #440's gemini leg
+429'd empty for six late rounds and was re-dispatched and awaited every
+single time.)
+
+### ⑤ Fix self-check becomes 三连
+
+Doc mode extends Step 7's mandatory self-check 二连 with a third check
+before commit: **does the fix's mechanism itself actually hold, and does
+it introduce no new contradiction with sibling issues / other fixes?**
+(#440 round 33: 3 of 4 findings were bugs in previous rounds' fixes —
+the cheapest whole-round saver in the set.)
 
 ## Anti-patterns (wiki §反模式 — refuse these)
 
