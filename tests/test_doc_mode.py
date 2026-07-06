@@ -57,6 +57,11 @@ def test_doc_mode_scoped_to_design_text_only():
 def test_constitution_kill_axis_and_delete_outranks_patch():
     sec = _doc_mode_section()
     assert "constitution" in sec.lower()
+    assert "page one of the review packet" in sec, (
+        "the constitution list must land on packet page one, not be an "
+        "optional footnote"
+    )
+    assert "second mission" in sec
     assert "DELETE" in sec
     assert "outranks a patch finding" in sec, (
         "subtraction must outrank patching, or the lens stays add-only"
@@ -69,6 +74,11 @@ def test_fix_classification_ledger_taxonomy():
         "the ledger taxonomy is the measuring instrument for every stop "
         "signal — without it nothing below is measurable"
     )
+    assert "原始缺陷 / fix修fix / 加戏" in sec
+    assert "lands first" in sec, (
+        "the ledger is the instrument the other signals read — it must "
+        "land before any of them"
+    )
 
 
 def test_bloat_line_is_audit_trigger_not_death_line():
@@ -78,6 +88,9 @@ def test_bloat_line_is_audit_trigger_not_death_line():
         "1.5× must trigger a ledger audit, not an unconditional stop — a "
         "genuinely complex design may lawfully grow"
     )
+    # both branches of the audit: legit growth continues, runaway escalates
+    assert "original-defect fixes → legitimate" in sec
+    assert "fix-fix / invention → STOP, escalate" in sec
 
 
 def test_early_stop_keeps_full_rereview_no_ap14_exception():
@@ -87,6 +100,10 @@ def test_early_stop_keeps_full_rereview_no_ap14_exception():
         "the early stop must NOT open a spot-check exception to "
         "anti-pattern #14 — the confirmation round stays a full re-review"
     )
+    # the trigger condition and the terminal state, not just the mechanism
+    assert "majority of legs judge `complete`" in sec
+    assert "zero original-design findings" in sec
+    assert "converged, stop" in sec
 
 
 def test_round_gate_is_10_and_escalates_not_terminates():
@@ -97,6 +114,10 @@ def test_round_gate_is_10_and_escalates_not_terminates():
         "reaching the gate must escalate with the ledger, never silently "
         "stop or auto-terminate"
     )
+    assert "never auto-terminate" in sec
+    # the gate is resumable: the user rules both ways
+    assert "genuinely complex — continue" in sec
+    assert "runaway — close" in sec
     # code mode's no-cap principle must survive alongside the doc gate
     assert "`3 rounds is not a hard cap`" in _skill_text()
 
@@ -104,12 +125,18 @@ def test_round_gate_is_10_and_escalates_not_terminates():
 def test_dead_leg_standing_degrade():
     sec = _doc_mode_section()
     assert "2 consecutive dead rounds" in sec
+    assert "stop re-dispatching" in sec
     assert "standing-DEGRADED" in sec
+    assert "re-probe" in sec, (
+        "a standing-degraded leg must get one recovery probe at the "
+        "escalation checkpoint, not be dropped forever"
+    )
 
 
 def test_self_check_becomes_sanlian():
     sec = _doc_mode_section()
     assert "三连" in sec
+    assert "mechanism itself actually hold" in sec
     assert "contradiction with sibling issues" in sec
 
 
@@ -117,17 +144,31 @@ def test_anti_minutes_fix_discipline():
     sec = _doc_mode_section()
     assert "changes the conclusion" in sec
     assert "decrease-only" in sec
+    assert "stated justification in the round report" in sec
+    assert "comments or the review ledger" in sec, (
+        "argumentation/history needs a licit destination outside the "
+        "body, or the append pressure just returns"
+    )
 
 
 def test_completeness_prompt_carries_doc_mode_addendum():
     txt = _norm(COMPLETENESS.read_text(encoding="utf-8"))
     assert "## Doc mode addendum" in txt
+    assert "second mission" in txt
+    assert "Page one of your dispatch packet" in txt, (
+        "the prompt must tell the reviewer where the constitution lives, "
+        "or the kill-axis has no ground truth to check against"
+    )
     assert "constitution list" in txt
     assert "DELETE" in txt
+    assert "outranks a patch finding" in txt
     assert "explicitly licensed to subtract" in txt, (
         "the reviewer must be explicitly licensed to subtract, or the "
         "completeness lens stays structurally add-only"
     )
+    # the prompt side of anti-minutes, not just the SKILL side
+    assert "Anti-minutes discipline" in txt
+    assert "change the conclusion" in txt
     # scoped: code mode skips the addendum
     assert "In code mode this section does not apply" in txt
 
