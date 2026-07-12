@@ -114,7 +114,9 @@ Pre-flight gates (wiki §操作规程 / §边界):
   ALSO carries its own loop discipline — **§Doc mode discipline** below
   (constitution kill-axis, fix-classification ledger, bloat audit line,
   full confirmation-round early stop, round-10 escalation gate) — the
-  additive-runaway defense. Code-diff mode is untouched by that section.
+  additive-runaway defense. Code-diff mode is untouched by that section
+  — EXCEPT its ①: the constitution packet + kill-axis applies to EVERY
+  review mode, code-diff included (owner decision 2026-07-12).
 - **The completeness gate (ship-pre Step 5) is its own EXECUTABLE lens —
   `prompts/cmr-completeness.md`** (before 0.3.14.0 it was only prose here,
   so a ship-pre run could dispatch nothing but the correctness prompt and
@@ -754,8 +756,13 @@ lands it into the PR body `## Deferred Findings`
 > these tests-pinned rules exist).
 
 Applies **ONLY when the thing under review is a design text** (ADR /
-spec / contract / plan — the Step 0 doc-mode bullet, completeness lens).
-Code-diff mode keeps every existing rule unchanged.
+spec / contract / plan — the Step 0 doc-mode bullet, completeness lens)
+— **with ONE exception: ① (constitution packet + kill-axis) applies to
+EVERY review mode, code-diff included (owner decision 2026-07-12; the
+doc-ONLY scoping was an unratified editorial narrowing — the #604
+closure machines entered a code-diff review exactly through the
+unguarded suggestion channel and killed live family runs on
+2026-07-12).** Code-diff mode keeps every OTHER rule unchanged.
 
 **Why doc mode needs its own defense (evidence: #440).** A review of a
 DESIGN TEXT is structurally **additive** — every finding suggests adding
@@ -772,11 +779,16 @@ adds the defenses below. 标 vs 本: ①③ + the ledger are the **root**
 fixes (they stop the runaway from being generated); the bloat line and
 the round gate are **backstops** for when the roots fail.
 
-### ① Constitution packet + kill-axis (root fix)
+### ① Constitution packet + kill-axis (root fix — ALL modes, not just doc)
 
-Before doc-mode round 1 the dispatcher MUST collect a **constitution
+Before round 1 of ANY review (doc mode AND code-diff mode — owner
+decision 2026-07-12) the dispatcher MUST collect a **constitution
 list** — the project's already-decided ADRs + the user's explicitly
 stated principles — and put it on **page one of the review packet**.
+For a code diff the check reads as: a finding or suggested fix that adds
+a mechanism violating a ratified ADR (e.g. runner-side parsing /
+validation / auditing of worker output content, against ADR 0062's
+three-signal envelope) gets a **DELETE** recommendation, not a patch.
 Every leg's prompt then carries a **second mission** (the doc-mode
 addendum in `prompts/cmr-completeness.md`): besides finding what is
 missing, find **mechanisms that violate the constitution or should not

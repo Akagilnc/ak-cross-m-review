@@ -164,3 +164,13 @@ a verdict) from a missing/crashed reviewer (which produces no output and
 no verdict at all → the round flags "本轮缺 <you>", never a false
 approve). If you forget the line, the orchestrator still reads your prose
 — it just makes your verdict unambiguous.
+
+## Constitution check (kill-axis — every mode, owner decision 2026-07-12)
+
+The review packet's page one lists the project's ratified ADRs and
+stated principles (the constitution). Besides finding defects, check
+whether any mechanism in the diff — or any fix you are about to
+suggest — violates that constitution; if so, recommend **DELETE** over
+patch, and a DELETE finding outranks a patch finding on the same
+mechanism. Example shape: runner-side parsing / validation / auditing of
+worker output content violates ADR 0062's three-signal envelope.

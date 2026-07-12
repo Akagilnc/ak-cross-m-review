@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.16.0 — 2026-07-12
+
+- **① Constitution packet + kill-axis de-scoped from doc-mode-only to EVERY
+  review mode (owner decision 2026-07-12).** The doc-ONLY narrowing was an
+  unratified editorial choice; the #604 closure machines entered a
+  code-diff review through the unguarded suggestion channel and killed
+  live family runs on 2026-07-12. `prompts/cmr-reviewer.md` (correctness
+  lens) now carries the constitution-check block; golden hash + scope
+  test updated in the same commit per the RECORDED RULE recipe.
+
 ## [0.3.15.1] - 2026-07-06
 
 ### Changed — codex idle-timeout default 480s → 900s (user decision; wiki updated to 15min the same day — in sync)

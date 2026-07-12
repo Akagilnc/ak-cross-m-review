@@ -53,10 +53,14 @@ def test_doc_mode_section_exists_and_is_recorded_rule():
     )
 
 
-def test_doc_mode_scoped_to_design_text_only():
+def test_doc_mode_scoped_to_design_text_except_constitution():
     sec = _doc_mode_section()
-    # doc-mode-only: code-diff mode's existing rules stay untouched
-    assert "Code-diff mode keeps every existing rule unchanged" in sec
+    # 2026-07-12 owner decision: ② -⑤ stay doc-mode-only, but ① (constitution
+    # packet + kill-axis) applies to EVERY review mode, code-diff included.
+    assert "Code-diff mode keeps every OTHER rule unchanged" in sec
+    assert "applies to" in sec and "EVERY review mode" in sec
+    assert "ALL modes, not just doc" in sec
+    assert "Before round 1 of ANY review" in sec
 
 
 def test_constitution_kill_axis_and_delete_outranks_patch():
@@ -280,7 +284,7 @@ def test_golden_freeze_of_doc_mode_texts():
 
     sec = _doc_mode_section()
     assert hashlib.sha256(sec.encode()).hexdigest() == (
-        "eccdd4d72aa770c5ef4551419f56c3ba91050720fdfda0801be8bb6048b5e732"
+        "39f475bec6e3f314df287ebf79c897fbcff4cbe68213371e63ed57ffd3380c1d"
     ), (
         "SKILL.md doc-mode section text changed — if intentional, update "
         "this hash in the same commit (see docstring); if you did not "
