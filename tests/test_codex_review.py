@@ -15,6 +15,7 @@ Two pinned behaviors around the degrade gate:
    strongest reviewer to a format technicality across many rounds."""
 
 import os
+import re
 import stat
 import subprocess
 from pathlib import Path
@@ -299,6 +300,60 @@ def test_skill_effort_doc_drops_mandatory_and_uniform_negative():
     assert "reasoning-effort pin is mandatory and uniform" not in txt, (
         "the stale 'mandatory and uniform' effort claim must be gone — the "
         "exit-64 whitelist was removed in 0.3.18.15"
+    )
+    # Round-5 leftover: the retired absolute framing wasn't only that one
+    # exact phrase — the Step-2 summary bullet still said "`medium`
+    # uniformly", which reads just as absolute. Pin the retired shape too.
+    assert "`medium` uniformly" not in txt, (
+        "the absolute '`medium` uniformly' framing (no override caveat) must "
+        "be gone — codex effort is a DEFAULT of medium, overridable via "
+        "CMR_CODEX_EFFORT (round-5 Finding, same class as round-4 F3)"
+    )
+
+
+def test_skill_every_uniform_medium_claim_carries_override_caveat():
+    # BROADER guard than the exact-phrase pins above. Round-4 fixed the L287
+    # §调用规范 callout + README but MISSED the Step-2 per-leg summary bullet,
+    # because the only negative pin matched one retired phrase. Catch the
+    # whole class: anywhere SKILL.md pairs a "uniform…"/absolute framing with
+    # "medium", an AFFIRMATIVE override word (overridable/override) must
+    # appear in the same window. Note it deliberately requires "overrid…",
+    # NOT the bare `CMR_CODEX_EFFORT` token: the round-4 leftover bullet DID
+    # name CMR_CODEX_EFFORT — but only as the drift-guard ("pinned via -c so
+    # host config cannot drift"), never as a genuine override. A bare-token
+    # check would have passed the buggy text; requiring the affirmative
+    # override word is what makes this catch the actual class.
+    txt = _norm_doc(SKILL_MD)
+    hits = list(re.finditer(r"\buniform\w*\b", txt))
+    assert hits, "expected at least the per-leg summary bullet's 'uniform' claim"
+    for m in hits:
+        window = txt[max(0, m.start() - 220): m.end() + 220]
+        if "medium" not in window:
+            continue  # a 'uniform' unrelated to codex effort
+        assert re.search(r"overrid", window), (
+            "a 'uniform'+'medium' effort claim in SKILL.md lacks a nearby "
+            "affirmative override word (overridable/override) — naming "
+            "CMR_CODEX_EFFORT only as a drift-guard is NOT enough:\n"
+            f"…{window}…"
+        )
+
+
+def test_skill_summary_bullet_states_effort_override():
+    # The Step-2 "Reasoning-effort reality, per leg" summary table is the
+    # FIRST place a reader meets codex's effort behavior — before the L287
+    # §调用规范 callout. Round-4's fix reached the callout + README but not
+    # this bullet, so a reader stopping here still saw "medium uniformly"
+    # with no override. Pin BOTH the uniform-DEFAULT framing and the explicit
+    # override so THIS bullet, read in isolation, tells the reader
+    # CMR_CODEX_EFFORT is a working override — not a violation of "uniform".
+    txt = _norm_doc(SKILL_MD)
+    assert "**codex** = `medium` **uniform default** for both" in txt, (
+        "the per-leg summary bullet must frame medium as a uniform DEFAULT, "
+        "not an absolute '`medium` uniformly'"
+    )
+    assert "overridable via `CMR_CODEX_EFFORT`" in txt, (
+        "the summary bullet itself must acknowledge CMR_CODEX_EFFORT is a "
+        "working override — round-4's fix reached L287/README but not here"
     )
 
 

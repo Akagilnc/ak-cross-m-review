@@ -263,9 +263,11 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
 
 > **Reasoning-effort reality, per leg** (wiki §调用规范) — the legs run
 > at very different reasoning depths:
-> - **codex** = `medium` uniformly for **ship-pre completeness/correctness
->   (spine Step 5/6)** and **per-slice** (user decision 2026-07-12;
->   `CMR_CODEX_EFFORT`, pinned via `-c` so host config cannot drift).
+> - **codex** = `medium` **uniform default** for both **ship-pre
+>   completeness/correctness (spine Step 5/6)** and **per-slice** (user
+>   decision 2026-07-12; overridable via `CMR_CODEX_EFFORT`, which is
+>   pinned via `-c` so unset host config cannot silently drift the value —
+>   see §调用规范 below for the full override contract).
 > - **Claude reviewer Agent** (ship-pre, main=Claude) = Opus 4.8 adaptive
 >   default and **cannot be dialed up** — the `Agent` tool exposes no
 >   effort param, and `ultrathink` in a subagent prompt is inert literal

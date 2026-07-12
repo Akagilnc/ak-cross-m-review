@@ -4,6 +4,31 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.23 — 2026-07-13
+
+- **Ship-pre correctness-gate finding (PR #32, round 5) — one leftover
+  site of round-4's F3 class.** The Step-2 "Reasoning-effort reality, per
+  leg" summary table in `SKILL.md` still read `codex = medium uniformly …
+  CMR_CODEX_EFFORT, pinned via -c so host config cannot drift` — mentioning
+  `CMR_CODEX_EFFORT` only as the drift-guard, never as a genuine override.
+  As the FIRST place a reader meets codex's effort behavior (before the
+  L287 §调用规范 callout that round 4 fixed), it read as the same absolute
+  "always medium, no exceptions" claim. Reworded to `medium **uniform
+  default** for both ship-pre … and per-slice … overridable via
+  `CMR_CODEX_EFFORT`, which is pinned via `-c` so unset host config cannot
+  silently drift the value — see §调用规范 below`, matching the already-fixed
+  callout's spirit (default + genuine override) without reintroducing a new
+  inconsistency. Only `SKILL.md` touched (no backend/dispatch changes).
+- **Widened the regression guard (`tests/test_codex_review.py`).** The old
+  negative pin only asserted one retired exact phrase was absent — which is
+  exactly why this leftover site slipped through round 4 undetected. Added:
+  (1) a broader class guard that requires every `uniform…`+`medium` effort
+  claim anywhere in `SKILL.md` to carry an override token
+  (`CMR_CODEX_EFFORT` / `overridable`) within the same window; (2) a pin on
+  the retired absolute `` `medium` uniformly `` shape; (3) a positive pin
+  that the summary bullet itself states the override, so both known sites
+  (summary + callout) are individually guarded.
+
 ## 0.3.18.22 — 2026-07-13
 
 - **Three ship-pre correctness-gate findings (PR #32, round 4).**
