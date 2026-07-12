@@ -576,9 +576,11 @@ requires by squad shape:
 Step 5 code gate AND doc mode).** For EVERY completeness round the
 orchestrator **persists a `DONE-and-nailed surfaces` list across rounds**
 (each entry carries the surface + its nail's authorization token + the
-nail's **baseline ref** — the commit/ref captured at nail-authorization
-time — so the reviewer can tell the original nailed change from a post-nail
-modification) and **injects it into every round's dispatch packet**; the
+nail's **baseline ref** — the commit/ref **currently recorded on the
+entry**, which per the **baseline refresh** rule below is the
+confirmation-round state (refreshed exactly once at permanent hand-off),
+NOT the original qualifying-round baseline — so the reviewer can tell the
+original nailed change from a post-nail modification) and **injects it into every round's dispatch packet**; the
 reviewer treats those surfaces as **out-of-jurisdiction** (guarded by
 test-red + the correctness channel). A surface earns a place on this
 **permanent** list only after **BOTH** preconditions hold. **(1)

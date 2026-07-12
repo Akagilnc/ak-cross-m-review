@@ -4,6 +4,31 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.12 — 2026-07-12
+
+- **[P2] Same-file stale phrase contradicts the 0.3.18.11 baseline-refresh
+  rule** (`prompts/cmr-completeness.md` §钉子令牌 + `SKILL.md` Step-5
+  "Cross-round jurisdiction hand-off" note; codex round-12). 0.3.18.11 added
+  the refresh rule — a PERMANENTLY nailed surface's `DONE-and-nailed` entry
+  records the **confirmation-round** state as its baseline ref, not the
+  original qualifying-round baseline. But the SAME files still described the
+  baseline ref generically in older prose that predated the refresh rule and
+  contradicted it: the entry-list definition said the ref was **"captured at
+  nail-authorization time"**, and the tamper-scoping paragraph keyed tamper to
+  change **"beyond the nail-authorization baseline"** / **"relative to the
+  state at which its nail was authorized"** (all = the qualifying-round
+  state). A reviewer reading those lines in isolation — e.g. checking a LATER
+  round's tamper — would revert to comparing against the stale qualifying-round
+  baseline and reproduce the exact false-positive nail-tamper flag 0.3.18.11
+  was meant to eliminate. Fix: ONE authoritative definition of the baseline
+  ref (= the commit/tree ref **currently recorded on the entry**, which per the
+  refresh rule is the confirmation-round state, refreshed exactly once at
+  permanent hand-off); every other mention now just says "the baseline ref"
+  without re-describing its capture time. Applied to BOTH files (two-file sync
+  discipline, rounds 10-11). New `test_no_stale_nail_authorization_time_baseline_phrasing_whole_file`
+  is a WHOLE-FILE guard so a future re-introduction of the stale phrasing
+  ANYWHERE in either file is caught. No hashed range touched, no recompute.
+
 ## 0.3.18.11 — 2026-07-12
 
 - **[P2] Stale baseline ref after a legitimate qualifying→confirmation

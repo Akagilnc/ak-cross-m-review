@@ -228,13 +228,18 @@ def test_done_and_nailed_list_injected_into_packet_positive():
     # nailed change ALWAYS still appears; keying tamper to "any touch" would
     # mis-flag it every confirmation round, so the two-round convergence
     # could never complete.
-    assert "beyond the nail-authorization baseline" in sec, (
-        "nail-tamper must be scoped to change BEYOND the nail baseline, not "
-        "any touch on the nailed surface"
+    # 0.3.18.12 codex r12 P2: tamper-scoping now defers to the entry's
+    # (confirmation-round-refreshed) baseline ref via the single authoritative
+    # definition — NOT the stale "nail-authorization time / state at which its
+    # nail was authorized" phrasing (that predated 0.3.18.11's refresh rule and
+    # contradicted it).
+    assert "beyond the entry's baseline ref" in sec, (
+        "nail-tamper must be scoped to change BEYOND the entry's baseline ref, "
+        "not any touch on the nailed surface"
     )
     assert (
-        "relative to the state at which its nail was authorized" in sec
-    ), "the tamper test is keyed to change relative to the nail's authorized state"
+        "beyond that baseline ref" in sec
+    ), "the tamper test is keyed to change beyond the entry's (refreshed) baseline ref"
     assert "nail-tamper → blocking" in sec, (
         "a post-nail modification of a nailed surface is a nail-tamper "
         "(blocking), not a re-opened completeness audit"
@@ -251,7 +256,7 @@ def test_nail_tamper_scoped_to_baseline_not_any_touch():
     nailed surface → tamper" mis-flagged that authorized change → the
     confirmation round could never come back clean → the two-round
     convergence could never complete. Fix: tamper is scoped to change
-    BEYOND the nail-authorization baseline; the original nailed change is
+    BEYOND the entry's baseline ref; the original nailed change is
     explicitly NOT re-flagged.
     """
     sec = _nail_section()
@@ -356,6 +361,79 @@ def test_baseline_ref_refreshes_to_confirmation_round_at_handoff():
                 f"{name}: the stale-qualifying-baseline-forever wording "
                 f"('{bad}') must not be present"
             )
+
+
+def test_no_stale_nail_authorization_time_baseline_phrasing_whole_file():
+    """0.3.18.12 codex r12 P2 — the same-file stale-phrase contradiction.
+
+    0.3.18.11 added the baseline-refresh rule: a PERMANENTLY nailed surface's
+    `DONE-and-nailed` entry records the CONFIRMATION-round state as its
+    baseline ref, not the original qualifying-round baseline. But older
+    prose (predating the refresh rule) still described the baseline ref
+    generically as 'captured at nail-authorization time' / scoped 'beyond the
+    nail-authorization baseline' / 'relative to the state at which its nail
+    was authorized' — the qualifying-round state. A reviewer reading those
+    lines in isolation would revert to the stale baseline and reproduce the
+    exact false-positive nail-tamper flag 0.3.18.11 eliminated.
+
+    Fix: ONE authoritative definition of the baseline ref (= the ref
+    currently recorded on the entry, refreshed once at permanent hand-off);
+    every other mention just says 'the baseline ref'. This is a WHOLE-FILE
+    guard (not scoped to one sub-section) so a future re-introduction of the
+    stale phrasing ANYWHERE in either file is caught.
+    """
+    # negative — the stale, refresh-contradicting phrasings must be GONE from
+    # the ENTIRE file (both files), wherever they might describe the
+    # current/tamper-scoping baseline. (Bare "nail-authorization" as a verb —
+    # e.g. "prevents nail-authorization" — is fine; only these baseline
+    # re-descriptions are banned.)
+    stale = (
+        "captured at nail-authorization time",
+        "captured at nail-authorization",
+        "beyond the nail-authorization baseline",
+        "relative to the state at which its nail was authorized",
+    )
+    for path, name in ((COMPLETENESS, "cmr-completeness.md"), (SKILL, "SKILL.md")):
+        whole = _norm(path)
+        for bad in stale:
+            assert bad not in whole, (
+                f"{name}: stale baseline phrasing '{bad}' contradicts the "
+                f"0.3.18.11 confirmation-round refresh rule — a reviewer "
+                f"reading it in isolation reverts to the qualifying-round "
+                f"baseline and reproduces the false-positive tamper flag"
+            )
+    # positive — the SINGLE authoritative definition is present in both files:
+    # the baseline ref is whatever is currently recorded on the entry, which
+    # per the refresh rule is the confirmation-round state.
+    comp = _norm(COMPLETENESS)
+    assert (
+        "**currently recorded on the entry**, which\nper the".replace("\n", " ")
+        in comp
+    ), (
+        "cmr-completeness.md must define the baseline ref as the ref currently "
+        "recorded on the entry (the single authoritative definition)"
+    )
+    assert (
+        "per the **baseline refresh**\nrule above is the **confirmation-round** state".replace(
+            "\n", " "
+        )
+        in comp
+    ), "cmr-completeness.md's authoritative definition must tie the ref to the refresh rule"
+    step5 = _norm(SKILL)[
+        _norm(SKILL).index("## Step 5 — termination signals") : _norm(SKILL).index(
+            "## Step 6"
+        )
+    ]
+    assert "**currently recorded on the\nentry**".replace("\n", " ") in step5, (
+        "SKILL.md Step 5 must mirror the 'currently recorded on the entry' "
+        "authoritative baseline definition"
+    )
+    assert (
+        "per the **baseline refresh** rule below is the\nconfirmation-round state".replace(
+            "\n", " "
+        )
+        in step5
+    ), "SKILL.md Step 5's authoritative definition must tie the ref to the refresh rule"
 
 
 def test_orchestrator_persists_done_and_nailed_list_mode_general():

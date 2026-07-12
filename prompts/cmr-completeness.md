@@ -186,9 +186,11 @@ This hand-off needs cross-round state, so the **orchestrator** carries it:
 each round's dispatch packet includes a **`DONE-and-nailed surfaces`**
 list — surfaces whose DONE-with-a-nail judgment has already **survived a
 confirmation round** (permanently nailed) in prior rounds, each with the
-nail's **authorization token** and its **baseline ref** (the commit/tree
-ref — or the nail test's state — captured at nail-authorization time), so
-"changed since the nail" is checkable (SKILL.md §Step 5 records that the
+nail's **authorization token** and its **baseline ref** — the commit/tree
+ref (or the nail test's state) **currently recorded on the entry**, which
+per the **baseline refresh** rule above is the **confirmation-round** state
+(refreshed exactly once at permanent hand-off), NOT the original
+qualifying-round baseline — so "changed since the nail" is checkable (SKILL.md §Step 5 records that the
 orchestrator persists this list across **every** completeness round —
 ship-pre code gate AND doc mode — and injects it). A surface nailed in a
 qualifying round but **not yet confirmed** is NOT on this list — it
@@ -200,9 +202,10 @@ full-re-review the **cumulative** diff (vs main), so the surface's
 **original authorized-and-nailed change legitimately still appears** in
 that diff — its authorized change is part of the PR. That original change
 is **NOT** tamper; do **not** re-flag it. Nail-tamper is scoped to change
-**beyond the nail-authorization baseline**: you audit the remaining
-in-jurisdiction clauses **plus any diff that modifies a nailed surface
-*relative to the state at which its nail was authorized*** (a NEW change
+**beyond the entry's baseline ref** (as defined above — for a permanently
+nailed surface, the confirmation-round-refreshed state): you audit the
+remaining in-jurisdiction clauses **plus any diff that modifies a nailed
+surface *beyond that baseline ref*** (a NEW change
 layered on top of the nailed baseline — check the diff against the entry's
 **baseline ref**). Only that post-nail modification is a
 **nail-tamper → blocking** (per 钉上刻字 below), not a fresh completeness
