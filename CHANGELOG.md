@@ -4,6 +4,30 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.17 — 2026-07-12
+
+- **Close a loose-coupling gap in `test_completeness_grades_gaps_and_gate_is_no_blocking`
+  (ship-pre completeness-gate P1, PR #32).** The two mode-threshold
+  assertions checked the mode label and its severity set as two
+  *independent* substrings (`"code / ship-pre" in txt and "blocking = P0 /
+  P1 / P2" in txt`). Presence anywhere in the normalized file satisfied
+  each half separately, so the assertion did not verify the severity set
+  is actually *coupled to* that mode's clause — its stated intent
+  ("mode-dependent blocking thresholds spelled out"). Codex proved the gap
+  with a poison copy: the real code/ship-pre clause was broken to
+  "blocking = P0 / P1" (missing P2) while an unrelated "blocking = P0 / P1
+  / P2" substring survived elsewhere, and the test still passed. Both
+  asserts (code/ship-pre and doc mode) are now single **coupled-clause**
+  substring checks (`"**code / ship-pre completeness gate** → **blocking =
+  P0 / P1 / P2**"` and the doc-mode equivalent), matching the exact source
+  wording in `prompts/cmr-completeness.md`. Verified by reproducing the
+  poison: the old asserts pass on it (bug), the new coupled asserts
+  correctly fail (gap closed). Test-assertion-quality fix only — the source
+  protocol text was already correct and is untouched. Scope check: the
+  other `A in txt and B in txt` sites in the PR's tests are prose-fragment
+  smoke checks, not severity-value-to-mode coupling, so none share the
+  identical bug class.
+
 ## 0.3.18.16 — 2026-07-12
 
 - **Fix an internal contradiction in `prompts/cmr-fixer.md`'s Scope rules

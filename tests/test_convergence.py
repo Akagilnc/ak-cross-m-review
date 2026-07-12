@@ -86,9 +86,25 @@ def test_completeness_grades_gaps_and_gate_is_no_blocking():
         "Pass = zero NOT-DONE, zero PARTIAL, zero VIOLATES, zero "
         "UNVERIFIED-GAP" not in txt
     ), "the pre-0.3.18.0 zero-any-verdict gate wording must be replaced"
-    # mode-dependent blocking thresholds spelled out
-    assert "code / ship-pre" in txt and "blocking = P0 / P1 / P2" in txt
-    assert "doc mode" in txt and "blocking = P0 / P1 / P2 / P3" in txt
+    # mode-dependent blocking thresholds spelled out — assert each mode's
+    # threshold as ONE COUPLED clause, not two independent `in` checks.
+    # (Two independent presence checks pass even if the mode's own clause is
+    # wrong, so long as the bare "blocking = ..." substring survives anywhere
+    # else in the file — codex's poison test broke exactly that way.)
+    assert (
+        "**code / ship-pre completeness gate** → **blocking = P0 / P1 / P2**"
+        in txt
+    ), (
+        "the code/ship-pre threshold must be spelled out as one coupled "
+        "clause (P0/P1/P2 bound to the code/ship-pre gate, not floating free)"
+    )
+    assert (
+        "**doc mode** (the thing under review is a design text) → "
+        "**blocking = P0 / P1 / P2 / P3**" in txt
+    ), (
+        "the doc-mode threshold must be spelled out as one coupled clause "
+        "(P0/P1/P2/P3 bound to doc mode, not floating free)"
+    )
     assert "P4 never blocks in any mode" in txt
     # non-blocking gaps deferred, never dropped
     assert "goes to Deferred" in txt and "never" in txt
