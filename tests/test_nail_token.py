@@ -37,13 +37,15 @@ def _norm(path):
 
 
 def _nail_section():
-    # the nail-token section sits BETWEEN the submission contract and the
-    # golden-hashed doc-mode addendum; slice it out so ADR 0130 / blocking
-    # assertions bind to THIS section, not to the whole file
+    # slice ONLY the nail-token section: from its header up to the next
+    # section header (`## Grade every gap …`, which the convergence commit
+    # inserted between the nail token and the doc-mode addendum). Scoping to
+    # the immediately-following header keeps the grade-severity section OUT
+    # of the slice, so ADR 0130 / blocking pins bind to THIS section alone.
     txt = _norm(COMPLETENESS)
     start = txt.index("## 钉子令牌")
-    end = txt.index("## Doc mode addendum")
-    assert start < end, "the nail-token section must precede the doc-mode addendum"
+    end = txt.index("## Grade every gap")
+    assert start < end, "the nail-token section must precede the grade-severity section"
     return txt[start:end]
 
 

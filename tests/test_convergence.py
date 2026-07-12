@@ -74,8 +74,8 @@ def test_reviewer_drops_zero_finding_converged_wording_negative():
 
 def test_completeness_grades_gaps_and_gate_is_no_blocking():
     txt = _norm(COMPLETENESS)
-    # every gap graded P0-P4
-    assert "Grade every gap P0–P4" in txt or "Grade every gap P0-P4" in txt
+    # every gap graded P0–P4 (the prompt uses the en-dash form only)
+    assert "Grade every gap P0–P4" in txt
     # the gate is now "no BLOCKING gap", not "zero NOT-DONE/PARTIAL/..."
     assert "Pass = no BLOCKING gap" in txt, (
         "the completeness gate must be no-blocking, not the old "
@@ -121,10 +121,10 @@ def test_skill_step5_concur_is_no_blocking_two_round():
     assert "blocking = **P0 / P1 / P2**" in txt
     assert "doc mode also P3" in txt
     assert "P4 never blocks in any mode" in txt
-    # re-qualify-from-scratch on a blocking finding in the confirmation round
-    assert "re-qualifies from\nscratch" in SKILL.read_text(
-        encoding="utf-8"
-    ) or "re-qualifies from scratch" in txt
+    # re-qualify-from-scratch on a blocking finding in the confirmation
+    # round. `txt` is already whitespace-collapsed by _norm, so the
+    # normalized operand matches across the prompt's hard line-wrap.
+    assert "re-qualifies from scratch" in txt
 
 
 # --- SKILL Step 7: loop uses two-round + severity form
