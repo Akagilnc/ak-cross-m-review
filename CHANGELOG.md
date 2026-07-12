@@ -4,6 +4,42 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.19 — 2026-07-12
+
+- **Two correctness fixes in `prompts/cmr-fixer.md` (ship-pre correctness
+  gate, PR #32 Step 6).**
+  - **Finding 1 (P1/high, codex) — the Defer-protocol terminal rule now
+    recognizes valid routing as a resolution.** The section's closing
+    sentence read "A finding that is neither fixed nor
+    deferred-with-all-three-parts is a protocol violation." Its
+    substantive rules are all scoped to `low`/`clarity`, so it
+    contextually meant that tier — but 0.3.18.18 added a THIRD valid
+    outcome for **blocking** findings: route via `fixes_skipped` to the
+    main session's `/diagnosing-bugs` when they cannot be mechanically
+    resolved. A fixer reading the sentence literally, in isolation, could
+    flag a blocking finding it just validly routed (technically "not
+    fixed" and "not deferred") as its own protocol violation. Reworded to
+    enumerate the terminal outcomes per tier: a blocking finding must be
+    fixed OR validly routed (routing is a resolution, not a violation); a
+    non-blocking (`low`/`clarity`) finding must be fixed OR
+    deferred-with-all-three-parts; only a finding reaching NONE of its
+    tier's outcomes (a silent drop) is the violation.
+  - **Finding 2 (P2 codex / P3 Claude, both independent) — the
+    SHOULD-fix-by-default bullet now names `clarity` for code mode.** It
+    enumerated only `low` in its body, but the immediately-following
+    MUST-NOT-fix section back-references this exact rule to make a fixable
+    `clarity` finding fix-eligible ("under the SHOULD-fix-by-default rule
+    above"), and `SKILL.md`'s "cheap/low-risk P3/P4 should still be FIXED
+    now" (P4 = clarity) says the same. Reworded to name the full code-mode
+    non-blocking tier (`low`/`clarity`; doc mode: only `clarity`, since
+    `low`/P3 is blocking there) and to make the drift stop-condition cover
+    the whole tier ("If fixing these non-blocking findings keeps surfacing
+    new findings") instead of only "the lows".
+- Regression pins in `tests/test_defer_severity.py` (positive + negative,
+  repo phrase-pin style) for both: the terminal rule recognizes valid
+  routing as non-violating for blocking findings; the SHOULD-fix bullet
+  names `clarity` for code mode.
+
 ## 0.3.18.18 — 2026-07-12
 
 - **Close a three-way routing trap in `prompts/cmr-fixer.md`'s Scope rules

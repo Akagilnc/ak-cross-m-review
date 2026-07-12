@@ -243,3 +243,136 @@ def test_fixer_route_uses_existing_machinery_only_negative():
         "scoping must be gone — it excluded mechanical-but-MUST-NOT-fix "
         "blocking findings from the route"
     )
+
+
+# --- cmr-fixer.md: the Defer-protocol terminal rule enumerates the valid
+# --- outcomes per tier — routing a blocking finding is NOT a violation
+# --- (0.3.18.19) ---
+#
+# 0.3.18.18 added a THIRD valid outcome for a BLOCKING finding: route via
+# `fixes_skipped` to main-session /diagnosing-bugs when it "cannot
+# mechanically resolve". But the Defer-protocol section's closing terminal
+# rule still read "A finding that is neither fixed nor deferred-with-all-
+# three-parts is a protocol violation." The section's substantive rules
+# (doc-mode carve-out, 3-part checklist) are all scoped to low/clarity, so
+# that closing sentence contextually meant low/clarity — yet a fixer
+# reading it literally, in isolation, could misapply it to a blocking
+# finding it just VALIDLY ROUTED (technically "not fixed" — routed instead
+# — and "not deferred" — defer excludes blocking findings), flagging its
+# own correct output as a violation.
+#
+# Trace (post-fix) — a blocking (medium/P2) finding, mechanical by
+# classification, `suggested_fix` empty → routed via fixes_skipped to
+# main-session /diagnosing-bugs (0.3.18.18 route). Walk the reworded
+# terminal rule: it is blocking, so its terminal outcomes are "fixed OR
+# validly routed"; it was validly routed; the rule states that route "is a
+# resolution, not a protocol violation." → explicitly NOT a violation. The
+# only violation is a finding reaching NONE of its tier's outcomes (a
+# silent drop). Gap closed.
+
+
+def test_fixer_terminal_rule_recognizes_valid_routing_for_blocking():
+    txt = _norm(FIXER)
+    # positive: the terminal rule enumerates outcomes scoped by tier, and a
+    # validly-routed blocking finding is explicitly NOT a protocol violation
+    assert (
+        "A **blocking** finding (P0/P1/P2; doc mode also P3) must be "
+        "**fixed** OR **validly routed**"
+    ) in txt, (
+        "the terminal rule must state a blocking finding's valid outcomes "
+        "are fixed OR validly-routed, not only fixed-or-deferred"
+    )
+    assert (
+        "that route **is a resolution, not a protocol violation**"
+    ) in txt, (
+        "routing a blocking finding via fixes_skipped must be declared a "
+        "resolution, NOT a protocol violation — the 0.3.18.18 third outcome"
+    )
+    assert (
+        "A **non-blocking** (`low`/`clarity`) finding must be **fixed** OR "
+        "**deferred-with-all-three-parts** per this section"
+    ) in txt, (
+        "the non-blocking tier's terminal outcomes (fixed OR deferred) must "
+        "stay scoped to low/clarity, distinct from the blocking tier"
+    )
+    assert (
+        "Only a finding that reaches *none* of these" in txt
+        and "silently dropped" in txt
+    ), (
+        "the violation must be redefined as reaching NONE of the tier's "
+        "outcomes (a silent drop), not the tier-blind 'neither fixed nor "
+        "deferred'"
+    )
+
+
+def test_fixer_terminal_rule_drops_tier_blind_neither_nor_negative():
+    txt = _norm(FIXER)
+    # negative: the old tier-blind closing sentence — which a fixer could
+    # misapply to a validly-routed blocking finding — must be gone
+    assert (
+        "A finding that is neither fixed nor deferred-with-all-three-parts "
+        "is a protocol violation"
+    ) not in txt, (
+        "the old tier-blind 'neither fixed nor deferred = violation' "
+        "sentence must be gone — it ignored the valid-routing third outcome "
+        "for blocking findings"
+    )
+
+
+# --- cmr-fixer.md: the SHOULD-fix-by-default bullet names the FULL
+# --- code-mode non-blocking tier (low AND clarity), not `low` alone
+# --- (0.3.18.19) ---
+#
+# The SHOULD-fix bullet enumerated only `low` in its body ("the
+# defer-eligible `low` findings ... fix them ... If fixing the lows keeps
+# surfacing new findings"), never naming `clarity` for code mode. But the
+# immediately-following MUST-NOT-fix section back-references THIS rule to
+# make a fixable `clarity` finding fix-eligible ("fix-eligible under the
+# SHOULD-fix-by-default rule above") — a rule whose own text didn't include
+# clarity — and SKILL.md's "cheap/low-risk P3/P4 should still be FIXED now"
+# (P4 = clarity) says the same. Two independent legs (Claude P3 + codex P2)
+# found the gap.
+#
+# Trace (post-fix) — a cheap/low-risk `clarity` (P4) finding WITH a concrete
+# suggested_fix, no reviewer disagreement, no new content, in code mode.
+# Walk the reworded SHOULD-fix bullet: it names "the defer-eligible
+# `low`/`clarity` findings (correctness/code mode ...)" as the fix-by-default
+# set → the clarity finding is explicitly in-set → fix now. This is
+# consistent with the MUST-NOT-fix back-reference ("fix-eligible under the
+# SHOULD-fix-by-default rule above") and SKILL.md's P3/P4 default-fix rule.
+
+
+def test_fixer_should_fix_bullet_names_clarity_for_code_mode():
+    txt = _norm(FIXER)
+    # positive: the SHOULD-fix set names the full code-mode non-blocking tier
+    assert (
+        "the defer-eligible `low`/`clarity` findings (correctness/code mode; "
+        "in **doc mode `low` is blocking**, see above, so only `clarity` is "
+        "defer-eligible there)"
+    ) in txt, (
+        "the SHOULD-fix bullet must name low AND clarity for code mode "
+        "(doc mode: only clarity), matching the MUST-NOT-fix back-reference "
+        "and SKILL.md's cheap/low-risk P3/P4 SHOULD-fix"
+    )
+    # positive: the follow-up drift clause covers the whole non-blocking tier,
+    # not just "the lows"
+    assert (
+        "If fixing these non-blocking findings keeps surfacing **new** "
+        "findings (drift)"
+    ) in txt, (
+        "the drift stop-condition must cover the whole non-blocking tier "
+        "(low + clarity), not only 'the lows'"
+    )
+
+
+def test_fixer_should_fix_bullet_drops_low_only_wording_negative():
+    txt = _norm(FIXER)
+    # negative: the old low-only body must be gone
+    assert "the defer-eligible `low` findings (correctness/code mode" not in txt, (
+        "the old low-only 'the defer-eligible `low` findings' body must be "
+        "gone — it omitted clarity for code mode"
+    )
+    assert "If fixing the lows keeps surfacing" not in txt, (
+        "the old 'If fixing the lows' drift clause must be gone — it "
+        "excluded clarity from the fix-by-default sweep"
+    )

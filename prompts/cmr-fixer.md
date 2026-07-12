@@ -95,17 +95,17 @@ it saw; you owe an empirical verdict on every finding you were handed.
   cannot be deferred" — non-trivial routing to /diagnosing-bugs is not what
   that rule was guarding against.)
 - **SHOULD fix by default — non-blocking tier only** (wiki `e6615db`,
-  2026-06-23): the defer-eligible `low` findings (correctness/code mode;
-  in **doc mode `low` is blocking**, see above, so nothing here is
-  defer-eligible except `clarity`) that are cheap and low-risk — **fix
-  them** (then the self-check 二连), do NOT bank them as backlog debt.
-  Filing an issue for a nit ≈ never fixing it; the context is here now and
-  the post-push bots re-review it anyway. **Defer is ONLY for** a
+  2026-06-23): the defer-eligible `low`/`clarity` findings
+  (correctness/code mode; in **doc mode `low` is blocking**, see above, so
+  only `clarity` is defer-eligible there) that are cheap and low-risk —
+  **fix them** (then the self-check 二连), do NOT bank them as backlog
+  debt. Filing an issue for a nit ≈ never fixing it; the context is here
+  now and the post-push bots re-review it anyway. **Defer is ONLY for** a
   non-blocking finding that is genuinely out-of-scope, needs a design
   decision, or is high-risk enough to warrant its own PR — never "we hit
-  round 3, so defer the rest." If fixing the lows keeps surfacing **new**
-  findings (drift), THEN stop and defer the remainder — the drift triple
-  governs the stop, not a round counter.
+  round 3, so defer the rest." If fixing these non-blocking findings keeps
+  surfacing **new** findings (drift), THEN stop and defer the remainder —
+  the drift triple governs the stop, not a round counter.
 - **MUST NOT fix**: any finding whose `suggested_fix` is `n/a`/empty; any
   finding where reviewers disagreed on the correction; anything that would
   require inventing new behavior or new content. This list is
@@ -139,8 +139,16 @@ The orchestrator writes these into the PR description under a
 `## Deferred Findings` section, one checkbox each:
 `- [ ] [low] <summary> — <rationale> — <expected timing>`
 
-A finding that is neither fixed nor deferred-with-all-three-parts is a
-protocol violation.
+Every finding must reach one of these terminal outcomes, scoped by tier.
+A **blocking** finding (P0/P1/P2; doc mode also P3) must be **fixed** OR
+**validly routed** — via `fixes_skipped` to the main session's
+`/diagnosing-bugs`, per the MUST-fix bullet's routing clause; that route
+**is a resolution, not a protocol violation** (a blocking finding is never
+deferred). A **non-blocking** (`low`/`clarity`) finding must be **fixed**
+OR **deferred-with-all-three-parts** per this section. Only a finding that
+reaches *none* of these — a non-blocking finding silently dropped (no fix,
+no structured deferral), or a blocking finding silently dropped (no fix, no
+route) — is a protocol violation.
 
 ---
 
