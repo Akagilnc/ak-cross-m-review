@@ -554,8 +554,11 @@ category, reviewer count, first claim quote); count the rest.
 round — blocking = **P0 / P1 / P2** (correctness/per-slice and the
 ship-pre completeness gate on code), **doc mode also P3** (only P4
 exempt). A leg may still have raised — and MUST still report (交卷契约) —
-P3/P4 findings; those go to Deferred and do **not** cost its concur vote.
-**P4 never blocks in any mode.**
+**non-blocking** findings (P3/P4 in correctness/code mode; **P4 only** in
+doc mode); those go to Deferred and do **not** cost its concur vote. In
+doc mode P3 **is** blocking and **does** cost the concur vote (see the
+first half of this paragraph — only P4 is exempt there). **P4 never
+blocks in any mode.**
 
 **Positive termination = two consecutive clear rounds** (ALL modes, not
 just doc — 2026-07-12 user ratification). A round is **clear** when it

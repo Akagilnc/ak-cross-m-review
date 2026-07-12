@@ -4,6 +4,28 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.7 — 2026-07-12
+
+- **[P2] Mode-blind wording in the Step-5 concur definition** (`SKILL.md`
+  Step 5, ~L552-562; codex round-7). The paragraph's first half correctly
+  defines doc-mode blocking as P0/P1/P2/P3 (only P4 exempt), but the next
+  sentence said "P3/P4 findings … do **not** cost its concur vote" with no
+  mode qualifier — contradicting the first half for doc mode, where P3 IS
+  blocking and SHOULD cost the concur vote. An implementer following the
+  unqualified sentence literally would defer a doc-mode P3 that should be
+  fixed/routed and could prematurely enter the confirmation round. Reworded
+  to mode-qualify the disposition: non-blocking = **P3/P4 in
+  correctness/code mode, P4 only in doc mode**; and added an explicit "in
+  doc mode P3 **is** blocking and **does** cost the concur vote" clause.
+  Scope-check of every other "P3/P4" / "low/clarity" non-blocking mention
+  in `SKILL.md` + `prompts/*.md` found no other mode-blind instance — the
+  defer-severity protocol (`SKILL.md` L802-809) and the completeness
+  prompt's blocking table were already correctly mode-qualified. Edit is
+  outside the doc-mode golden-hashed range (`## Doc mode discipline` →
+  `## Anti-patterns`); no hash recompute. Wording-pin regression added in
+  `tests/test_convergence.py` (positive: mode-split disposition + doc-mode
+  P3-blocking clause; negative: old unqualified sentence gone).
+
 ## 0.3.18.6 — 2026-07-12
 
 - **[P2×2] Fixer output schema systematically under-built vs the prose it

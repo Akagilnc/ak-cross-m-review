@@ -127,6 +127,44 @@ def test_skill_step5_concur_is_no_blocking_two_round():
     assert "re-qualifies from scratch" in txt
 
 
+# --- 0.3.18.7 codex r7 P2: the Deferred-disposition sentence in the
+#     concur definition must be MODE-QUALIFIED. The old wording said
+#     "P3/P4 findings ... do not cost its concur vote" with no mode
+#     qualifier, contradicting the first half (doc mode: P3 IS blocking).
+
+
+def test_skill_step5_concur_defer_sentence_is_mode_qualified():
+    txt = _norm(SKILL)
+    # positive: the disposition sentence names the two modes separately —
+    # P3/P4 non-blocking only in correctness/code mode; P4 only in doc mode
+    assert (
+        "**non-blocking** findings (P3/P4 in correctness/code mode; "
+        "**P4 only** in doc mode); those go to Deferred and do **not** "
+        "cost its concur vote" in txt
+    ), (
+        "the Deferred-disposition sentence must mode-qualify which "
+        "severities are non-blocking (P3/P4 code, P4-only doc)"
+    )
+    # positive: doc-mode P3 is explicitly called out as blocking + vote-costing
+    assert (
+        "In doc mode P3 **is** blocking and **does** cost the concur vote"
+        in txt
+    ), (
+        "the sentence must state that doc-mode P3 blocks and costs the "
+        "concur vote, matching the first half of the paragraph"
+    )
+    # negative: the old mode-blind wording is gone — an unqualified
+    # "P3/P4 findings; those go to Deferred and do **not** cost its concur
+    # vote" (no correctness/doc-mode split attached) must not survive.
+    assert (
+        "P3/P4 findings; those go to Deferred and do **not** cost its "
+        "concur vote" not in txt
+    ), (
+        "the old unqualified 'P3/P4 findings ... do not cost its concur "
+        "vote' wording must be removed — it contradicts doc mode"
+    )
+
+
 # --- 0.3.18.3 finding #1: doc mode is the EXPLICIT exception to
 #     all-legs-concur; its ledger check spans ALL legs so a dissenting
 #     blocking finding cannot be swallowed under a majority-complete vote
