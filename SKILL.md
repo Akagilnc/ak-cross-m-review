@@ -580,13 +580,27 @@ nail's **baseline ref** — the commit/ref captured at nail-authorization
 time — so the reviewer can tell the original nailed change from a post-nail
 modification) and **injects it into every round's dispatch packet**; the
 reviewer treats those surfaces as **out-of-jurisdiction** (guarded by
-test-red + the correctness channel). A surface earns a place on this list
-(its nail authorization) **only when the round-wide merged ledger** —
+test-red + the correctness channel). A surface earns a place on this
+**permanent** list only after **BOTH** preconditions hold. **(1)
+Round-wide-merged-ledger clean — qualifying-round nail-eligibility
+(0.3.18.8).** In the qualifying round the **round-wide merged ledger** —
 every leg's findings for that surface aggregated, the same aggregation the
-doc-mode zero-blocking-ledger check uses — **shows zero blocking finding on
-that surface that round**: one leg's DONE judgment does NOT nail a surface
-another leg flagged as a blocking gap the same round (see
-`prompts/cmr-completeness.md` §钉子令牌). Because every round full-re-reviews
+doc-mode zero-blocking-ledger check uses — must **show zero blocking finding
+on that surface that round**: one leg's DONE judgment does NOT nail a surface
+another leg flagged as a blocking gap the same round. That earns the surface
+**nail-eligibility only**, NOT yet a permanent place on this list. **(2)
+Confirmation-round re-audit — permanent jurisdiction hand-off (0.3.18.9).** A
+surface nailed in a **qualifying** round is **NOT yet permanently out of
+jurisdiction** — it **stays in-jurisdiction** and the **next confirmation
+round still audits it** (re-verifying the qualifying round's DONE-and-nail
+judgment, not just newly-touched surfaces — this is what makes the
+confirmation round substantive). Only after the **confirmation round
+independently reconfirms DONE-and-nailed** — the same round-wide merged
+ledger clean for it **again** — does the surface **permanently** leave
+jurisdiction and go on this list; a qualifying-round nail not yet confirmed
+is explicitly **NOT** on the `DONE-and-nailed surfaces` list and remains
+auditable. (See `prompts/cmr-completeness.md` §钉子令牌 for the detailed
+source.) Because every round full-re-reviews
 the **cumulative** diff, the original nailed change legitimately stays in
 that diff and is **NOT** re-flagged; the reviewer audits only the remaining
 in-jurisdiction clauses **plus any diff that modifies a nailed surface

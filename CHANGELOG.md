@@ -4,6 +4,29 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.10 — 2026-07-12
+
+- **[P1] SKILL.md Step-5 hand-off note missed the confirmation-round gate**
+  (`SKILL.md` Step-5 "Cross-round jurisdiction hand-off" note, ~L575-596;
+  codex round-10). The 0.3.18.9 fix — a qualifying-round nail is NOT yet
+  permanent; the next confirmation round must re-audit and independently
+  reconfirm it before it leaves jurisdiction — landed **only** in
+  `prompts/cmr-completeness.md` §钉子令牌. SKILL.md's mode-general Step-5
+  note still carried only the 0.3.18.8 round-wide-merged-ledger precondition
+  and equated a clean qualifying-round ledger with permanent nail
+  authorization, so an orchestrator following SKILL.md literally would add a
+  surface to the permanent `DONE-and-nailed surfaces` list immediately on a
+  clean qualifying-round ledger — skipping the confirmation round's
+  substantive re-audit, the exact hole 0.3.18.9 was meant to close. Fix:
+  restate BOTH preconditions in the Step-5 note so the two files agree — (1)
+  round-wide-merged-ledger clean earns **qualifying-round nail-eligibility
+  only** (0.3.18.8), and (2) the surface stays in-jurisdiction until the
+  **confirmation round independently reconfirms DONE-and-nailed** (0.3.18.9),
+  with a qualifying-round nail not yet confirmed explicitly NOT on the
+  permanent list. Cross-references `prompts/cmr-completeness.md` §钉子令牌 as
+  the detailed source. cmr-completeness.md unchanged (already correct); Step-5
+  note is outside the doc-mode golden-hash range, no recompute.
+
 ## 0.3.18.9 — 2026-07-12
 
 - **[P1] Nailed surfaces skipped the confirmation round entirely**
