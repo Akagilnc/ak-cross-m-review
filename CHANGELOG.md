@@ -4,6 +4,61 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.3 — 2026-07-12
+
+- **Four self-contradictions in the recently-landed protocol additions
+  resolved.** Caught by codex's round-3 outside-voice review of the
+  submission-contract branch (one P1, three P2). Each was a case where a
+  new rule was stated in one place but silently contradicted by an
+  older/neighboring rule.
+  - **#1 [P1] Doc-mode termination vs the all-concur rule** (`SKILL.md`
+    Step 5 + doc-mode ②(c)). Step 5's "two consecutive clear rounds = every
+    non-degraded leg concurs" contradicted doc mode's still-standing
+    **majority**-complete convergence. Fix: Step 5 now names doc mode as an
+    **explicit exception** to all-legs-concur — doc mode converges on
+    *majority-complete AND a zero-blocking-(P0–P3)-original-defect ledger
+    that aggregates ALL legs' findings, dissenters included*. Because the
+    ledger clause spans every leg, a minority leg's blocking finding keeps
+    the ledger non-zero → NOT converged regardless of the majority vote:
+    the dissent cannot be swallowed. ②(c) reworded to make the
+    all-legs span of the ledger check explicit (both the qualifying and
+    confirmation rounds). Correctness/code modes stay all-legs-concur.
+  - **#2 [P2] FALSE adjudication had no schema field** (`prompts/cmr-fixer.md`).
+    The first-duty told the fixer to reject a FALSE finding "with evidence
+    written into your summary", but the strict JSON schema had no such
+    field. Fix: a structured `adjudications` array
+    (`finding_id` / `verdict` REAL|FALSE / `evidence`); the FALSE-rejection
+    instruction now points at that field, not a vague summary.
+  - **#3 [P2] `incidental_fixes` vs the "nothing more" scope ban**
+    (`prompts/cmr-fixer.md`). The new incidental-fix clause conflicted with
+    the intro "fix exactly what the findings identify, nothing more" and
+    Safety rule #2's scope-expansion ban. Fix: both old rules now carve out
+    `incidental_fixes` as the **single** sanctioned scope exception and
+    cross-reference each other — the supplied-finding diff still fixes
+    exactly the findings (no gold-plating); a real mechanical defect seen
+    in passing goes to its own separate patch, and that is the only
+    exception, not a licence for general gold-plating.
+  - **#4 [P2] DONE-and-nailed cross-round state was not persisted**
+    (`prompts/cmr-completeness.md` 钉子令牌 + `SKILL.md` ②(a)). "Later
+    rounds do NOT re-litigate an already-DONE-and-nailed surface" was
+    unenforceable — a fresh reviewer had no field naming the nailed
+    surfaces. Fix: the orchestrator persists a **`DONE-and-nailed
+    surfaces`** list (each with its nail's authorization token) across
+    rounds and injects it into every round's dispatch packet; the
+    completeness reviewer treats listed surfaces as out-of-jurisdiction and
+    audits only the remaining clauses plus any diff that touches a nailed
+    surface (a nail-tamper → blocking, per 钉上刻字).
+  - `SKILL.md` doc-mode section edits (②(a), ②(c)) land inside the
+    golden-hashed range, so `tests/test_doc_mode.py`'s SKILL.md hash was
+    recomputed in this commit (the RECORDED-RULE conscious-edit act); the
+    `cmr-completeness.md` addendum hash is unchanged (the 钉子令牌 edit is
+    outside the hashed addendum range).
+  - Tests: new wording pins (positive + negative) for the Step-5 doc-mode
+    exception + all-legs ledger, the `adjudications` schema field, the
+    incidental-vs-scope carve-out, and the packet `DONE-and-nailed
+    surfaces` injection; existing FALSE-adjudication pins updated to the new
+    wording.
+
 ## 0.3.18.2 — 2026-07-12
 
 - **Fixer output contract extended so incidental fixes are representable

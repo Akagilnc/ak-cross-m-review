@@ -569,6 +569,20 @@ scratch** (a single clear round again becomes merely qualifying). The
 fractions below describe what **one fully-concurring (clear) round**
 requires by squad shape:
 
+> **Doc mode is the explicit exception to all-legs-concur.** In
+> correctness / code modes a round is clear only when **every** non-degraded
+> leg concurs — no blocking finding from **any** leg. **Doc mode does NOT
+> require all-legs-concur**: a doc-mode round is clear on **majority of
+> legs judge `complete` AND the ledger — aggregating ALL legs' findings,
+> including any leg that dissented from the majority-complete vote — shows
+> zero blocking (P0/P1/P2/P3) original-defect**. Because the ledger clause
+> spans **every** leg, a single dissenting leg's blocking finding keeps the
+> ledger non-zero → the round is **NOT clear**, even under a majority-complete
+> vote; the dissent cannot be swallowed. Both forms still need the two
+> consecutive clear rounds above (doc mode's per-round form is defined in
+> §Doc mode discipline ②(c)); the two forms are stated so they do not
+> contradict.
+
 - ship-pre / main=Claude default: **3/3 concur** (all reviewers approve).
 - Upgraded 1+N+1, 3 vendors present: **(N+2)/(N+2) concur**.
 - One vendor degraded (1+1+1 → 2 reviewers): **2/2 concur + flag**.
@@ -836,29 +850,38 @@ review can only ever make the text longer.
 - **(a) Ledger — the measuring instrument, lands first.** Every round
   intro MUST carry the previous round's fix classification:
   **original-defect / fix-fix / invention** (原始缺陷 / fix修fix / 加戏).
-  Without the ledger none of the signals below is measurable.
+  Without the ledger none of the signals below is measurable. The
+  orchestrator also **persists a `DONE-and-nailed surfaces` list across
+  rounds** — surfaces judged DONE-with-a-nail in prior rounds, each with
+  the nail's authorization token — and **injects it into every round's
+  dispatch packet**, so a fresh reviewer knows which surfaces have left
+  completeness's jurisdiction (`prompts/cmr-completeness.md` 钉子令牌); it is
+  the cross-round state that hand-off needs.
 - **(b) Bloat line = audit trigger, NOT a death line.** Reviewed text
   grows past **1.5×** its round-1 size → audit the ledger. Growth driven
   by original-defect fixes → legitimate: note it in the round report and
   continue (a genuinely complex design may lawfully grow). Growth driven
   by fix-fix / invention → STOP, escalate to the user with the ledger.
 - **(c) Early stop via a FULL confirmation round (no #14 exception).**
-  A round where the **majority of legs judge `complete`** AND the ledger
-  shows **zero blocking (P0/P1/P2/P3) original-defect findings** (only P4
-  exempt; P4 clarity reported-but-Deferred, doesn't block the
-  confirmation round) → the next round is a **confirmation round that is
-  still a FULL re-review** (anti-pattern #14 stays fully intact — the
-  spot-check variant was considered and rejected: one full round costs
-  nothing against the ~30 wasted ones it prevents, and it keeps the
-  fresh-full-read guarantee). Confirmation round again majority-complete
-  **AND the ledger again showing zero blocking (P0/P1/P2/P3)
+  A round where the **majority of legs judge `complete`** AND the ledger —
+  **aggregating ALL legs' findings, including any leg dissenting from the
+  majority-complete vote** — shows **zero blocking (P0/P1/P2/P3)
   original-defect findings** (only P4 exempt; P4 clarity
+  reported-but-Deferred, doesn't block the confirmation round) → the next
+  round is a **confirmation round that is still a FULL re-review**
+  (anti-pattern #14 stays fully intact — the spot-check variant was
+  considered and rejected: one full round costs nothing against the ~30
+  wasted ones it prevents, and it keeps the fresh-full-read guarantee).
+  Confirmation round again majority-complete **AND the ledger (again
+  spanning ALL legs, dissenters included) again showing zero blocking
+  (P0/P1/P2/P3) original-defect findings** (only P4 exempt; P4 clarity
   reported-but-Deferred, doesn't block the confirmation round) →
-  **converged, stop**. A fresh blocking original-defect finding in the
-  confirmation round → NOT converged: fix it and the loop continues (the
-  early-stop arm must re-qualify from scratch — bare majority-complete
-  never converges on its own, or the dissenting leg's real finding gets
-  swallowed).
+  **converged, stop**. Because the zero-blocking check spans every leg, a
+  single dissenting leg's blocking original-defect finding keeps the ledger
+  non-zero → NOT converged **regardless of the majority-complete vote**:
+  fix it and the loop continues (the early-stop arm must re-qualify from
+  scratch — bare majority-complete never converges on its own, or the
+  dissenting leg's real finding gets swallowed).
 - **(d) Round gate at 10 — an escalation checkpoint, NOT a hard cap.**
   Doc mode reaching **round 10** without convergence → stop dispatching
   and **escalate to the user with the ledger + current state**; the user

@@ -28,6 +28,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPLETENESS = ROOT / "prompts" / "cmr-completeness.md"
+SKILL = ROOT / "SKILL.md"
 
 
 def _norm(path):
@@ -148,6 +149,58 @@ def test_nail_engraving_convention_negative():
     assert "may add an engraved nail" not in sec, (
         "the reviewer flags engraved nails, never authorizes minting new "
         "ones outside a licit provenance"
+    )
+
+
+# --- 0.3.18.3 finding #4: the DONE-and-nailed cross-round state is
+#     PERSISTED + INJECTED by the orchestrator (unenforceable otherwise —
+#     a fresh reviewer has no field telling it which surfaces are nailed)
+
+
+def test_done_and_nailed_list_injected_into_packet_positive():
+    sec = _nail_section()
+    # the completeness lens states the packet carries the list + tokens
+    assert "**`DONE-and-nailed surfaces`**" in sec, (
+        "the dispatch packet must carry a DONE-and-nailed surfaces list, or "
+        "the jurisdiction hand-off is unenforceable across rounds"
+    )
+    assert "nail's **authorization token**" in sec, (
+        "each nailed surface on the list carries its nail's auth token"
+    )
+    assert "out of your jurisdiction" in sec and "do NOT\nre-audit" in COMPLETENESS.read_text(
+        encoding="utf-8"
+    ) or "do NOT re-audit it" in sec, (
+        "a listed nailed surface is out-of-jurisdiction; the reviewer does "
+        "not re-audit it"
+    )
+    # a diff touching a nailed surface is a nail-tamper → blocking, NOT a
+    # fresh completeness re-litigation
+    assert "any diff that touches a nailed surface" in sec
+    assert "nail-tamper → blocking" in sec, (
+        "a touch on a nailed surface is a nail-tamper (blocking), not a "
+        "re-opened completeness audit"
+    )
+
+
+def test_orchestrator_persists_done_and_nailed_list_in_skill_ledger():
+    """SKILL.md ②(a) (the ledger convention) must record that the
+    ORCHESTRATOR persists the DONE-and-nailed list across rounds and
+    injects it — that is the cross-round state the hand-off needs."""
+    txt = _norm(SKILL)
+    ledger = txt[txt.index("**(a) Ledger") : txt.index("**(b) Bloat line")]
+    assert "persists a `DONE-and-nailed surfaces` list across\n  rounds" in SKILL.read_text(
+        encoding="utf-8"
+    ) or "persists a `DONE-and-nailed surfaces` list across rounds" in ledger, (
+        "②(a) must say the orchestrator PERSISTS the DONE-and-nailed list "
+        "across rounds"
+    )
+    assert "injects it into every round's\n  dispatch packet" in SKILL.read_text(
+        encoding="utf-8"
+    ) or "injects it into every round's dispatch packet" in ledger, (
+        "②(a) must say the orchestrator INJECTS the list into each packet"
+    )
+    assert "cmr-completeness.md` 钉子令牌" in ledger, (
+        "②(a) must cross-reference the completeness-lens nail token"
     )
 
 

@@ -8,8 +8,9 @@ User ratification 2026-07-12; wiki §额外硬规则 #8. Three semantics:
    ("dig up one or two nail-able ones and knock off" is no longer valid).
 2. The fixer's FIRST duty = empirically adjudicate each supplied finding
    one by one: REAL → fix + same-class sweep; FALSE → reject WITH EVIDENCE
-   in the summary for the next fresh reviewer; other real defects seen in
-   passing → small-fix (committed independently) + report loudly.
+   recorded in the structured `adjudications` field for the next fresh
+   reviewer; other real defects seen in passing → surface as a separate
+   `incidental_fixes` patch (main session commits it) + report loudly.
 3. Applies to ALL review modes; "report all" means FINDINGS, not "suggest
    adding text"; doc-mode ②–⑤ anti-runaway discipline is unaffected;
    progressive exposure (holes visible only after a fix) is NOT a failure.
@@ -165,10 +166,21 @@ def test_fixer_first_duty_adjudicates_each_finding_positive():
         "the existing EXAM-818/Concept-sweep doctrine must be cited as "
         "unchanged, not rewritten"
     )
-    # FALSE → reject WITH EVIDENCE, adjudicated next round
+    # FALSE → reject WITH EVIDENCE, recorded in the structured
+    # `adjudications` field (NOT a vague "summary"), adjudicated next round
     assert "**FALSE**" in txt
-    assert "reject it **with evidence** written into your summary" in txt
-    assert "a fresh reviewer next round adjudicates the rejection" in txt
+    assert "reject it **with evidence**, recorded as a structured" in txt
+    assert "`adjudications` entry" in txt
+    assert (
+        "so the next round's fresh reviewer can adjudicate the rejection"
+        in txt
+    )
+    # negative: the old vague "written into your summary" sink is GONE — a
+    # FALSE verdict now lands in a structured field, not free-text summary
+    assert "written into your summary" not in txt, (
+        "the FALSE adjudication must point at the structured `adjudications` "
+        "field, not a vague summary with no schema slot"
+    )
     # other real defects seen in passing → surface as a SEPARATE patch +
     # report loudly; the MAIN SESSION commits it (the subagent has no commit)
     assert "Other real defects you see in passing" in txt
@@ -239,4 +251,75 @@ def test_fixer_first_duty_no_scope_restriction_negative():
     full = _norm(FIXER)
     assert "Concept sweep (fix every occurrence, not just the first)" in full, (
         "the EXAM-818 sweep doctrine header must stay verbatim"
+    )
+
+
+# --- 0.3.18.3 finding #2: FALSE adjudication has a structured schema field
+
+
+def test_fixer_adjudications_field_in_schema_positive():
+    """A FALSE verdict must land in a structured `adjudications` schema
+    slot (finding_id / verdict / evidence), not a vague free-text summary.
+
+    Regression pin for codex round-3 P2: the first-duty told the fixer to
+    write FALSE evidence "into the summary", but the strict JSON schema had
+    no summary/adjudication field — the evidence had nowhere to go.
+    """
+    full = _norm(FIXER)
+    # the schema exposes the array...
+    assert '"adjudications"' in full, (
+        "the fixer output schema must expose an adjudications array so a "
+        "FALSE (or REAL) verdict is representable as structured data"
+    )
+    # ...with the three structured keys
+    assert '"finding_id"' in full and '"verdict"' in full and '"evidence"' in full, (
+        "each adjudications entry needs finding_id / verdict / evidence"
+    )
+    assert '"verdict": "REAL|FALSE"' in full, (
+        "the verdict enumerates REAL|FALSE"
+    )
+    # the first-duty FALSE instruction points AT this field, not "summary"
+    assert "recorded as a structured `adjudications` entry" in full, (
+        "the FALSE-rejection instruction must reference the adjudications "
+        "field, not a vague summary"
+    )
+    # negative: the old free-text-summary sink is gone
+    assert "written into your summary" not in full
+
+
+# --- 0.3.18.3 finding #3: incidental_fixes is the ONE scope-ban exception
+
+
+def test_incidental_fixes_is_the_single_scope_exception_positive():
+    """The `incidental_fixes` clause and the "nothing more" / no-scope-
+    expansion bans must reference each other so there is no torn rule.
+
+    The supplied-finding diff still fixes exactly the findings (no
+    gold-plating); the ONE sanctioned exception is a real mechanical defect
+    seen in passing, surfaced as its own separate patch.
+    """
+    full = _norm(FIXER)
+    # the intro "nothing more" rule now names the one carve-out explicitly
+    assert (
+        "fixes **exactly what the findings identify and nothing more** "
+        "(no gold-plating)" in full
+    ), "the intro must still forbid gold-plating on the supplied diff"
+    assert "with **one** sanctioned exception" in full, (
+        "the intro must name incidental_fixes as the single exception"
+    )
+    assert "NOT a licence for general gold-plating" in full, (
+        "the carve-out must not read as open season on scope expansion"
+    )
+    # Safety rule #2 carries the reciprocal carve-out and points back
+    assert "The one\n   exception** is `incidental_fixes`" in FIXER.read_text(
+        encoding="utf-8"
+    ) or "The one exception** is `incidental_fixes`" in full, (
+        "Safety rule #2 (no scope expansion) must carve out incidental_fixes"
+    )
+    assert "the single sanctioned scope exception" in full, (
+        "Safety rule #2 must call incidental_fixes the single exception"
+    )
+    assert "still fixes exactly the findings and nothing more" in full, (
+        "Safety rule #2 must reference the supplied-diff 'nothing more' rule "
+        "so the two rules cross-reference and do not contradict"
     )

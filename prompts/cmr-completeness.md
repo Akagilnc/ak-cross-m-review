@@ -145,6 +145,18 @@ the **test red at the write-point** plus the **correctness channel** —
 completeness verifies *whether it was done*; correctness guards *whether
 it still holds*. The boundary is temporal, and the token is the test.
 
+This hand-off needs cross-round state, so the **orchestrator** carries it:
+each round's dispatch packet includes a **`DONE-and-nailed surfaces`**
+list — surfaces judged DONE-with-a-nail in prior rounds, each with the
+nail's **authorization token** (SKILL.md §Doc mode discipline ②(a) records
+that the orchestrator persists this list across rounds and injects it).
+Treat every surface on that list as **out of your jurisdiction**: do NOT
+re-audit it — its guard is test-red at the write-point plus the
+correctness channel. You audit only the remaining in-jurisdiction clauses
+**plus any diff that touches a nailed surface** — a touch on a nailed
+surface is a **nail-tamper → blocking** (per 钉上刻字 below), not a fresh
+completeness re-litigation.
+
 **钉上刻字 (engraving — the paired convention).** A contract-nail test's
 name / first-line comment carries an **authorization token** (e.g.
 `契约钉 #491·永不喂全知`). When you suggest a nail point, name it by this

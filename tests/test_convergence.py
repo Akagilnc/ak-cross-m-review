@@ -127,6 +127,69 @@ def test_skill_step5_concur_is_no_blocking_two_round():
     assert "re-qualifies from scratch" in txt
 
 
+# --- 0.3.18.3 finding #1: doc mode is the EXPLICIT exception to
+#     all-legs-concur; its ledger check spans ALL legs so a dissenting
+#     blocking finding cannot be swallowed under a majority-complete vote
+
+
+def test_skill_step5_doc_mode_is_explicit_concur_exception_positive():
+    txt = _norm(SKILL)
+    # Step 5 names doc mode as the explicit exception to all-legs-concur
+    assert "Doc mode is the explicit exception to all-legs-concur" in txt, (
+        "Step 5 must flag doc mode as the explicit exception, so the "
+        "all-modes two-round rule and doc-mode's majority form don't clash"
+    )
+    assert (
+        "**Doc mode does NOT\n> require all-legs-concur**"
+        in SKILL.read_text(encoding="utf-8")
+    ), "Step 5 must state doc mode does NOT require all-legs-concur"
+    # doc-mode clear form = majority-complete AND zero-blocking ledger that
+    # aggregates EVERY leg (dissenter included)
+    assert (
+        "majority of\n> legs judge `complete`" in SKILL.read_text(encoding="utf-8")
+        or "majority of legs judge `complete`" in txt
+    ), "doc-mode convergence keeps its majority-complete form"
+    assert (
+        "aggregating ALL legs' findings,\n> including any leg that dissented"
+        in SKILL.read_text(encoding="utf-8")
+        or "aggregating ALL legs' findings, including any leg that dissented"
+        in txt
+    ), "the ledger check must span ALL legs, dissenters included"
+    # the safety property: a single dissenting blocking finding blocks
+    # convergence regardless of the majority vote
+    assert "the dissent cannot be swallowed" in txt, (
+        "the point of the all-legs ledger is that a minority blocking "
+        "finding is not swallowed by a majority-complete vote"
+    )
+
+
+def test_skill_step5_doc_mode_exception_negative():
+    """Negative: correctness/code modes must NOT be softened to majority —
+    only doc mode is the exception; the others stay all-legs-concur."""
+    txt = _norm(SKILL)
+    # the correctness/code path still requires EVERY leg to concur
+    assert (
+        "In\n> correctness / code modes a round is clear only when **every**"
+        in SKILL.read_text(encoding="utf-8")
+        or "In correctness / code modes a round is clear only when **every**"
+        in txt
+    ), "correctness/code modes must stay all-legs-concur, not majority"
+    # the doc-mode ②(c) ledger clause must carry the all-legs framing too
+    doc_c = txt[txt.index("### ② Fix-classification ledger") : txt.index("### ③")]
+    assert "aggregating ALL legs' findings, including any leg dissenting" in doc_c, (
+        "②(c)'s qualifying-round ledger must span all legs incl. dissenters"
+    )
+    assert "again spanning ALL legs, dissenters included" in doc_c, (
+        "②(c)'s confirmation-round ledger must also span all legs"
+    )
+    assert (
+        "a\n  single dissenting leg's blocking original-defect finding keeps "
+        "the ledger" in SKILL.read_text(encoding="utf-8")
+        or "a single dissenting leg's blocking original-defect finding keeps "
+        "the ledger" in txt
+    ), "②(c) must state the dissent-blocks-convergence safety property"
+
+
 # --- SKILL Step 7: loop uses two-round + severity form
 
 

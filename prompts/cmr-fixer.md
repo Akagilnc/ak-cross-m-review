@@ -21,8 +21,14 @@ resolves the must-fix mechanical findings, and to **explicitly defer**
 the rest (non-trivial → main session `/diagnosing-bugs`; lower-priority → defer
 protocol). This is a surgical-edit task, not a review task.
 
-You did not write the original code. Do not "improve" things. Fix exactly
-what the findings identify, nothing more.
+You did not write the original code. Do not "improve" things. The
+supplied-finding `diff` fixes **exactly what the findings identify and
+nothing more** (no gold-plating) — with **one** sanctioned exception:
+real mechanical defects you spot in passing go to `incidental_fixes` as
+their **own separate** patches (see the First-duty §, third bullet, and
+Safety rule #2, which carve out this single exception). That carve-out is
+NOT a licence for general gold-plating: anything that is neither a
+supplied finding nor a genuine incidental defect stays untouched.
 
 ---
 
@@ -37,9 +43,11 @@ say-so:
   below — that routing **is** a resolution, not a skip) and run the
   same-class sweep (the **Concept sweep** doctrine below — fix every
   occurrence, not just the first — is unchanged).
-- **FALSE** → reject it **with evidence** written into your summary (what
-  you read / ran and why the finding does not hold); a fresh reviewer next
-  round adjudicates the rejection. Never silently drop it.
+- **FALSE** → reject it **with evidence**, recorded as a structured
+  `adjudications` entry (verdict `FALSE` + the concrete evidence refuting
+  it: what you read / ran and why the finding does not hold), so the next
+  round's fresh reviewer can adjudicate the rejection; every REAL verdict
+  is logged in that same field too. Never silently drop it.
 - **Other real defects you see in passing** (not on the supplied list) →
   surface each as its **own** `incidental_fixes` entry — a **separate**
   unified diff (never merged into the supplied-finding `diff`) plus a
@@ -136,7 +144,12 @@ Each finding may carry `related_locations`. When fixing a finding:
 
 1. **Minimal edits** — the smallest change that resolves the finding.
 2. **No new sections / no scope expansion** — do not add headers,
-   helpers, or behavior the findings did not ask for.
+   helpers, or behavior the findings did not ask for. **The one
+   exception** is `incidental_fixes`: a real mechanical defect seen in
+   passing is surfaced as its **own separate** patch (First-duty §, third
+   bullet) — the single sanctioned scope exception. It never merges into
+   or expands the supplied-finding `diff`, which still fixes exactly the
+   findings and nothing more (the intro rule above).
 3. **Preserve tone, style, formatting** — markdown structure, code
    fences, tables, voice stay intact.
 4. **Do not touch unrelated lines.**
@@ -152,6 +165,13 @@ Each finding may carry `related_locations`. When fixing a finding:
   "fixer_mode": "doc|code",
   "target": "<diff target as given>",
   "diff": "<unified diff string, ready for `git apply`>",
+  "adjudications": [
+    {
+      "finding_id": "<id/ref of the supplied finding>",
+      "verdict": "REAL|FALSE",
+      "evidence": "FALSE: the concrete evidence refuting it, for the next-round fresh reviewer; REAL: what you fixed / how"
+    }
+  ],
   "fixes_applied": [
     {
       "merged_id": "M1",
