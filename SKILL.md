@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: Local pre-PR cross-model review — the executable form of the wiki's cross-model-review.md (tdd-autonomous-dev spine step 4 per-slice / step 5–6 ship-pre, Layer 1). The squad depends on the trigger point — ship-pre uses N codex gpt-5.5 + 1 Claude Agent + 1 Gemini via agy = N+1+1, dispatched two-phase (msg1 = all CLI Bash run-in-background, msg2 = Claude Agent, no-peek between); per-slice uses N codex + agy = N+1 (no Claude — credit; run by the slice's own subagent, no two-phase). N by effective (core-logic) diff lines. Then merge / grade / drift-check / loop as the agent judgment the wiki prescribes. Use every dev cycle before a PR, so the agent runs the wiki step the same way instead of re-deciding by feel.
+description: Local pre-PR cross-model review — the executable form of the wiki's cross-model-review.md (tdd-autonomous-dev spine step 4 per-slice / step 5–6 ship-pre, Layer 1). The squad depends on the trigger point — ship-pre uses N codex gpt-5.6-sol + 1 Claude Agent + 1 Gemini via agy = N+1+1, dispatched two-phase (msg1 = all CLI Bash run-in-background, msg2 = Claude Agent, no-peek between); per-slice uses N codex + agy = N+1 (no Claude — credit; run by the slice's own subagent, no two-phase). N by effective (core-logic) diff lines. Then merge / grade / drift-check / loop as the agent judgment the wiki prescribes. Use every dev cycle before a PR, so the agent runs the wiki step the same way instead of re-deciding by feel.
 allowed-tools:
   - Bash
   - Read
@@ -148,19 +148,17 @@ tight to run Claude on the high-frequency per-slice gate):
 - **per-slice** (after each slice's baseline commit — within-slice lens):
   **`N codex + agy` = 2-vendor, NO Claude.** Run by the slice's own
   implementing subagent (both legs are Bash CLIs, so no nested-Agent
-  problem). codex effort = **`high`** (cheap high-frequency gate,
-  downshifted to save credit — `CMR_CODEX_EFFORT=high`). Convergence =
+  problem). codex effort = **`medium`** (`CMR_CODEX_EFFORT=medium`). Convergence =
   (N+1)/(N+1) + flag `per-slice 不用 Claude (credit)`.
 - **ship-pre** (after all slices done — cross-slice cumulative-diff
   lens): **+Claude → 1+1+1 (N+1+1).** The **main session** orchestrates;
   the Claude leg runs via the **`Agent` subagent** (cheap, never
-  `claude -p`). codex effort = **`xhigh`** (the real gate + cross-slice
-  invariants need max depth — the default). This is the two-phase
+  `claude -p`). codex effort = **`medium`**, the same as per-slice. This is the two-phase
   dispatch (Step 2).
 
 Strongest review model (both scenarios): Claude leg = `opus` (Opus 4.8) —
 cmr does not use Fable (Step 2 recorded rule; ship-pre only); codex
-`gpt-5.5`; Gemini = `agy` locked to
+`gpt-5.6-sol`; Gemini = `agy` locked to
 3.5 Flash (the documented exception). Only codex instantiates by diff
 size (the agy/Claude legs are always ×1 on the full diff).
 
@@ -186,7 +184,7 @@ size (the agy/Claude legs are always ×1 on the full diff).
 | Large (1500+ / 3+ sections) | 3 | 5 (1+3+1) | 3 codex split 1/3 within-section; Claude+Gemini full |
 
 > **Thresholds raised ×2.5–3 on 2026-06-18** (hypothesis, not yet
-> validated): the old 200/500 triggers split too eagerly — one `gpt-5.5`
+> validated): the old 200/500 triggers split too eagerly — one `gpt-5.6-sol`
 > handles 500 lines fine, and premature splitting hits anti-pattern #1
 > (N codex all on the full diff = duplicate coverage, no gain). New:
 > 500 / 1500. Roll back to the old values if findings start slipping.
@@ -195,7 +193,7 @@ size (the agy/Claude legs are always ×1 on the full diff).
 
 **Strongest review model only** — Anthropic = **`claude-opus-4-8`**
 (Opus 4.8; Step 2 is the authority — **cmr does not use Fable**, recorded
-rule there), OpenAI `gpt-5.5`;
+rule there), OpenAI `gpt-5.6-sol`;
 **Gemini is the documented exception** (locked to 3.5 Flash via `agy` —
 wiki trade-off: keep 3-vendor cross-family coverage over dropping the
 Gemini leg entirely after the `gemini` CLI EOL).
@@ -265,10 +263,9 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
 
 > **Reasoning-effort reality, per leg** (wiki §调用规范) — the legs run
 > at very different reasoning depths:
-> - **codex** = `xhigh` for **ship-pre completeness/correctness (spine Step 5/6)** / `high` for **per-slice**
->   (downshifted 2026-06-18 to save credit — but never below `high`, else
->   per-slice becomes a rubber stamp; `CMR_CODEX_EFFORT`, pinned via `-c`
->   so a clone can't inherit a lower config.toml value).
+> - **codex** = `medium` uniformly for **ship-pre completeness/correctness
+>   (spine Step 5/6)** and **per-slice** (user decision 2026-07-12;
+>   `CMR_CODEX_EFFORT`, pinned via `-c` so host config cannot drift).
 > - **Claude reviewer Agent** (ship-pre, main=Claude) = Opus 4.8 adaptive
 >   default and **cannot be dialed up** — the `Agent` tool exposes no
 >   effort param, and `ultrathink` in a subagent prompt is inert literal
@@ -279,17 +276,16 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
 >   6/15 policy is paused but may restart) burns 5× tokens too fast.
 > - **agy / Gemini** = 3.5 Flash, no knob.
 >
-> So codex is the only leg at max depth — which is why it tends to
-> surface the most findings each round.
+> Codex is explicitly pinned rather than inheriting host config.
 
 - **Codex** — only via `backends/codex-review.sh` (pins `printf %s
   "$PROMPT" | codex exec --ephemeral -c
-  model_reasoning_effort=<high|xhigh> --model gpt-5.5 - 2>&1`).
+  model_reasoning_effort=medium --model gpt-5.6-sol - 2>&1`).
   **`--ephemeral` is mandatory** — cmr runs N codex in parallel; without
   it concurrent instances collide on `~/.codex/session` → cross-talk
   (prompt A surfaces in instance B's context). Wiki §额外硬规则 #6 /
-  codex#11435. **The reasoning-effort pin is mandatory + scenario-
-  dependent** (`CMR_CODEX_EFFORT`: `xhigh` ship-pre / `high` per-slice) —
+  codex#11435. **The reasoning-effort pin is mandatory and uniform**
+  (`CMR_CODEX_EFFORT=medium` for ship-pre and per-slice) —
   codex would otherwise inherit the machine's `~/.codex/config.toml`
   value and silently drift; `--selftest` guards the form. Never
   `codex exec "$(...)"` (hangs → pkill), never `-C <dir>` (wrong
@@ -509,7 +505,7 @@ for the auth smoke; a reviewer must keep Read/Grep/Glob for grounded
 review (one agy over-step in hundreds of reviews doesn't justify gutting
 the grounding axis for all three — wiki §调用规范). The outside-voice
 reviewer always stays the strongest in range (main = Claude → codex
-`gpt-5.5`; main = Codex → current strongest Claude or Gemini), never
+`gpt-5.6-sol`; main = Codex → current strongest Claude or Gemini), never
 dev-tier spark / 5.3-codex / sonnet. See wiki §降级链.
 
 ## Step 4 — merge + grade (agent judgment, not a deterministic engine)

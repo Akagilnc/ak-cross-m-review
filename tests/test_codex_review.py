@@ -167,42 +167,74 @@ def test_silent_codex_killed_after_idle_window(tmp_path):
     assert '"findings":[]' in r.stdout
 
 
-def _selftest(effort=None):
-    """Run `codex-review.sh --selftest`, optionally pinning CMR_CODEX_EFFORT."""
+def _selftest(effort=None, model=None):
+    """Run `codex-review.sh --selftest`, optionally pinning CMR_CODEX_EFFORT
+    and/or CMR_CODEX_MODEL."""
     env = dict(os.environ)
     if effort is not None:
         env["CMR_CODEX_EFFORT"] = effort
     else:
         env.pop("CMR_CODEX_EFFORT", None)
+    if model is not None:
+        env["CMR_CODEX_MODEL"] = model
+    else:
+        env.pop("CMR_CODEX_MODEL", None)
     return subprocess.run(
         ["bash", str(SCRIPT), "--selftest"],
         capture_output=True, text=True, env=env, timeout=30,
     )
 
 
-def test_selftest_passes_with_default_xhigh_effort():
-    # Default (no env) → ship-pre xhigh; selftest green + names the pin.
+def test_selftest_passes_with_default_medium_effort():
+    # Default (no env) → medium + gpt-5.6-sol; selftest green + names the pin.
     r = _selftest()
     assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert "model_reasoning_effort=xhigh" in r.stdout
+    assert "model_reasoning_effort=medium" in r.stdout
+    assert "--model gpt-5.6-sol" in r.stdout
 
 
-def test_selftest_passes_with_per_slice_high_effort():
-    # CMR_CODEX_EFFORT=high (per-slice) → selftest still green, matching
-    # the LIVE effort (not hardcoded xhigh).
-    r = _selftest("high")
+def test_selftest_passes_with_explicit_medium_effort():
+    # Explicit medium is just the default value passed through.
+    r = _selftest("medium")
     assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert "model_reasoning_effort=high" in r.stdout
+    assert "model_reasoning_effort=medium" in r.stdout
     assert "model_reasoning_effort=xhigh" not in r.stdout
 
 
-def test_invalid_effort_is_rejected():
-    # Only high|xhigh are valid reasoning tiers for review; anything else
-    # (e.g. a typo, or `medium` which would make per-slice a rubber stamp)
-    # must hard-fail, not silently run at the wrong depth.
-    r = _selftest("medium")
-    assert r.returncode == 64, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert "CMR_CODEX_EFFORT must be high|xhigh" in r.stderr
+def test_effort_override_low_passes_through_verbatim():
+    # Owner ruling 2026-07-12: this file's only job is avoiding codex
+    # pitfalls, NOT restricting effort. A caller who wants low gets low —
+    # passed through verbatim to -c model_reasoning_effort=…, selftest still
+    # green (no exit 64), the FORM check adapts to the override.
+    r = _selftest("low")
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "model_reasoning_effort=low" in r.stdout
+    assert "model_reasoning_effort=medium" not in r.stdout
+
+
+def test_effort_override_high_passes_through_verbatim():
+    # Same for a higher tier — no whitelist, no rejection.
+    r = _selftest("high")
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "model_reasoning_effort=high" in r.stdout
+
+
+def test_model_override_luna_passes_through_verbatim():
+    # Model is symmetric with effort: default gpt-5.6-sol, but any override
+    # (e.g. luna) flows through verbatim, selftest still green.
+    r = _selftest(model="luna")
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "--model luna" in r.stdout
+    assert "--model gpt-5.6-sol" not in r.stdout
+
+
+def test_model_and_effort_override_together():
+    # Both overridden at once (luna + high) — both pass through, form check
+    # green.
+    r = _selftest(effort="high", model="luna")
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "model_reasoning_effort=high" in r.stdout
+    assert "--model luna" in r.stdout
 
 
 def test_default_idle_timeout_is_900s():

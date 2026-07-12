@@ -35,7 +35,8 @@ Two complementary layers, both run in CI (`.github/workflows/test.yml`):
    orchestrator reads, not sentinel-JSON.)
 2. **codex-review.sh selftest** — `bash backends/codex-review.sh
    --selftest` validates the pinned invocation form (no `-C`, stdin
-   pipe, `--model gpt-5.5`, `2>&1`); it is the regression guard for the
+   pipe, `--model gpt-5.6-sol`, `model_reasoning_effort=medium`, `2>&1`);
+   it is the regression guard for the
    codex footguns the wiki lists as hard rules. Never calls codex.
 
 Merge / grade / drift / termination are **agent judgment** per the wiki

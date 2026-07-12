@@ -4,6 +4,21 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.15 — 2026-07-12
+
+- **Merge `codex/cmr-gpt56-sol-medium` into this branch** — the codex leg's
+  default model moves `gpt-5.5` → **`gpt-5.6-sol`**, reasoning effort
+  uniform **`medium`** for both per-slice and ship-pre (`backends/codex-review.sh`
+  default; `CMR_CODEX_MODEL` / `CMR_CODEX_EFFORT` still override). The prior
+  hard `CMR_CODEX_EFFORT != medium → exit 64` whitelist is removed —
+  `codex-review.sh`'s sole job is avoiding codex invocation footguns
+  (`--ephemeral` / `-o` / stdin pipe / no `-C` / scoped idle-kill /
+  degrade), never restricting which model or effort the caller picks
+  (owner ruling 2026-07-12): unset → default `gpt-5.6-sol` + `medium`; any
+  explicit override (`luna`, `low`, `high`, …) passes through verbatim.
+  `SKILL.md`, `README.md`, `TESTING.md` updated off the stale `gpt-5.5`
+  references left over from before this merge.
+
 ## 0.3.18.14 — 2026-07-12
 
 - **REVERSAL — the 钉子令牌 (nail-token) jurisdiction-handoff apparatus is
@@ -549,7 +564,6 @@ All notable changes to this project are documented here. Format follows
     counterpart each) for both semantics, so a re-sync that downgrades a
     missing nail below blocking or re-pulls a DONE-and-nailed surface back
     into the completeness lens fails the suite.
-
 ## 0.3.16.1 — 2026-07-12
 
 - Constitution-check example in `prompts/cmr-reviewer.md` names ADR 0062's

@@ -46,12 +46,12 @@ Against the same diff:
   Step 2. Set the model explicitly — it does not inherit the session
   model. This is why the skill MUST run in the
   **main session**: Claude Code does not expose `Agent` to subagents.
-- **N × Codex** (`gpt-5.5`, via `backends/codex-review.sh`) — N scales
+- **N × Codex** (`gpt-5.6-sol`, via `backends/codex-review.sh`) — N scales
   with the diff's **effective** (core-logic) line count, excluding
   test/fixture/lock/doc noise (1 / 2 / 3 for `<500` / `500–1500` /
   `1500+`; thresholds raised ×2.5–3 on 2026-06-18); for N≥2 each codex
-  takes a distinct file-section slice. Reasoning effort is scenario-
-  dependent (`xhigh` ship-pre / `high` per-slice).
+  takes a distinct file-section slice. Reasoning effort is uniformly
+  `medium` for ship-pre and per-slice.
 - **1 × Gemini** (via `backends/gemini.sh`, which internally calls
   `agy --sandbox --print ''` — Antigravity CLI, the in-kind replacement
   after the original `gemini` CLI's 2026-06-18 EOL; locked to Gemini
