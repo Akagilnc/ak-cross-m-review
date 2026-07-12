@@ -4,6 +4,32 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.11 — 2026-07-12
+
+- **[P2] Stale baseline ref after a legitimate qualifying→confirmation
+  change** (`prompts/cmr-completeness.md` §钉子令牌 + `SKILL.md` Step-5
+  "Cross-round jurisdiction hand-off" note; codex round-11). The
+  `DONE-and-nailed surfaces` entry's **baseline ref** is captured at
+  QUALIFYING-round nail-eligibility time (0.3.18.5 beyond-baseline tamper
+  scoping). But if the surface is legitimately modified BETWEEN the qualifying
+  round and the confirmation round — e.g. a non-blocking P3 fix the
+  confirmation round re-audits and approves on the UPDATED surface — the
+  confirmation round hands the surface off permanently while the stored
+  baseline still points at the ORIGINAL qualifying-round commit. Subsequent
+  rounds comparing the cumulative diff against that stale baseline would then
+  misclassify the confirmation-round-approved update as post-nail tampering (a
+  false-positive nail-tamper flag on already-reviewed work). Fix: when the
+  confirmation round permanently hands off a surface (independently reconfirms
+  DONE-and-nailed, round-wide ledger clean again — 0.3.18.9/0.3.18.10), the
+  **baseline ref is REFRESHED to the confirmation round's state** before the
+  surface goes on the permanent list, capturing any legitimate
+  qualifying→confirmation change; nail-tamper going forward is scoped beyond
+  THIS refreshed baseline, refreshed exactly once at hand-off. Stated in BOTH
+  files (two-file sync discipline from round 10). Everything else about
+  nail-tamper (beyond-baseline scoping 0.3.18.5, qualifying/confirmation
+  two-step 0.3.18.9/10) intact — narrow addition of WHICH commit the baseline
+  points to. Both edits outside the doc-mode golden-hash ranges, no recompute.
+
 ## 0.3.18.10 — 2026-07-12
 
 - **[P1] SKILL.md Step-5 hand-off note missed the confirmation-round gate**

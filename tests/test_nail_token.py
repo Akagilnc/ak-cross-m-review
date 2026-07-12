@@ -290,6 +290,74 @@ def test_nail_tamper_scoped_to_baseline_not_any_touch():
     )
 
 
+def test_baseline_ref_refreshes_to_confirmation_round_at_handoff():
+    """0.3.18.11 codex r11 P2 — the baseline-refresh-at-permanent-handoff fix.
+
+    The baseline ref is captured at QUALIFYING-round nail-eligibility time
+    (0.3.18.5 beyond-baseline tamper scoping). But if the surface is
+    legitimately modified BETWEEN the qualifying round and the confirmation
+    round (e.g. a non-blocking P3 fix the confirmation round re-audits and
+    approves on the UPDATED surface), the stale qualifying-round baseline would
+    make subsequent rounds misclassify that already-reviewed update as
+    post-nail tampering — a false-positive nail-tamper flag. Fix: at the
+    permanent hand-off the baseline ref is REFRESHED to the confirmation
+    round's state. Must land in BOTH files (two-file sync discipline).
+    """
+    sec = _nail_section()
+    step5 = _norm(SKILL)[
+        _norm(SKILL).index("## Step 5 — termination signals") : _norm(SKILL).index(
+            "## Step 6"
+        )
+    ]
+    # positive — completeness lens (§钉子令牌): baseline recorded for the
+    # permanent entry is the CONFIRMATION round's state, not qualifying's
+    assert "Baseline refresh at permanent hand-off:" in sec, (
+        "the completeness lens must name the baseline-refresh rule"
+    )
+    assert (
+        "is the **CONFIRMATION round's state**, NOT the original "
+        "qualifying-round baseline" in sec
+    ), (
+        "the completeness lens must record the CONFIRMATION round's state as "
+        "the permanent-entry baseline, not the original qualifying baseline"
+    )
+    # positive — SKILL.md Step 5 mirror: same rule, both files agree
+    assert "Baseline refresh at permanent hand-off (0.3.18.11):" in step5, (
+        "SKILL.md Step 5 must carry the same baseline-refresh rule"
+    )
+    assert (
+        "is the **CONFIRMATION round's state**, NOT the original "
+        "qualifying-round baseline" in step5
+    ), (
+        "SKILL.md Step 5 must record the CONFIRMATION round's state as the "
+        "permanent-entry baseline, mirroring the completeness lens"
+    )
+    # positive (both) — nail-tamper is now scoped beyond the REFRESHED
+    # baseline, and the refresh happens exactly once at hand-off. Both `sec`
+    # and `step5` are _norm()'d (single-spaced), so match the collapsed form.
+    for text, name in ((sec, "completeness lens"), (step5, "SKILL.md Step 5")):
+        assert (
+            "scoped beyond THIS refreshed (confirmation-round) baseline" in text
+        ), f"{name}: tamper must be scoped beyond the REFRESHED baseline"
+        assert (
+            "refreshed exactly once, at this permanent hand-off" in text
+        ), f"{name}: the ref is refreshed exactly once, at permanent hand-off"
+    # negative (both) — the old "baseline stays at the qualifying-round commit
+    # forever" implication must NOT be reintroduced: no wording that the
+    # permanent entry retains / keeps / is left at the qualifying baseline
+    for text, name in ((sec, "completeness lens"), (step5, "SKILL.md Step 5")):
+        for bad in (
+            "baseline stays at the qualifying",
+            "left pointing at the qualifying",
+            "retains the original qualifying-round baseline",
+            "keeps the qualifying-round baseline",
+        ):
+            assert bad not in text, (
+                f"{name}: the stale-qualifying-baseline-forever wording "
+                f"('{bad}') must not be present"
+            )
+
+
 def test_orchestrator_persists_done_and_nailed_list_mode_general():
     """0.3.18.4 codex r4 P1: the ORCHESTRATOR persistence+injection of the
     DONE-and-nailed list must live in a MODE-GENERAL completeness location

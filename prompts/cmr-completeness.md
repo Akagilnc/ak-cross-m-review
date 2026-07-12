@@ -165,7 +165,17 @@ independently confirms DONE-and-nailed** for that surface — the same
 round-wide merged ledger clean for it again — **does it permanently leave
 completeness's jurisdiction for ALL subsequent rounds**: rounds after the
 confirmation round do NOT re-litigate an already-confirmed
-DONE-and-nailed surface. This composes with the round-wide-merged-ledger
+DONE-and-nailed surface. **Baseline refresh at permanent hand-off:** when
+the reviewer confirms a qualifying-round nail in the confirmation round,
+the baseline ref recorded for the surface's permanent `DONE-and-nailed
+surfaces` entry is the **CONFIRMATION round's state**, NOT the original
+qualifying-round baseline. This captures any legitimate change made to the
+surface **between** the qualifying and confirmation rounds — e.g. a
+non-blocking P3 fix the confirmation round re-audited and approved on the
+UPDATED surface — inside the baseline, so that already-reviewed update is
+never later misread as post-nail tampering. Nail-tamper going forward is
+scoped beyond THIS refreshed (confirmation-round) baseline; the ref is
+refreshed exactly once, at this permanent hand-off. This composes with the round-wide-merged-ledger
 precondition above — nail-eligible this (qualifying) round → still audited
 next (confirmation) round → permanent only after that. Its guard from then
 on is the **test red at the write-point** plus the **correctness channel**

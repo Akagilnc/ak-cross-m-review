@@ -599,7 +599,16 @@ independently reconfirms DONE-and-nailed** — the same round-wide merged
 ledger clean for it **again** — does the surface **permanently** leave
 jurisdiction and go on this list; a qualifying-round nail not yet confirmed
 is explicitly **NOT** on the `DONE-and-nailed surfaces` list and remains
-auditable. (See `prompts/cmr-completeness.md` §钉子令牌 for the detailed
+auditable. **Baseline refresh at permanent hand-off (0.3.18.11):** when the
+confirmation round permanently hands off the surface, the **baseline ref**
+recorded for its list entry is the **CONFIRMATION round's state**, NOT the
+original qualifying-round baseline — capturing any legitimate change made to
+the surface **between** the qualifying and confirmation rounds (e.g. a
+non-blocking P3 fix the confirmation round re-audited and approved) inside the
+baseline, so that already-reviewed update is never later misclassified as
+post-nail tampering. Nail-tamper going forward is scoped beyond THIS refreshed
+(confirmation-round) baseline; the ref is refreshed exactly once, at this
+permanent hand-off. (See `prompts/cmr-completeness.md` §钉子令牌 for the detailed
 source.) Because every round full-re-reviews
 the **cumulative** diff, the original nailed change legitimately stays in
 that diff and is **NOT** re-flagged; the reviewer audits only the remaining
