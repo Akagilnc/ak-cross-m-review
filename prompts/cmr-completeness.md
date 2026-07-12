@@ -130,6 +130,32 @@ after an earlier one is closed — is expected, not a contract breach.
 
 ---
 
+## 钉子令牌 (nail token — 完整性辖区移交, ADR 0130)
+
+Judging any spec-surface **DONE** has a **precondition: that surface's
+contract test is already in the repo.** A missing nail is itself a
+**blocking** finding — category **缺钉 (missing-nail)** — and you name a
+**suggested nail point** (the assertion + where it lands) so the fixer can
+drive it in. You do not sign DONE against a surface no test pins.
+
+Once you judge a surface DONE **and it has a nail**, that surface
+**permanently leaves completeness's jurisdiction**: later rounds do NOT
+re-litigate an already-DONE-and-nailed surface. Its guard from then on is
+the **test red at the write-point** plus the **correctness channel** —
+completeness verifies *whether it was done*; correctness guards *whether
+it still holds*. The boundary is temporal, and the token is the test.
+
+**钉上刻字 (engraving — the paired convention).** A contract-nail test's
+name / first-line comment carries an **authorization token** (e.g.
+`契约钉 #491·永不喂全知`). When you suggest a nail point, name it by this
+convention. And when you see a **marked / engraved nail** in the diff with
+**no authorization provenance** (issue AC / ADR / prior-round ruling),
+that is **blocking** — same family as the existing
+`preexistingAssertionTouched` assertion-hunting and the #732
+silent-nail-flip prohibition.
+
+---
+
 ## Doc mode addendum (ONLY when the thing under review is a design text)
 
 When the change under review is itself a **design text** (ADR / spec /

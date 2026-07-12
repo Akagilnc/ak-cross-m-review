@@ -28,6 +28,27 @@ All notable changes to this project are documented here. Format follows
     counterpart each) for all three files, so a re-sync that softens the
     contract back to "report a couple" fails the suite. Root cause: #860
     (21+ serial rounds from the missing shaping language).
+- **钉子令牌 (nail token) + 刻字惯例 landed in the completeness lens (ADR
+  0130; wiki §额外硬规则 #9 sync done by the main session; user ratification
+  2026-07-12).** The second half of 0.3.17.0.
+  - `prompts/cmr-completeness.md`: gains a **钉子令牌** section — judging any
+    spec-surface DONE has a precondition (that surface's contract test is
+    already in the repo); a missing nail is itself a **blocking** finding
+    (category 缺钉 / missing-nail) with a named suggested nail point. Once
+    DONE-and-nailed, the surface **permanently leaves completeness's
+    jurisdiction** (later rounds do not re-litigate it; its guard is the
+    red test at the write-point + the correctness channel — the split is
+    temporal, the token is the test). **刻字 (engraving):** a contract-nail
+    test's name / first-line comment carries an authorization token (e.g.
+    `契约钉 #491·永不喂全知`); suggested nails follow the convention, and an
+    engraved nail in the diff with no authorization provenance (issue AC /
+    ADR / prior-round ruling) is blocking — same family as the existing
+    `preexistingAssertionTouched` assertion-hunting and the #732
+    silent-nail-flip prohibition.
+  - `tests/test_nail_token.py`: phrase pins (positive + negative
+    counterpart each) for both semantics, so a re-sync that downgrades a
+    missing nail below blocking or re-pulls a DONE-and-nailed surface back
+    into the completeness lens fails the suite.
 
 ## 0.3.16.1 — 2026-07-12
 
