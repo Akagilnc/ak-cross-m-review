@@ -4,6 +4,42 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.22 — 2026-07-13
+
+- **Three ship-pre correctness-gate findings (PR #32, round 4).**
+  - *Finding 1 [P1] — `prompts/cmr-fixer.md` scope-banner header.* The
+    opening banner's primary verb "is NOT yours — **route it** to the main
+    session" was severity-unqualified, contradicting `## Terminal outcomes`
+    (where a non-blocking finding is "never routed"). Reworded so the header
+    states the finding is not yours to patch here and its actual disposition
+    (fixed elsewhere / routed / deferred) depends on **severity** per
+    Terminal outcomes — routing is the blocking-only exit, non-blocking is
+    never routed. Mechanical bar and "do not guess" left intact. (The five
+    other sites codex flagged were re-verified as genuine pointers, not
+    restatements — not touched; no re-consolidation.)
+  - *Finding 2 [P2, introduced by 0.3.18.21] — "cannot verify → FALSE" is
+    an epistemic error.* Two sites (`## Terminal outcomes` non-blocking
+    branch, and the Diff-requirements `claim_quote` bullet) told the fixer
+    to adjudicate an unverifiable non-blocking finding **FALSE**. Inability
+    to verify is the *absence* of evidence, not refuting evidence (FALSE
+    requires concrete refuting evidence per First duty), so a real but
+    hard-to-locate finding could vanish via a laundered FALSE. Both sites now
+    keep it **REAL** and **deferred**, with the verification gap stated in the
+    deferral's rationale.
+  - *Finding 3 [P2] — stale "mandatory and uniform" effort docs.* The hard
+    `exit 64` effort whitelist was removed in 0.3.18.15; the backend now
+    passes any `CMR_CODEX_EFFORT` override verbatim with `medium` only as the
+    unset-default. `SKILL.md` ("mandatory and uniform") and `README.md`
+    ("uniformly medium") still implied a non-overridable pin. Both reworded to
+    describe `medium` as the DEFAULT operational convention with a genuine
+    verbatim override (no whitelist), keeping the pinning-prevents-config.toml-
+    drift rationale. (`TESTING.md` line 38 describes the default selftest form
+    check accurately — not touched.)
+  - Tests: `tests/test_defer_severity.py` gains header + FALSE-on-unverifiable
+    pins (positive + negative) and updates the two prior pins that asserted the
+    now-corrected text; `tests/test_codex_review.py` gains doc pins grounding
+    SKILL.md/README.md effort claims against the real backend contract.
+
 ## 0.3.18.21 — 2026-07-13
 
 - **Root-cause consolidation of the "terminal outcomes" concept in

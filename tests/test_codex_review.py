@@ -248,3 +248,75 @@ def test_default_idle_timeout_is_900s():
         "codex idle-timeout default must be 900s (15min, user decision "
         "2026-07-06) — 480 was false-killing deep-reasoning runs"
     )
+
+
+# --- Doc claims about CMR_CODEX_EFFORT must match the CURRENT backend: a
+# --- DEFAULT of medium with a genuine verbatim override, NOT a "mandatory
+# --- and uniform" pin (0.3.18.22, Finding 3). The exit-64 whitelist was
+# --- removed in 0.3.18.15; the backend now passes any override verbatim,
+# --- with `medium` only as the unset-default (see backend line: "NO
+# --- whitelist" + CMR_CODEX_EFFORT="${CMR_CODEX_EFFORT:-medium}").
+
+ROOT = Path(__file__).resolve().parents[1]
+SKILL_MD = ROOT / "SKILL.md"
+README_MD = ROOT / "README.md"
+
+
+def _norm_doc(path):
+    return " ".join(path.read_text(encoding="utf-8").split())
+
+
+def test_backend_effort_is_default_not_whitelisted():
+    # ground the doc pins against the real backend contract they describe
+    src = SCRIPT.read_text(encoding="utf-8")
+    assert 'CMR_CODEX_EFFORT="${CMR_CODEX_EFFORT:-medium}"' in src, (
+        "backend must treat medium as the UNSET-DEFAULT, not a hard pin"
+    )
+    assert "NO whitelist" in src, (
+        "backend must document the whitelist removal (any override verbatim)"
+    )
+
+
+def test_skill_effort_doc_says_default_with_override_not_mandatory():
+    txt = _norm_doc(SKILL_MD)
+    assert "**The reasoning-effort pin defaults to `medium`**" in txt, (
+        "SKILL.md must describe medium as the DEFAULT, matching the backend "
+        "unset-default — not a mandatory/uniform pin"
+    )
+    assert (
+        "`CMR_CODEX_EFFORT` stays a genuine override: the backend passes any "
+        "value (`low`/`high`/`xhigh`/…) through verbatim, with no whitelist"
+    ) in txt, (
+        "SKILL.md must state the override is passed verbatim with no "
+        "whitelist, matching the current backend"
+    )
+    # the pinning-prevents-drift rationale must survive (still true)
+    assert "cannot silently inherit the machine's `~/.codex/config.toml`" in txt
+
+
+def test_skill_effort_doc_drops_mandatory_and_uniform_negative():
+    txt = _norm_doc(SKILL_MD)
+    assert "reasoning-effort pin is mandatory and uniform" not in txt, (
+        "the stale 'mandatory and uniform' effort claim must be gone — the "
+        "exit-64 whitelist was removed in 0.3.18.15"
+    )
+
+
+def test_readme_effort_doc_says_default_with_override():
+    txt = _norm_doc(README_MD)
+    assert (
+        "Reasoning effort defaults to `medium` for ship-pre and per-slice "
+        "(the operational convention); `CMR_CODEX_EFFORT` overrides it and "
+        "the backend passes any value through verbatim (no whitelist)."
+    ) in txt, (
+        "README.md must describe medium as the default with a verbatim "
+        "CMR_CODEX_EFFORT override"
+    )
+
+
+def test_readme_effort_doc_drops_uniform_absolute_negative():
+    txt = _norm_doc(README_MD)
+    assert "Reasoning effort is uniformly `medium` for ship-pre and per-slice." not in txt, (
+        "the stale absolute 'effort is uniformly medium' claim (no override "
+        "caveat) must be gone"
+    )

@@ -288,14 +288,25 @@ def test_terminal_real_non_blocking_is_fixed_or_deferred_never_routed():
         "the non-blocking branch's valid exits are fixed OR deferred (never "
         "routed — no /diagnosing-bugs hand-back for non-blocking work)"
     )
-    # a non-blocking finding whose claim_quote can't be located is adjudicated
-    # FALSE (outcome 1), NOT parked in a bare fixes_skipped
+    # a non-blocking finding whose claim_quote can't be located stays REAL
+    # and is DEFERRED with the verification gap as rationale — inability to
+    # verify (absence of evidence) is NOT laundered into a FALSE adjudication
+    # (0.3.18.22: epistemic-error fix)
     assert (
-        "that inability is itself grounds to adjudicate it **FALSE** "
-        "(outcome 1"
+        "if you truly cannot verify it, it stays **REAL** and is "
+        "**deferred** (the outcome above), with the deferral's rationale "
+        "field stating the verification gap"
     ) in ts, (
-        "an unlocatable claim on a NON-blocking finding routes to a FALSE "
-        "adjudication, not a stray park"
+        "an unlocatable claim on a NON-blocking finding stays REAL and is "
+        "deferred with the gap as rationale, not auto-adjudicated FALSE"
+    )
+    assert (
+        "Inability to verify is the **absence** of evidence, not evidence "
+        "the finding is false, so it is **never** laundered into a FALSE "
+        "adjudication"
+    ) in ts, (
+        "the text must state that inability-to-verify is absence of evidence "
+        "and never becomes a FALSE adjudication"
     )
     assert "never silently park it." in ts
 
@@ -348,15 +359,16 @@ def test_six_input_traces_each_resolve_cleanly():
         "**fixed** — the default for cheap, low-risk findings "
         "(SHOULD-fix-by-default"
     ) in ts, "(e) REAL non-blocking cheap must resolve to a default fix"
-    # (f) REAL non-blocking with claim_quote unlocatable → FALSE adjudication
+    # (f) REAL non-blocking with claim_quote unlocatable → DEFERRED (stays
+    # REAL), verification gap as rationale — NOT auto-FALSE (0.3.18.22)
     assert (
         "If you genuinely cannot locate a non-blocking finding's "
         "`claim_quote`, verify it yourself if you can and fix/defer normally; "
-        "if you truly cannot verify it, that inability is itself grounds to "
-        "adjudicate it **FALSE** (outcome 1"
+        "if you truly cannot verify it, it stays **REAL** and is "
+        "**deferred** (the outcome above)"
     ) in ts, (
         "(f) REAL non-blocking with unlocatable claim_quote must resolve to "
-        "a FALSE adjudication, not a park"
+        "a deferred REAL outcome, not a FALSE adjudication or a park"
     )
 
 
@@ -470,3 +482,100 @@ def test_fixer_deferred_severity_enum_includes_clarity():
         "the old single-literal deferred[].severity `\"low\"` must be gone — "
         "it could not represent a legal doc-mode `clarity` deferral"
     )
+
+
+# --- cmr-fixer.md: the scope-banner header no longer asserts an
+# --- unqualified "route it" action (0.3.18.22, Finding 1) ---
+
+
+def _header():
+    """Normalized text of everything BEFORE the first `## ` heading — the
+    opening scope-banner blockquote plus the intro paragraphs. Blockquote
+    `>` markers are stripped so an asserted phrase that wraps across
+    blockquote lines is not interrupted by stray `>` tokens."""
+    raw = FIXER.read_text(encoding="utf-8")
+    out = []
+    for ln in raw.splitlines():
+        if ln.startswith("## "):
+            break
+        stripped = ln.lstrip()
+        if stripped.startswith(">"):
+            ln = stripped[1:]
+        out.append(ln)
+    return " ".join(" ".join(out).split())
+
+
+def test_header_disposition_is_severity_qualified_not_unconditional_route():
+    hd = _header()
+    # the header must state the finding is not yours to patch here, and that
+    # the ACTUAL disposition depends on severity per Terminal outcomes
+    assert (
+        "is NOT yours to patch directly here — its actual disposition "
+        "(fixed elsewhere, routed to the main session, or deferred) depends "
+        "on the finding's **severity** and is decided by **Terminal "
+        "outcomes** below"
+    ) in hd, (
+        "the header must defer disposition to severity + Terminal outcomes, "
+        "not assert one universal action"
+    )
+    assert "routing is the blocking-only exit" in hd, (
+        "the header must state routing is blocking-only"
+    )
+    assert "a non-blocking finding is never routed" in hd, (
+        "the header must state a non-blocking finding is never routed, "
+        "matching Terminal outcomes"
+    )
+    # the mechanical bar and 'do not guess' must survive intact
+    assert "the mechanical bar is HIGH" in _norm(FIXER)
+    assert hd.endswith("Do not guess.") or "Do not guess." in hd
+
+
+def test_header_drops_unqualified_route_it_verb_negative():
+    hd = _header()
+    # the old unqualified primary verb "is NOT yours — **route it** to the
+    # main session" must be gone: it contradicted Terminal-outcomes for the
+    # non-blocking case (never routed)
+    assert "is NOT yours —\n> **route it**" not in FIXER.read_text(
+        encoding="utf-8"
+    )
+    assert "NOT yours — **route it** to the main session" not in hd, (
+        "the old severity-blind 'route it' primary verb must be gone from "
+        "the header"
+    )
+
+
+# --- cmr-fixer.md: inability-to-verify a non-blocking finding is NOT a
+# --- route to FALSE — it stays REAL and is deferred (0.3.18.22, Finding 2) ---
+
+
+def test_diff_requirements_unverifiable_nonblocking_defers_not_false():
+    full = _norm(FIXER)
+    # the Diff-requirements claim_quote bullet: non-blocking unverifiable →
+    # deferred (stays REAL), never auto-FALSE
+    assert (
+        "a non-blocking finding → verify it yourself and fix/defer if you "
+        "can, or **defer** it (it stays REAL) with the verification gap as "
+        "the deferral rationale if you cannot — never adjudicate it FALSE "
+        "merely because you could not verify it"
+    ) in full, (
+        "the Diff-requirements bullet must defer (stay REAL) an unverifiable "
+        "non-blocking finding, not adjudicate it FALSE"
+    )
+
+
+def test_no_false_on_unverifiable_wording_survives_negative():
+    full = _norm(FIXER)
+    # BOTH old sites' 'cannot verify → FALSE' wording must be gone
+    assert (
+        "that inability is itself grounds to adjudicate it **FALSE**"
+    ) not in full, (
+        "the Terminal-outcomes non-blocking branch's old 'inability → "
+        "FALSE' epistemic error must be gone"
+    )
+    assert "or\n  adjudicate FALSE if you cannot" not in FIXER.read_text(
+        encoding="utf-8"
+    ), (
+        "the Diff-requirements bullet's old 'or adjudicate FALSE if you "
+        "cannot' must be gone"
+    )
+    assert "or adjudicate FALSE if you cannot)." not in full

@@ -284,10 +284,14 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   **`--ephemeral` is mandatory** — cmr runs N codex in parallel; without
   it concurrent instances collide on `~/.codex/session` → cross-talk
   (prompt A surfaces in instance B's context). Wiki §额外硬规则 #6 /
-  codex#11435. **The reasoning-effort pin is mandatory and uniform**
-  (`CMR_CODEX_EFFORT=medium` for ship-pre and per-slice) —
-  codex would otherwise inherit the machine's `~/.codex/config.toml`
-  value and silently drift; `--selftest` guards the form. Never
+  codex#11435. **The reasoning-effort pin defaults to `medium`** — the
+  operational convention for both ship-pre and per-slice (`CMR_CODEX_EFFORT`
+  unset → `medium`), pinned via `-c` so codex cannot silently inherit the
+  machine's `~/.codex/config.toml` value and drift. `CMR_CODEX_EFFORT`
+  stays a genuine override: the backend passes any value
+  (`low`/`high`/`xhigh`/…) through verbatim, with no whitelist; the point
+  of pinning is that `-c` sets *something* explicitly, not that the value
+  can never differ from `medium`. `--selftest` guards the form. Never
   `codex exec "$(...)"` (hangs → pkill), never `-C <dir>` (wrong
   workdir), never `codex review --base B "PROMPT"` (can't pass both).
   *(main=Codex host only: the codex leg runs as a Codex **native

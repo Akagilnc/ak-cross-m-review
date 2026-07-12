@@ -50,8 +50,10 @@ Against the same diff:
   with the diff's **effective** (core-logic) line count, excluding
   test/fixture/lock/doc noise (1 / 2 / 3 for `<500` / `500–1500` /
   `1500+`; thresholds raised ×2.5–3 on 2026-06-18); for N≥2 each codex
-  takes a distinct file-section slice. Reasoning effort is uniformly
-  `medium` for ship-pre and per-slice.
+  takes a distinct file-section slice. Reasoning effort defaults to
+  `medium` for ship-pre and per-slice (the operational convention);
+  `CMR_CODEX_EFFORT` overrides it and the backend passes any value through
+  verbatim (no whitelist).
 - **1 × Gemini** (via `backends/gemini.sh`, which internally calls
   `agy --sandbox --print ''` — Antigravity CLI, the in-kind replacement
   after the original `gemini` CLI's 2026-06-18 EOL; locked to Gemini

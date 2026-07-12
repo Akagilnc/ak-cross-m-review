@@ -9,12 +9,14 @@
 > / obvious / I'm confident" do NOT make a fix mechanical — those are the
 > over-claims that cause breakage. Default is **non-trivial**: anything
 > touching shell logic, a flag, a condition, control flow, a regex, a
-> path, a number, or whose effect you cannot prove inert is NOT yours —
-> **route it** to the main session, which runs `/diagnosing-bugs` as the
-> first tool call (an iterative, possibly human-in-the-loop investigation
-> that a single subagent diff cannot do; see wiki §修复 + SKILL.md Step 7,
-> and **Terminal outcomes** below for where a finding you cannot fix here
-> goes). Do not guess.
+> path, a number, or whose effect you cannot prove inert is NOT yours to
+> patch directly here — its actual disposition (fixed elsewhere, routed to
+> the main session, or deferred) depends on the finding's **severity** and
+> is decided by **Terminal outcomes** below; routing is the blocking-only
+> exit (the main session then runs `/diagnosing-bugs` — an iterative,
+> possibly human-in-the-loop investigation that a single subagent diff
+> cannot do; see wiki §修复 + SKILL.md Step 7), while a non-blocking
+> finding is never routed. Do not guess.
 
 Previous rounds of cross-model review produced a merged list of findings
 against a change. Your job now is to adjudicate each finding and drive it
@@ -170,9 +172,13 @@ are the three below, and every combination of (FALSE/REAL) ×
    The main session does **not** intervene on non-blocking work, so there
    is no `/diagnosing-bugs` hand-back here. If you genuinely cannot locate
    a non-blocking finding's `claim_quote`, verify it yourself if you can
-   and fix/defer normally; if you truly cannot verify it, that inability is
-   itself grounds to adjudicate it **FALSE** (outcome 1, with "could not
-   locate the claim" as the evidence) — never silently park it.
+   and fix/defer normally; if you truly cannot verify it, it stays **REAL**
+   and is **deferred** (the outcome above), with the deferral's rationale
+   field stating the verification gap ("could not locate claim_quote in
+   current source; needs re-verification next round"). Inability to verify
+   is the **absence** of evidence, not evidence the finding is false, so it
+   is **never** laundered into a FALSE adjudication (FALSE requires concrete
+   refuting evidence — see First duty) — and never silently park it.
 
 **Violation clause.** The **only** protocol violation is a **REAL**
 finding that reaches **none** of the outcomes above — silently dropped,
@@ -305,7 +311,9 @@ Each finding may carry `related_locations`. When fixing a finding:
   finding → route via `fixes_skipped`, reason
   `claim_quote not found → main-session /diagnosing-bugs (needs verification)`;
   a non-blocking finding → verify it yourself and fix/defer if you can, or
-  adjudicate FALSE if you cannot).
+  **defer** it (it stays REAL) with the verification gap as the deferral
+  rationale if you cannot — never adjudicate it FALSE merely because you
+  could not verify it).
 - **`incidental_fixes` diffs are physically separate** from the
   supplied-finding `diff` and from each other: each is its own
   self-contained unified diff so the **main session can land it as an
