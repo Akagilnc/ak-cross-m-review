@@ -24,11 +24,24 @@
 #        N codex in parallel (1+N+1); without it concurrent instances
 #        collide on ~/.codex/session → cross-talk (prompt A surfaces in
 #        instance B's context). Wiki §额外硬规则 #6 / codex#11435.
-#      - `-c model_reasoning_effort=medium`: pin review depth uniformly
-#        across per-slice and ship-pre (user decision 2026-07-12)
-#      - `--model gpt-5.6-sol` pinned: CMR review-tier, never dev-tier
+#      - `-c model_reasoning_effort=<effort>`: pass the effort in effect
+#        EXPLICITLY so codex can't silently inherit ~/.codex/config.toml's
+#        global value (a clone / other host could drift otherwise). This
+#        pins the FORM, not the VALUE — default is medium when the caller
+#        passes nothing, but any CMR_CODEX_EFFORT override (low/high/xhigh/…)
+#        flows through verbatim. NOT a hard "must be medium" restriction.
+#      - `--model gpt-5.6-sol`: the DEFAULT review model, passed explicitly
+#        for the same anti-drift reason. Fully overridable via
+#        CMR_CODEX_MODEL (e.g. luna) — the pin prevents silent drift, it
+#        does not lock the value.
 #      - NO `-C`: codex runs from the current dir (the repo root)
 #      - always 2>&1 so failures are visible
+#
+# This file's ONLY job is avoiding codex invocation pitfalls (the correct
+# invocation FORM). It imposes NO hard restriction on model or reasoning
+# effort: default = gpt-5.6-sol + medium ONLY when the caller passes
+# nothing; both are fully overridable (CMR_CODEX_MODEL / CMR_CODEX_EFFORT)
+# and any override is passed through verbatim, never validated or rejected.
 #
 # Source of truth:
 #   wiki/concepts/cross-model-review.md  §调用规范 / §额外硬规则
@@ -39,7 +52,13 @@
 #     mode  : doc | code   (review lens; echoed in the degrade payload)
 #     label : optional diagnostic tag (e.g. "section-2of3")
 #
-#   CMR_CODEX_MODEL   override review model (default: gpt-5.6-sol)
+#   CMR_CODEX_MODEL   override review model (default: gpt-5.6-sol). Any
+#                     value (e.g. luna) is passed through verbatim.
+#   CMR_CODEX_EFFORT  override reasoning effort (default: medium). Any
+#                     value (low/high/xhigh/…) is passed through verbatim
+#                     to -c model_reasoning_effort=…; never validated or
+#                     rejected. Mirrors CMR_CODEX_MODEL: default when unset,
+#                     pass-through when set.
 #   CMR_CODEX_TIMEOUT IDLE/silence seconds before pkill — kill only after
 #                     this long with NO new stdout/stderr (a hang), NOT a
 #                     total wall-clock cap. A codex still streaming its
@@ -77,13 +96,12 @@ MODEL="${CMR_CODEX_MODEL:-gpt-5.6-sol}"
 # runtime.
 IDLE_TIMEOUT="${CMR_CODEX_TIMEOUT:-900}"
 IDLE_POLL="${CMR_CODEX_IDLE_POLL:-5}"
-# Reasoning effort is uniform across per-slice and ship-pre
-# (user decision 2026-07-12).
+# Reasoning effort: default medium when the caller passes nothing, else the
+# caller's value passed through verbatim (low/high/xhigh/…) — NO whitelist,
+# never validated or rejected (owner ruling 2026-07-12: this file's only job
+# is avoiding codex pitfalls, not restricting model/effort). Symmetric with
+# CMR_CODEX_MODEL above.
 CMR_CODEX_EFFORT="${CMR_CODEX_EFFORT:-medium}"
-case "$CMR_CODEX_EFFORT" in
-  medium) ;;
-  *) echo "codex-review: error: CMR_CODEX_EFFORT must be medium, got '$CMR_CODEX_EFFORT'" >&2; exit 64 ;;
-esac
 
 # codex writes ONLY its final message (the review) here via
 # `-o`/--output-last-message. We emit this file's contents on success, NOT
@@ -102,9 +120,11 @@ trap 'rm -f "$LASTMSG"' EXIT
 # selftest validate a hand-copied mirror instead of the live command.)
 # Expand as "${CODEX_CMD[@]}" at call sites; the `2>&1` redirection is
 # added per-call (it is shell redirection, not part of the command).
-# `-c model_reasoning_effort=medium` pins codex review depth uniformly —
-# codex inherits ~/.codex/config.toml's global value otherwise, so pinning
-# it in the command prevents a clone / other machine from silently drifting
+# `-c model_reasoning_effort="$CMR_CODEX_EFFORT"` passes the effort in
+# effect (default medium, or the caller's override) EXPLICITLY — codex
+# inherits ~/.codex/config.toml's global value otherwise, so pinning it in
+# the command prevents a clone / other machine from silently drifting. This
+# passes whatever value is in effect; it does NOT lock the value to medium
 # (wiki §调用规范 reasoning-effort callout).
 CODEX_CMD=(codex exec --ephemeral -c model_reasoning_effort="$CMR_CODEX_EFFORT" --model "$MODEL" -o "$LASTMSG" -)
 
@@ -123,11 +143,12 @@ if [ "${1:-}" = "--selftest" ]; then
   esac
   # On-convention canonical form. This pins BOTH the stdin-pipe shape AND
   # `-c model_reasoning_effort=<effort>` (the reasoning-depth pin so a
-  # clone / other host can't inherit a lower config.toml value, wiki
-  # §调用规范). The effort is uniformly medium (validated at the top
-  # into CMR_CODEX_EFFORT), so the pattern matches the live value
-  # — a missing/altered pin fails this single check (a separate guard
-  # would only double-report, online R2: gemini).
+  # clone / other host can't inherit a config.toml value, wiki §调用规范).
+  # The effort is whatever's in effect (default medium, overridable via
+  # CMR_CODEX_EFFORT) — the check interpolates ${CMR_CODEX_EFFORT} so it
+  # pins the FORM not the VALUE, adapting to any override. A missing/altered
+  # pin fails this single check (a separate guard would only double-report,
+  # online R2: gemini).
   case "$CMD" in
     *"codex exec --ephemeral -c model_reasoning_effort=${CMR_CODEX_EFFORT} --model ${MODEL} -o "*) ;;
     *) echo "FAIL: command not canonical form ('codex exec --ephemeral -c model_reasoning_effort=${CMR_CODEX_EFFORT} --model X -o <file> -')" >&2; fail=1 ;;
@@ -155,7 +176,7 @@ if [ "${1:-}" = "--selftest" ]; then
   # prompt (CODEX_CMD=(codex exec "$PROMPT" ...)) would slip through.
   # Validate the array STRUCTURE instead (gemini R3 HIGH): exactly the
   # canonical 10 tokens (codex exec --ephemeral -c model_reasoning_effort=
-  # medium --model X -o <file> -), `codex exec` first, `-o` at [7], stdin
+  # <effort> --model X -o <file> -), `codex exec` first, `-o` at [7], stdin
   # `-` last at [9]. Explicit indices (not negative) keep this bash-3.2
   # safe (macOS default).
   if [ "${#CODEX_CMD[@]}" -ne 10 ] \
