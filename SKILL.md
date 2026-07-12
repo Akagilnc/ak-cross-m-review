@@ -572,12 +572,18 @@ requires by squad shape:
 **Cross-round jurisdiction hand-off (ALL completeness modes — ship-pre
 Step 5 code gate AND doc mode).** For EVERY completeness round the
 orchestrator **persists a `DONE-and-nailed surfaces` list across rounds**
-(each entry carries the surface + its nail's authorization token) and
-**injects it into every round's dispatch packet**; the reviewer treats
-those surfaces as **out-of-jurisdiction** (guarded by test-red + the
-correctness channel) and audits only the remaining in-jurisdiction clauses
-**plus any diff touching a nailed surface** (nail-tamper → **blocking** per
-钉上刻字, `prompts/cmr-completeness.md` §钉子令牌). This state is what the
+(each entry carries the surface + its nail's authorization token + the
+nail's **baseline ref** — the commit/ref captured at nail-authorization
+time — so the reviewer can tell the original nailed change from a post-nail
+modification) and **injects it into every round's dispatch packet**; the
+reviewer treats those surfaces as **out-of-jurisdiction** (guarded by
+test-red + the correctness channel). Because every round full-re-reviews
+the **cumulative** diff, the original nailed change legitimately stays in
+that diff and is **NOT** re-flagged; the reviewer audits only the remaining
+in-jurisdiction clauses **plus any diff that modifies a nailed surface
+beyond its baseline ref** (only that post-nail change is a
+nail-tamper → **blocking** per 钉上刻字,
+`prompts/cmr-completeness.md` §钉子令牌). This state is what the
 jurisdiction hand-off needs and is not doc-mode-scoped.
 
 > **Doc mode is the explicit exception to all-legs-concur.** In

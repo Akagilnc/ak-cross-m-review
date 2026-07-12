@@ -173,12 +173,72 @@ def test_done_and_nailed_list_injected_into_packet_positive():
         "a listed nailed surface is out-of-jurisdiction; the reviewer does "
         "not re-audit it"
     )
-    # a diff touching a nailed surface is a nail-tamper → blocking, NOT a
-    # fresh completeness re-litigation
-    assert "any diff that touches a nailed surface" in sec
+    # 0.3.18.5 codex r5 P1 (the 3-way interaction bug): a diff that modifies
+    # a nailed surface *beyond its nail-authorization baseline* is a
+    # nail-tamper → blocking — NOT any diff that merely touches the surface.
+    # The cumulative-diff full-re-review means the original authorized-and-
+    # nailed change ALWAYS still appears; keying tamper to "any touch" would
+    # mis-flag it every confirmation round, so the two-round convergence
+    # could never complete.
+    assert "beyond the nail-authorization baseline" in sec, (
+        "nail-tamper must be scoped to change BEYOND the nail baseline, not "
+        "any touch on the nailed surface"
+    )
+    assert (
+        "relative to the state at which its nail was authorized" in sec
+    ), "the tamper test is keyed to change relative to the nail's authorized state"
     assert "nail-tamper → blocking" in sec, (
-        "a touch on a nailed surface is a nail-tamper (blocking), not a "
-        "re-opened completeness audit"
+        "a post-nail modification of a nailed surface is a nail-tamper "
+        "(blocking), not a re-opened completeness audit"
+    )
+
+
+def test_nail_tamper_scoped_to_baseline_not_any_touch():
+    """0.3.18.5 codex r5 P1 — the 3-way interaction bug fix.
+
+    nail-tamper × cumulative-diff full-re-review × two-round convergence
+    collide: SKILL.md re-reviews the CUMULATIVE diff every round, so an
+    already-DONE-and-nailed surface's *original authorized* change is always
+    present in later/confirmation rounds. The old "any diff touching a
+    nailed surface → tamper" mis-flagged that authorized change → the
+    confirmation round could never come back clean → the two-round
+    convergence could never complete. Fix: tamper is scoped to change
+    BEYOND the nail-authorization baseline; the original nailed change is
+    explicitly NOT re-flagged.
+    """
+    sec = _nail_section()
+    # negative: the mis-flagging "any touch" wording must be GONE from both
+    # the completeness lens and SKILL.md Step 5
+    assert "any diff that touches a nailed surface" not in sec, (
+        "the 'any touch = tamper' wording mis-flags the original authorized "
+        "nailed change every cumulative-diff round — it must be gone"
+    )
+    step5 = _norm(SKILL)[
+        _norm(SKILL).index("## Step 5 — termination signals") : _norm(SKILL).index(
+            "## Step 6"
+        )
+    ]
+    assert "any diff touching a nailed surface" not in step5, (
+        "SKILL.md Step 5 must not key tamper to any touch either"
+    )
+    # positive: the original nailed change legitimately remains and is NOT
+    # re-flagged (the crux of the convergence fix)
+    assert "**NOT** tamper" in sec and "do **not** re-flag it" in sec, (
+        "the original authorized-and-nailed change in the cumulative diff "
+        "must be explicitly declared NOT tamper / not re-flagged"
+    )
+    assert "unchanged since its nail" in sec, (
+        "a nailed surface unchanged since its nail = out-of-jurisdiction, "
+        "skip — the other side of the baseline scoping"
+    )
+    # the DONE-and-nailed entry now carries a BASELINE REF (both files) so
+    # 'changed since the nail' is checkable
+    assert "its **baseline ref**" in sec, (
+        "the completeness-lens DONE-and-nailed entry must carry a baseline ref"
+    )
+    assert "**baseline ref**" in step5, (
+        "SKILL.md Step 5 DONE-and-nailed entry must carry the nail's "
+        "baseline ref so tamper is checkable"
     )
 
 

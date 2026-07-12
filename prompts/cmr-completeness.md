@@ -148,15 +148,26 @@ it still holds*. The boundary is temporal, and the token is the test.
 This hand-off needs cross-round state, so the **orchestrator** carries it:
 each round's dispatch packet includes a **`DONE-and-nailed surfaces`**
 list — surfaces judged DONE-with-a-nail in prior rounds, each with the
-nail's **authorization token** (SKILL.md §Step 5 records that the
+nail's **authorization token** and its **baseline ref** (the commit/tree
+ref — or the nail test's state — captured at nail-authorization time), so
+"changed since the nail" is checkable (SKILL.md §Step 5 records that the
 orchestrator persists this list across **every** completeness round —
 ship-pre code gate AND doc mode — and injects it).
 Treat every surface on that list as **out of your jurisdiction**: do NOT
 re-audit it — its guard is test-red at the write-point plus the
-correctness channel. You audit only the remaining in-jurisdiction clauses
-**plus any diff that touches a nailed surface** — a touch on a nailed
-surface is a **nail-tamper → blocking** (per 钉上刻字 below), not a fresh
-completeness re-litigation.
+correctness channel. Note the trap: SKILL.md makes every round
+full-re-review the **cumulative** diff (vs main), so the surface's
+**original authorized-and-nailed change legitimately still appears** in
+that diff — its authorized change is part of the PR. That original change
+is **NOT** tamper; do **not** re-flag it. Nail-tamper is scoped to change
+**beyond the nail-authorization baseline**: you audit the remaining
+in-jurisdiction clauses **plus any diff that modifies a nailed surface
+*relative to the state at which its nail was authorized*** (a NEW change
+layered on top of the nailed baseline — check the diff against the entry's
+**baseline ref**). Only that post-nail modification is a
+**nail-tamper → blocking** (per 钉上刻字 below), not a fresh completeness
+re-litigation. A nailed surface that appears in the cumulative diff
+**unchanged since its nail** is out-of-jurisdiction — skip it.
 
 **钉上刻字 (engraving — the paired convention).** A contract-nail test's
 name / first-line comment carries an **authorization token** (e.g.

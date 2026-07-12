@@ -4,6 +4,34 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.5 — 2026-07-12
+
+- **[P1] Nail-tamper × cumulative-diff full-re-review × two-round
+  convergence — a 3-way interaction bug** (`prompts/cmr-completeness.md`,
+  `SKILL.md` Step 5; codex round-5 P1). The 钉子令牌 rule said "any diff
+  touching a nailed surface → nail-tamper → blocking", but SKILL.md makes
+  every round full-re-review the **cumulative** diff (vs main). A surface
+  judged DONE-and-nailed in an early round STILL appears in the cumulative
+  diff of later/confirmation rounds — its authorized change is part of the
+  PR. "Any diff touching a nailed surface = tamper" therefore mis-flagged
+  that already-authorized-and-nailed change as tampering → the confirmation
+  round always yielded a blocking finding → the new two-round convergence
+  could **never** complete. Fix: nail-tamper is scoped to change **beyond
+  the nail-authorization baseline** — a NEW change layered on top of the
+  nailed baseline, checked against a **baseline ref** the DONE-and-nailed
+  entry now carries (the commit/tree ref, or the nail test's state, at
+  nail-authorization time). The original nailed change remaining unchanged
+  in the cumulative diff is out-of-jurisdiction (skip), explicitly NOT
+  re-flagged; only a post-nail modification is nail-tamper → blocking.
+  Updated BOTH the completeness-lens 钉子令牌 entry+rule and SKILL.md Step 5's
+  orchestrator-persistence note (each `DONE-and-nailed surfaces` entry now
+  carries the nail's baseline ref alongside its authorization token). No
+  golden hash changed — the 钉子令牌 section is before the doc-mode addendum
+  hash, and the Step 5 edit is outside the doc-mode ②–⑤ hash range. Tests:
+  the "any touch" pin replaced with baseline-scoped positive pins + a
+  negative pin that the mis-flagging wording is gone + baseline-ref entry
+  pins on both files.
+
 ## 0.3.18.4 — 2026-07-12
 
 - **[P1] DONE-and-nailed jurisdiction hand-off was placed doc-mode-only**
