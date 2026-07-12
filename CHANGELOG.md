@@ -4,6 +4,43 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.20 — 2026-07-12
+
+- **Two correctness fixes in `prompts/cmr-fixer.md` (ship-pre correctness
+  gate, PR #32 Step 6, round 2).**
+  - **Finding 1 (P1/high, codex) — the Defer-protocol terminal rule now
+    recognizes a FALSE adjudication as a valid resolution.** The First-duty
+    § establishes THREE per-finding actions (REAL → resolve, FALSE → reject
+    with evidence in `adjudications`, incidental → separate patch), but the
+    0.3.18.19 terminal rule enumerated only the two REAL-outcome branches
+    (blocking → fixed-or-routed; non-blocking → fixed-or-deferred). A
+    finding correctly adjudicated FALSE is neither fixed, routed, nor
+    deferred, so under the literal "reaches none of these = violation"
+    clause it would trip the violation flag — the same class of gap
+    0.3.18.19 closed, for a third outcome category. Reworded so a FALSE
+    adjudication (evidence in `adjudications`) is itself a complete valid
+    resolution at ANY severity, resolved BEFORE the tier branch; only a
+    finding adjudicated REAL proceeds to the blocking/non-blocking branch,
+    and the silent-drop violation set is scoped to REAL findings.
+  - **Finding 2 (P2/medium, codex) — the `deferred[]` schema severity is
+    now a pipe-delimited enum.** The strict JSON `deferred[]` example
+    hardcoded `"severity": "low"` (a single literal), but the defer-protocol
+    prose allows a doc-mode `clarity` deferral and the sibling severity
+    fields (incidental_fixes, reported_defects) use a pipe-delimited enum
+    showing the valid set. Changed to `"severity": "low|clarity"` — the
+    actual legal set for this field, consistent with the other enum fields.
+- Regression pins in `tests/test_defer_severity.py` (positive + negative,
+  repo phrase-pin style) for both: the terminal rule recognizes a FALSE
+  adjudication as a valid resolution at any severity, resolved before the
+  tier branch; `deferred[].severity` is the `low|clarity` enum, not a
+  single `low` literal.
+- Same-file sweep for the two bug classes (missing-category enumeration /
+  under-built schema enum) across First-duty, Scope rules, Defer protocol,
+  Concept sweep, and the full JSON schema found no further instances: the
+  other severity enums (incidental_fixes, reported_defects) are already the
+  full 5-value set, `verdict` is `REAL|FALSE`, `fixer_mode` is `doc|code`,
+  and the First-duty three-action enumeration is complete.
+
 ## 0.3.18.19 — 2026-07-12
 
 - **Two correctness fixes in `prompts/cmr-fixer.md` (ship-pre correctness

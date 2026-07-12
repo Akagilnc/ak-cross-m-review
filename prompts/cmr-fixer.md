@@ -140,15 +140,21 @@ The orchestrator writes these into the PR description under a
 `- [ ] [low] <summary> — <rationale> — <expected timing>`
 
 Every finding must reach one of these terminal outcomes, scoped by tier.
-A **blocking** finding (P0/P1/P2; doc mode also P3) must be **fixed** OR
-**validly routed** — via `fixes_skipped` to the main session's
-`/diagnosing-bugs`, per the MUST-fix bullet's routing clause; that route
-**is a resolution, not a protocol violation** (a blocking finding is never
-deferred). A **non-blocking** (`low`/`clarity`) finding must be **fixed**
-OR **deferred-with-all-three-parts** per this section. Only a finding that
-reaches *none* of these — a non-blocking finding silently dropped (no fix,
-no structured deferral), or a blocking finding silently dropped (no fix, no
-route) — is a protocol violation.
+**A finding you adjudicate FALSE** (First-duty §, with the refuting
+evidence recorded in `adjudications`) is **itself a complete, valid
+resolution** — at ANY severity, since a finding can be judged FALSE
+whether it was labelled blocking or non-blocking — needing no fix, no
+route, and no deferral. Only a finding adjudicated **REAL** proceeds to
+the tier-scoped branch that follows. A **blocking** finding (P0/P1/P2; doc
+mode also P3) must be **fixed** OR **validly routed** — via `fixes_skipped`
+to the main session's `/diagnosing-bugs`, per the MUST-fix bullet's routing
+clause; that route **is a resolution, not a protocol violation** (a
+blocking finding is never deferred). A **non-blocking** (`low`/`clarity`)
+finding must be **fixed** OR **deferred-with-all-three-parts** per this
+section. Only a finding that reaches *none* of these — a FALSE adjudication
+is not among the drops — is a protocol violation: a REAL non-blocking
+finding silently dropped (no fix, no structured deferral), or a REAL
+blocking finding silently dropped (no fix, no route).
 
 ---
 
@@ -228,7 +234,7 @@ Each finding may carry `related_locations`. When fixing a finding:
   "deferred": [
     {
       "merged_id": "M5",
-      "severity": "low",
+      "severity": "low|clarity",
       "summary": "short description of the finding",
       "rationale": "specific why-not-now (concrete, not generic)",
       "expected_timing": "follow-up PR / next slice / issue # / won't-fix:reason"

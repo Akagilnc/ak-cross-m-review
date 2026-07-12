@@ -376,3 +376,113 @@ def test_fixer_should_fix_bullet_drops_low_only_wording_negative():
         "the old 'If fixing the lows' drift clause must be gone — it "
         "excluded clarity from the fix-by-default sweep"
     )
+
+
+# --- cmr-fixer.md: the Defer-protocol terminal rule recognizes a FALSE
+# --- adjudication as a valid resolution, at ANY severity, BEFORE the
+# --- blocking/non-blocking branch (0.3.18.20) ---
+#
+# 0.3.18.19 reworded the terminal rule to enumerate outcomes per tier
+# (blocking → fixed-or-routed; non-blocking → fixed-or-deferred). But the
+# First-duty § establishes THREE per-finding actions: REAL → resolve
+# (fix/route), FALSE → reject with evidence in `adjudications`, incidental
+# → separate patch. The reworded terminal rule enumerated only the two
+# REAL-outcome branches, so a finding correctly adjudicated FALSE — neither
+# fixed, nor routed, nor deferred — literally "reaches none of these" and
+# would trip the violation flag. A finding can be judged FALSE at ANY
+# severity, so the FALSE resolution must sit BEFORE (and independent of)
+# the blocking/non-blocking branch: only REAL findings proceed to that
+# branch.
+#
+# Trace (post-fix) — a supplied medium/P2 (blocking-labelled) finding the
+# fixer reads against source and adjudicates FALSE, recording refuting
+# evidence in `adjudications`. Walk the terminal rule: a FALSE adjudication
+# is "itself a complete, valid resolution — at ANY severity", needs no
+# fix/route/deferral, and "is not among the drops" → explicitly NOT a
+# violation, even though it was labelled blocking (so never fixed, never
+# routed) and blocking findings are never deferred. Gap closed.
+
+
+def test_fixer_terminal_rule_false_adjudication_is_valid_resolution():
+    txt = _norm(FIXER)
+    # positive: a FALSE adjudication is a complete valid resolution at ANY
+    # severity, resolved BEFORE the tier branch (only REAL proceeds)
+    assert (
+        "**A finding you adjudicate FALSE** (First-duty §, with the "
+        "refuting evidence recorded in `adjudications`) is **itself a "
+        "complete, valid resolution**"
+    ) in txt, (
+        "the terminal rule must recognize a FALSE-adjudicated finding as a "
+        "complete valid resolution, not a silent drop"
+    )
+    assert (
+        "at ANY severity, since a finding can be judged FALSE whether it "
+        "was labelled blocking or non-blocking"
+    ) in txt, (
+        "FALSE must apply at ANY severity — a finding can be judged FALSE "
+        "whether blocking or non-blocking"
+    )
+    assert (
+        "Only a finding adjudicated **REAL** proceeds to the tier-scoped "
+        "branch that follows"
+    ) in txt, (
+        "only REAL findings may reach the blocking/non-blocking terminal "
+        "branch — FALSE resolves before it"
+    )
+    # the violation clause now explicitly exempts a FALSE adjudication and
+    # scopes the drops to REAL findings
+    assert "a FALSE adjudication is not among the drops" in txt, (
+        "the violation clause must explicitly exclude a FALSE adjudication "
+        "from the silent-drop set"
+    )
+    assert (
+        "a REAL non-blocking finding silently dropped" in txt
+        and "a REAL blocking finding silently dropped" in txt
+    ), (
+        "the silent-drop set must be scoped to REAL findings, since a FALSE "
+        "verdict is a resolution"
+    )
+
+
+def test_fixer_terminal_rule_false_not_a_violation_negative():
+    txt = _norm(FIXER)
+    # negative: the pre-fix drop set was severity/tier only, with no REAL
+    # qualifier — it would have swept a FALSE-adjudicated finding into the
+    # violation. That un-qualified phrasing must be gone.
+    assert (
+        "a non-blocking finding silently dropped (no fix, no structured "
+        "deferral), or a blocking finding silently dropped (no fix, no "
+        "route)"
+    ) not in txt, (
+        "the old drop set (no REAL qualifier) must be gone — it would have "
+        "flagged a validly-adjudicated FALSE finding as a violation"
+    )
+
+
+# --- cmr-fixer.md: the `deferred[]` schema severity is a pipe-delimited
+# --- enum representing the full legal set (low|clarity), matching the
+# --- other severity fields' syntax and the doc-mode clarity deferral the
+# --- prose allows (0.3.18.20) ---
+#
+# The strict JSON `deferred[]` example hardcoded `"severity": "low"` — a
+# single literal, not an enum. But the defer-protocol prose (part 1)
+# explicitly allows a doc-mode `clarity` deferral ("`low`/`clarity`
+# (doc mode: `clarity` only)"), and the sibling severity fields
+# (adjudications verdict, incidental_fixes, reported_defects) all use a
+# pipe-delimited enum showing the valid set. The single `"low"` broke that
+# convention and could not represent a legal doc-mode clarity deferral.
+
+
+def test_fixer_deferred_severity_enum_includes_clarity():
+    full = _norm(FIXER)
+    # positive: the deferred[] severity is the pipe-delimited legal set
+    assert '"severity": "low|clarity"' in full, (
+        "deferred[].severity must be a pipe-delimited enum (low|clarity), "
+        "matching the prose's doc-mode clarity deferral and the other "
+        "severity fields' enum syntax"
+    )
+    # negative: the old single-literal `"low"` must be gone
+    assert '"severity": "low",' not in full, (
+        "the old single-literal deferred[].severity `\"low\"` must be gone — "
+        "it could not represent a legal doc-mode `clarity` deferral"
+    )
