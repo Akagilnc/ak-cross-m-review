@@ -155,21 +155,34 @@ prevents nail-authorization.) A **single-reviewer** completeness dispatch
 (e.g. per-slice, only one leg) is no special case: the round-wide ledger
 trivially holds just that leg's findings, so the rule degrades gracefully.
 
-Once a surface is nailed this way, that surface
-**permanently leaves completeness's jurisdiction**: later rounds do NOT
-re-litigate an already-DONE-and-nailed surface. Its guard from then on is
-the **test red at the write-point** plus the **correctness channel** —
-completeness verifies *whether it was done*; correctness guards *whether
+Nailing a surface this way does **not** take it out of jurisdiction
+immediately. A surface nailed in a **qualifying round** is **not yet
+permanently out of jurisdiction** — the very next **confirmation round**
+still audits it (this is what makes the confirmation round substantive:
+it re-verifies the qualifying round's DONE-and-nail judgments, not just
+newly-touched surfaces). **Only after the confirmation round
+independently confirms DONE-and-nailed** for that surface — the same
+round-wide merged ledger clean for it again — **does it permanently leave
+completeness's jurisdiction for ALL subsequent rounds**: rounds after the
+confirmation round do NOT re-litigate an already-confirmed
+DONE-and-nailed surface. This composes with the round-wide-merged-ledger
+precondition above — nail-eligible this (qualifying) round → still audited
+next (confirmation) round → permanent only after that. Its guard from then
+on is the **test red at the write-point** plus the **correctness channel**
+— completeness verifies *whether it was done*; correctness guards *whether
 it still holds*. The boundary is temporal, and the token is the test.
 
 This hand-off needs cross-round state, so the **orchestrator** carries it:
 each round's dispatch packet includes a **`DONE-and-nailed surfaces`**
-list — surfaces judged DONE-with-a-nail in prior rounds, each with the
+list — surfaces whose DONE-with-a-nail judgment has already **survived a
+confirmation round** (permanently nailed) in prior rounds, each with the
 nail's **authorization token** and its **baseline ref** (the commit/tree
 ref — or the nail test's state — captured at nail-authorization time), so
 "changed since the nail" is checkable (SKILL.md §Step 5 records that the
 orchestrator persists this list across **every** completeness round —
-ship-pre code gate AND doc mode — and injects it).
+ship-pre code gate AND doc mode — and injects it). A surface nailed in a
+qualifying round but **not yet confirmed** is NOT on this list — it
+remains in-jurisdiction so the confirmation round can re-audit it.
 Treat every surface on that list as **out of your jurisdiction**: do NOT
 re-audit it — its guard is test-red at the write-point plus the
 correctness channel. Note the trap: SKILL.md makes every round

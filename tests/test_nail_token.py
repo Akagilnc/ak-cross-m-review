@@ -76,11 +76,22 @@ def test_nail_token_done_precondition_positive():
 
 def test_nail_token_jurisdiction_handoff_positive():
     sec = _nail_section()
-    assert "permanently leaves completeness's jurisdiction" in sec, (
-        "a DONE-and-nailed surface must hand off out of the completeness "
-        "lens, or later rounds re-verify closed surfaces forever"
+    # 0.3.18.9: a nail permanently leaves jurisdiction only for ALL
+    # SUBSEQUENT rounds — i.e. AFTER the confirmation round confirms it —
+    # not immediately on the qualifying round.
+    assert (
+        "permanently leave\ncompleteness's jurisdiction for ALL subsequent rounds"
+        in COMPLETENESS.read_text(encoding="utf-8")
+        or "permanently leave completeness's jurisdiction for ALL subsequent rounds"
+        in sec
+    ), (
+        "a DONE-and-nailed surface hands off out of the completeness lens "
+        "for all SUBSEQUENT rounds — but only after the confirmation round"
     )
-    assert "later rounds do NOT re-litigate an already-DONE-and-nailed surface" in sec
+    assert (
+        "rounds after the confirmation round do NOT re-litigate an "
+        "already-confirmed DONE-and-nailed surface" in sec
+    )
     assert "**test red at the write-point**" in sec, (
         "the handed-off surface's guard is the red test at the write point"
     )
@@ -90,6 +101,43 @@ def test_nail_token_jurisdiction_handoff_positive():
     assert "The boundary is temporal, and the token is the test." in sec, (
         "the completeness/correctness split is temporal and the token is "
         "the test — the load-bearing rationale sentence"
+    )
+
+
+def test_nail_token_confirmation_round_reaudits_qualifying_nail():
+    """0.3.18.9 finding #1: a surface nailed in the QUALIFYING round is
+    still audited by the CONFIRMATION round — nailing takes permanent
+    effect only after it survives the confirmation round, so the
+    confirmation round has something substantive to re-verify."""
+    sec = _nail_section()
+    # positive: the confirmation round re-audits the qualifying-round nail
+    assert "the very next **confirmation round**\nstill audits it" in (
+        COMPLETENESS.read_text(encoding="utf-8")
+    ) or "the very next **confirmation round** still audits it" in sec, (
+        "a qualifying-round nail must still be audited by the next "
+        "confirmation round — that is what makes it substantive"
+    )
+    # positive: permanent only AFTER the confirmation round confirms
+    assert "Only after the confirmation round\nindependently confirms DONE-and-nailed" in (
+        COMPLETENESS.read_text(encoding="utf-8")
+    ) or "Only after the confirmation round independently confirms DONE-and-nailed" in sec, (
+        "permanent jurisdiction exit is gated on the confirmation round "
+        "independently confirming DONE-and-nailed"
+    )
+    # positive: a not-yet-confirmed qualifying nail is NOT on the
+    # out-of-jurisdiction list, so it stays auditable
+    assert "not yet confirmed" in sec and "is NOT on this list" in sec, (
+        "a qualifying-round nail not yet confirmed must not be on the "
+        "DONE-and-nailed (out-of-jurisdiction) list yet"
+    )
+    # negative: the old immediate-on-qualifying wording must be gone
+    assert "permanently leaves completeness's jurisdiction: later rounds" not in sec, (
+        "the old wording that a nail permanently leaves jurisdiction "
+        "immediately (before the confirmation round) must be removed"
+    )
+    assert "later rounds do NOT re-litigate an already-DONE-and-nailed surface" not in sec, (
+        "the old 'later rounds' (immediate) phrasing must be replaced by "
+        "'rounds after the confirmation round'"
     )
 
 

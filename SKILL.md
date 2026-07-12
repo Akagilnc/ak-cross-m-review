@@ -601,7 +601,10 @@ jurisdiction hand-off needs and is not doc-mode-scoped.
 > require all-legs-concur**: a doc-mode round is clear on **majority of
 > legs judge `complete` AND the ledger — aggregating ALL legs' findings,
 > including any leg that dissented from the majority-complete vote — shows
-> zero blocking (P0/P1/P2/P3) original-defect**. Because the ledger clause
+> zero blocking (P0/P1/P2/P3) findings of any classification
+> (original-defect / fix-fix / invention all count toward blocking; the
+> split is the bloat-line/ledger-audit trigger only, never the clear
+> gate)**. Because the ledger clause
 > spans **every** leg, a single dissenting leg's blocking finding keeps the
 > ledger non-zero → the round is **NOT clear**, even under a majority-complete
 > vote; the dissent cannot be swallowed. Both forms still need the two
@@ -885,8 +888,12 @@ review can only ever make the text longer.
 - **(c) Early stop via a FULL confirmation round (no #14 exception).**
   A round where the **majority of legs judge `complete`** AND the ledger —
   **aggregating ALL legs' findings, including any leg dissenting from the
-  majority-complete vote** — shows **zero blocking (P0/P1/P2/P3)
-  original-defect findings** (only P4 exempt; P4 clarity
+  majority-complete vote** — shows **zero blocking (P0/P1/P2/P3) findings
+  regardless of classification** (any classification — original-defect,
+  fix-fix, or invention all count toward blocking; the
+  original-defect/fix-fix/invention split is for ②(b)'s
+  bloat-line/ledger-audit trigger only, never for filtering the
+  clear/convergence gate) (only P4 exempt; P4 clarity
   reported-but-Deferred, doesn't block the confirmation round) → the next
   round is a **confirmation round that is still a FULL re-review**
   (anti-pattern #14 stays fully intact — the spot-check variant was
@@ -894,11 +901,16 @@ review can only ever make the text longer.
   wasted ones it prevents, and it keeps the fresh-full-read guarantee).
   Confirmation round again majority-complete **AND the ledger (again
   spanning ALL legs, dissenters included) again showing zero blocking
-  (P0/P1/P2/P3) original-defect findings** (only P4 exempt; P4 clarity
+  (P0/P1/P2/P3) findings regardless of classification** (any
+  classification — original-defect, fix-fix, or invention all count toward
+  blocking; the split is ②(b)'s bloat-line/ledger-audit trigger only, never
+  the clear/convergence gate) (only P4 exempt; P4 clarity
   reported-but-Deferred, doesn't block the confirmation round) →
-  **converged, stop**. Because the zero-blocking check spans every leg, a
-  single dissenting leg's blocking original-defect finding keeps the ledger
-  non-zero → NOT converged **regardless of the majority-complete vote**:
+  **converged, stop**. Because the zero-blocking check spans every leg AND
+  counts blocking findings of every classification, a single dissenting
+  leg's blocking finding (original-defect, fix-fix, or invention — all
+  count) keeps the ledger non-zero → NOT converged **regardless of the
+  majority-complete vote**:
   fix it and the loop continues (the early-stop arm must re-qualify from
   scratch — bare majority-complete never converges on its own, or the
   dissenting leg's real finding gets swallowed).

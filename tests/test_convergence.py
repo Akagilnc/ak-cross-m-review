@@ -221,11 +221,16 @@ def test_skill_step5_doc_mode_exception_negative():
         "②(c)'s confirmation-round ledger must also span all legs"
     )
     assert (
-        "a\n  single dissenting leg's blocking original-defect finding keeps "
-        "the ledger" in SKILL.read_text(encoding="utf-8")
-        or "a single dissenting leg's blocking original-defect finding keeps "
-        "the ledger" in txt
+        "a single dissenting\n  leg's blocking finding (original-defect, fix-fix, or invention — all\n  count) keeps the ledger"
+        in SKILL.read_text(encoding="utf-8")
+        or "a single dissenting leg's blocking finding (original-defect, "
+        "fix-fix, or invention — all count) keeps the ledger" in txt
     ), "②(c) must state the dissent-blocks-convergence safety property"
+    # 0.3.18.9: the dissent property must NOT be filtered to original-defect
+    assert "single dissenting leg's blocking original-defect finding" not in txt, (
+        "②(c)'s dissent-blocks-convergence property must count blocking "
+        "findings of any classification, not only original-defect"
+    )
 
 
 # --- SKILL Step 7: loop uses two-round + severity form

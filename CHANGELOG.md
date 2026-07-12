@@ -4,6 +4,56 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.9 — 2026-07-12
+
+- **[P1] Nailed surfaces skipped the confirmation round entirely**
+  (`prompts/cmr-completeness.md` §钉子令牌, ~L158-172; codex round-9). As
+  worded, a surface nailed in the qualifying round **permanently left
+  completeness's jurisdiction immediately** — so the confirmation round
+  (which is supposed to substantively re-verify convergence) could have
+  nothing left to review if everything got nailed in round 1, and would
+  trivially pass as the second "clear" round, defeating the two-round
+  guarantee. Fix: nailing takes effect for jurisdiction purposes **only
+  after it survives the confirmation round**. A surface nailed in a
+  qualifying round is **not yet permanently out of jurisdiction** — the
+  very next confirmation round still audits it (this is what makes the
+  confirmation round substantive: it re-verifies the qualifying round's
+  DONE-and-nail judgments). Only after the confirmation round
+  independently confirms DONE-and-nailed does the surface permanently
+  leave jurisdiction for ALL subsequent rounds. A qualifying-round nail
+  not yet confirmed is **NOT on the `DONE-and-nailed surfaces`
+  (out-of-jurisdiction) list**, so it stays auditable. Composes with the
+  round-wide-merged-ledger precondition (0.3.18.8): nail-eligible this
+  (qualifying) round → still audited next (confirmation) round → permanent
+  only after that.
+- **[P1] Doc-mode clear check filtered blocking findings by
+  classification** (`SKILL.md` doc-mode ②(c), ~L886-904, and the Step-5
+  mode-general note ~L601-606; codex round-9). The zero-blocking-ledger
+  check (used for both the majority-complete-qualifying and the
+  confirmation-round-clear gates) counted only blocking findings
+  classified **original-defect** in the ②(a) ledger. A dissenting leg's
+  blocking finding classified **fix-fix** or **invention** was silently
+  excluded from the clear check — so a round with a real, unaddressed
+  blocking finding could pass as "clear" if it landed in the wrong ledger
+  category. Fix: the clear/convergence gate now counts **ALL blocking
+  findings from any leg, regardless of classification** (original-defect,
+  fix-fix, and invention all count toward blocking). The
+  original-defect/fix-fix/invention split stays exactly as-is for its own
+  purposes — the ②(b) bloat-line audit trigger and drift analysis — but
+  never filters the clear/convergence gate.
+- Golden hash: `SKILL.md`'s ②(c) edit is inside the doc-mode golden-hashed
+  range (`## Doc mode discipline` → `## Anti-patterns`), so the hash was
+  recomputed in this same commit
+  (`616860ab…` → `d4557e19…`). The `prompts/cmr-completeness.md` edit is in
+  §钉子令牌 (before `## Doc mode addendum`), outside the completeness
+  addendum hash — that hash is unchanged. Phrase-pin regressions added in
+  `tests/test_nail_token.py` (confirmation round re-audits a
+  qualifying-round nail; permanent only after confirmation; negative that
+  the immediate-on-qualifying wording is gone), `tests/test_doc_mode.py`
+  and `tests/test_convergence.py` (all blocking findings count regardless
+  of classification; negative that the classification-filtered clear check
+  is gone).
+
 ## 0.3.18.8 — 2026-07-12
 
 - **[P1] Nail authorization ignored a dissenting leg's blocking gap**
