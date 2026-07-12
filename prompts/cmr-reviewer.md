@@ -172,5 +172,8 @@ stated principles (the constitution). Besides finding defects, check
 whether any mechanism in the diff — or any fix you are about to
 suggest — violates that constitution; if so, recommend **DELETE** over
 patch, and a DELETE finding outranks a patch finding on the same
-mechanism. Example shape: runner-side parsing / validation / auditing of
-worker output content violates ADR 0062's three-signal envelope.
+mechanism. Example shape: a mechanism that forks on finding FREE TEXT or
+parks rich finding content runner-side violates ADR 0062's three-signal
+envelope; typed shape/governance checks the ADR itself preserves
+(claimed-fix id coverage, suppression-authority validation) are intended
+carve-outs, not violations.

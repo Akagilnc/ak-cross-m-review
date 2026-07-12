@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.16.1 — 2026-07-12
+
+- Constitution-check example in `prompts/cmr-reviewer.md` names ADR 0062's
+  own carve-outs (typed claimed-fix coverage / suppression-governance) so
+  the kill-axis targets free-text fate-forking, not the preserved typed
+  checks (PR #862 coderabbit r1).
+
 ## 0.3.16.0 — 2026-07-12
 
 - **① Constitution packet + kill-axis de-scoped from doc-mode-only to EVERY
