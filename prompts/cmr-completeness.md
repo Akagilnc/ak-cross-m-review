@@ -148,8 +148,9 @@ it still holds*. The boundary is temporal, and the token is the test.
 This hand-off needs cross-round state, so the **orchestrator** carries it:
 each round's dispatch packet includes a **`DONE-and-nailed surfaces`**
 list — surfaces judged DONE-with-a-nail in prior rounds, each with the
-nail's **authorization token** (SKILL.md §Doc mode discipline ②(a) records
-that the orchestrator persists this list across rounds and injects it).
+nail's **authorization token** (SKILL.md §Step 5 records that the
+orchestrator persists this list across **every** completeness round —
+ship-pre code gate AND doc mode — and injects it).
 Treat every surface on that list as **out of your jurisdiction**: do NOT
 re-audit it — its guard is test-red at the write-point plus the
 correctness channel. You audit only the remaining in-jurisdiction clauses

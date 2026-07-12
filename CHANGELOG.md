@@ -4,6 +4,27 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.4 — 2026-07-12
+
+- **[P1] DONE-and-nailed jurisdiction hand-off was placed doc-mode-only**
+  (`SKILL.md`, codex round-4 P1 — a placement error from 0.3.18.3). The
+  钉子令牌 hand-off ("later rounds do NOT re-litigate an
+  already-DONE-and-nailed surface") applies to **all** completeness modes,
+  but 0.3.18.3 put the **orchestrator** persistence+injection instruction
+  ("persists a `DONE-and-nailed surfaces` list across rounds and injects it
+  into every round's dispatch packet") *only* inside §Doc mode discipline
+  ②(a). So a plain code/ship-pre completeness multi-round loop never built
+  that state → a fresh reviewer re-audited already-handed-off surfaces, and
+  nail-tamper detection was unenforceable in code mode. Fix: **hoisted** the
+  orchestrator persistence+injection to a **mode-general** location (Step 5
+  termination), stated for **EVERY completeness round — the ship-pre code
+  gate AND doc mode**; removed the doc-mode-scoped copy from ②(a).
+  `prompts/cmr-completeness.md`'s stale ②(a) back-reference re-pointed to
+  §Step 5 and generalized to every completeness mode. Doc-mode golden hash
+  recomputed (the ②(a) removal is inside the hashed range). Tests: the
+  ②(a) pin became a mode-general Step 5 pin with a regression assertion
+  that the instruction is NOT confined to the doc-mode section.
+
 ## 0.3.18.3 — 2026-07-12
 
 - **Four self-contradictions in the recently-landed protocol additions

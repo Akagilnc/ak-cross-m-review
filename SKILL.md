@@ -569,6 +569,17 @@ scratch** (a single clear round again becomes merely qualifying). The
 fractions below describe what **one fully-concurring (clear) round**
 requires by squad shape:
 
+**Cross-round jurisdiction hand-off (ALL completeness modes — ship-pre
+Step 5 code gate AND doc mode).** For EVERY completeness round the
+orchestrator **persists a `DONE-and-nailed surfaces` list across rounds**
+(each entry carries the surface + its nail's authorization token) and
+**injects it into every round's dispatch packet**; the reviewer treats
+those surfaces as **out-of-jurisdiction** (guarded by test-red + the
+correctness channel) and audits only the remaining in-jurisdiction clauses
+**plus any diff touching a nailed surface** (nail-tamper → **blocking** per
+钉上刻字, `prompts/cmr-completeness.md` §钉子令牌). This state is what the
+jurisdiction hand-off needs and is not doc-mode-scoped.
+
 > **Doc mode is the explicit exception to all-legs-concur.** In
 > correctness / code modes a round is clear only when **every** non-degraded
 > leg concurs — no blocking finding from **any** leg. **Doc mode does NOT
@@ -850,13 +861,7 @@ review can only ever make the text longer.
 - **(a) Ledger — the measuring instrument, lands first.** Every round
   intro MUST carry the previous round's fix classification:
   **original-defect / fix-fix / invention** (原始缺陷 / fix修fix / 加戏).
-  Without the ledger none of the signals below is measurable. The
-  orchestrator also **persists a `DONE-and-nailed surfaces` list across
-  rounds** — surfaces judged DONE-with-a-nail in prior rounds, each with
-  the nail's authorization token — and **injects it into every round's
-  dispatch packet**, so a fresh reviewer knows which surfaces have left
-  completeness's jurisdiction (`prompts/cmr-completeness.md` 钉子令牌); it is
-  the cross-round state that hand-off needs.
+  Without the ledger none of the signals below is measurable.
 - **(b) Bloat line = audit trigger, NOT a death line.** Reviewed text
   grows past **1.5×** its round-1 size → audit the ledger. Growth driven
   by original-defect fixes → legitimate: note it in the round report and

@@ -293,7 +293,7 @@ def test_golden_freeze_of_doc_mode_texts():
 
     sec = _doc_mode_section()
     assert hashlib.sha256(sec.encode()).hexdigest() == (
-        "8035e6fb806a6b358c18326b9ebe0a388f5872469b337211c9ef41b432f6245d"
+        "616860abda5c7266d6eb070b8f7e4bcf06d9a302194fca1f50cd986aac15c5d1"
     ), (
         "SKILL.md doc-mode section text changed — if intentional, update "
         "this hash in the same commit (see docstring); if you did not "

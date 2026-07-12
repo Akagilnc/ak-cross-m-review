@@ -182,25 +182,40 @@ def test_done_and_nailed_list_injected_into_packet_positive():
     )
 
 
-def test_orchestrator_persists_done_and_nailed_list_in_skill_ledger():
-    """SKILL.md ②(a) (the ledger convention) must record that the
-    ORCHESTRATOR persists the DONE-and-nailed list across rounds and
-    injects it — that is the cross-round state the hand-off needs."""
+def test_orchestrator_persists_done_and_nailed_list_mode_general():
+    """0.3.18.4 codex r4 P1: the ORCHESTRATOR persistence+injection of the
+    DONE-and-nailed list must live in a MODE-GENERAL completeness location
+    (Step 5 termination), NOT confined to §Doc mode discipline ②(a). The
+    钉子令牌 hand-off applies to EVERY completeness round — the ship-pre
+    code gate AND doc mode — so a plain code/ship-pre multi-round loop must
+    build that state too; scoping it to doc mode left code mode's
+    nail-tamper detection unenforceable."""
     txt = _norm(SKILL)
-    ledger = txt[txt.index("**(a) Ledger") : txt.index("**(b) Bloat line")]
-    assert "persists a `DONE-and-nailed surfaces` list across\n  rounds" in SKILL.read_text(
-        encoding="utf-8"
-    ) or "persists a `DONE-and-nailed surfaces` list across rounds" in ledger, (
-        "②(a) must say the orchestrator PERSISTS the DONE-and-nailed list "
-        "across rounds"
+    # the instruction now lives in Step 5, outside the doc-mode section
+    step5 = txt[txt.index("## Step 5 — termination signals") : txt.index("## Step 6")]
+    assert "persists a `DONE-and-nailed surfaces` list across rounds" in step5, (
+        "Step 5 must say the orchestrator PERSISTS the DONE-and-nailed list "
+        "across rounds — mode-general, not doc-only"
     )
-    assert "injects it into every round's\n  dispatch packet" in SKILL.read_text(
-        encoding="utf-8"
-    ) or "injects it into every round's dispatch packet" in ledger, (
-        "②(a) must say the orchestrator INJECTS the list into each packet"
+    assert "injects it into every round's dispatch packet" in step5, (
+        "Step 5 must say the orchestrator INJECTS the list into each packet"
     )
-    assert "cmr-completeness.md` 钉子令牌" in ledger, (
-        "②(a) must cross-reference the completeness-lens nail token"
+    # explicitly mode-general: names both completeness modes
+    assert "ALL completeness modes" in step5 and "ship-pre" in step5 and "doc mode" in step5, (
+        "the hand-off must be stated for EVERY completeness round — the "
+        "ship-pre code gate AND doc mode — not doc-mode-scoped"
+    )
+    assert "For EVERY completeness round" in step5
+    assert "nail-tamper → **blocking**" in step5, (
+        "Step 5 must carry the nail-tamper → blocking rule so code mode "
+        "enforces it too"
+    )
+    # regression: the instruction must NOT be confined to the doc-mode
+    # discipline section (the r4 P1 placement error)
+    doc = txt[txt.index("## Doc mode discipline") : txt.index("## Anti-patterns")]
+    assert "persists a `DONE-and-nailed surfaces` list across rounds" not in doc, (
+        "the persistence instruction must be hoisted OUT of the doc-mode "
+        "section — leaving it there re-scopes the hand-off to doc mode"
     )
 
 
