@@ -4,6 +4,33 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.13 — 2026-07-12
+
+- **[P2] Step-7 flow line presented deferral as the default action for
+  P3/P4** (`SKILL.md` Step 7 — the loop; codex round-13). The flow arm read
+  `P3/P4 only → reported-but-Deferred (交卷契约); they do NOT block...`. That
+  conflated two orthogonal facts: (a) a P3/P4-only round does not block
+  convergence and does not force another full-review round (TRUE — kept), and
+  (b) the leading `→ reported-but-Deferred` reads as "the ACTION/outcome for
+  P3/P4 is: defer them". (b) contradicts `prompts/cmr-fixer.md`'s
+  SHOULD-fix-by-default rule (non-blocking tier should be FIXED now, then
+  self-check二连; Defer is ONLY for the genuinely out-of-scope / needs-design
+  / high-risk subset). An orchestrator reading only the Step-7 diagram would
+  defer every non-blocking finding by default, banking work that should be
+  fixed immediately. **Fix:** reworded the flow line so CLEAR-status
+  (doesn't block, doesn't force a round — unconditional) is stated as
+  ORTHOGONAL to whether the finding is FIXED; cheap/low-risk P3/P4 should
+  still be fixed now (cross-referencing the fixer's rule), and Deferred is
+  the narrow exception (the 交卷契约 still requires every P3/P4 stay reported
+  either way). Scope-check confirmed the concur-vote frame (`SKILL.md`
+  "those go to Deferred and do **not** cost its concur vote", pinned by
+  `tests/test_convergence.py`) and the completeness-reviewer frame
+  (`prompts/cmr-completeness.md` "does not block means goes to Deferred")
+  are the correct vote/gate-accounting statements — "Deferred" there names
+  the non-blocking bucket, not a fix-vs-defer default — and were left
+  unchanged. Regression pin + negative pin in
+  `tests/test_convergence.py::test_skill_step7_loop_two_round_severity`.
+
 ## 0.3.18.12 — 2026-07-12
 
 - **[P2] Same-file stale phrase contradicts the 0.3.18.11 baseline-refresh

@@ -688,9 +688,15 @@ no blocking finding (round is CLEAR)
     (this one + the confirmation) → STOP (normal convergence).
     A blocking finding in the confirmation round → re-qualify from
     scratch (FIX, then a fresh clear round is needed again).
-P3/P4 only  → reported-but-Deferred (交卷契约); they do NOT block and do
-              NOT by themselves trigger another fix round — a round with
-              only P3/P4 (P4 in doc mode) counts as CLEAR.
+P3/P4 only  → do NOT block, do NOT by themselves trigger another fix
+              round — a round with only P3/P4 (P4 in doc mode) counts as
+              CLEAR regardless. That CLEAR status is ORTHOGONAL to whether
+              they get FIXED: cheap/low-risk P3/P4 should still be FIXED
+              now (fixer's SHOULD-fix-by-default rule, cmr-fixer.md; then
+              self-check二连), NOT banked as backlog debt. Deferred is the
+              narrow exception — the genuinely out-of-scope / needs-design
+              / high-risk subset — and the 交卷契约 requires every P3/P4
+              stay reported either way.
 not converging / drift hit → STOP, architectural/implementation
               rework (Step 6), not "one more round"
 ```

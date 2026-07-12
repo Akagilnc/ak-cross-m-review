@@ -247,8 +247,29 @@ def test_skill_step7_loop_two_round_severity():
     )
     assert "confirmation round (FULL re-review)" in loop
     assert "re-qualify from" in loop
-    # P3/P4 do not trigger a fix round
-    assert "reported-but-Deferred" in loop and "do NOT block" in loop
+    # P3/P4 do not block and do not force a new round — but that CLEAR
+    # status is orthogonal to fixing: cheap ones are still FIXED by default
+    # (codex round-13 P2: the flow line used to read "→ reported-but-Deferred"
+    # as the ACTION, which an orchestrator reads as "defer P3/P4 by default")
+    assert "do NOT block, do NOT by themselves trigger another fix" in loop
+    assert "counts as" in loop and "CLEAR regardless" in loop
+    assert "ORTHOGONAL to whether" in loop
+    assert "should still be FIXED" in loop, (
+        "the loop must say cheap P3/P4 are still fixed now, not deferred"
+    )
+    assert "SHOULD-fix-by-default rule" in loop and "cmr-fixer.md" in loop, (
+        "the loop must cross-reference the fixer's SHOULD-fix-by-default rule"
+    )
+    assert "Deferred is the" in loop and "narrow exception" in loop, (
+        "deferral must be framed as the narrow exception, not the default"
+    )
+    assert "NOT banked as backlog debt" in loop
+    # NEGATIVE: the old action-form "→ reported-but-Deferred" (defer as the
+    # default outcome for a P3/P4-only round) must be gone
+    assert "reported-but-Deferred" not in loop, (
+        "the Step-7 flow must not present deferral as the default action "
+        "for P3/P4 — fixing is the default, Deferred is the exception"
+    )
     # the OLD flat "no P0/P1 → STOP" arm must be gone
     assert "no P0/P1     → STOP" not in loop, (
         "the pre-0.3.18.0 single-round 'no P0/P1 → STOP' arm must be "
