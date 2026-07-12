@@ -580,7 +580,13 @@ nail's **baseline ref** — the commit/ref captured at nail-authorization
 time — so the reviewer can tell the original nailed change from a post-nail
 modification) and **injects it into every round's dispatch packet**; the
 reviewer treats those surfaces as **out-of-jurisdiction** (guarded by
-test-red + the correctness channel). Because every round full-re-reviews
+test-red + the correctness channel). A surface earns a place on this list
+(its nail authorization) **only when the round-wide merged ledger** —
+every leg's findings for that surface aggregated, the same aggregation the
+doc-mode zero-blocking-ledger check uses — **shows zero blocking finding on
+that surface that round**: one leg's DONE judgment does NOT nail a surface
+another leg flagged as a blocking gap the same round (see
+`prompts/cmr-completeness.md` §钉子令牌). Because every round full-re-reviews
 the **cumulative** diff, the original nailed change legitimately stays in
 that diff and is **NOT** re-flagged; the reviewer audits only the remaining
 in-jurisdiction clauses **plus any diff that modifies a nailed surface

@@ -138,7 +138,24 @@ contract test is already in the repo.** A missing nail is itself a
 **suggested nail point** (the assertion + where it lands) so the fixer can
 drive it in. You do not sign DONE against a surface no test pins.
 
-Once you judge a surface DONE **and it has a nail**, that surface
+A surface may be **nailed** — added to the persistent `DONE-and-nailed
+surfaces` list and thereby leave completeness's jurisdiction — only when
+**both** of these hold **this round**: (a) the reviewing leg(s) judge that
+surface **DONE** and it has a nail in the repo, AND (b) the **round-wide
+merged ledger** — aggregating *every* leg's findings for that surface, the
+same aggregation the doc-mode zero-blocking-ledger check uses — shows
+**zero blocking finding on that specific surface** this round. One leg's
+DONE judgment is **necessary but not sufficient**: if another leg reports a
+blocking gap on the *same* surface in the *same* round, the surface is
+**NOT nailed this round** — fix the gap, re-audit next round, and nail it
+only once the merged ledger is clean for it. (This is the same principle
+already applied to majority-complete in the doc-mode ②(c) ledger clause: a
+single dissenting leg's blocking finding must prevent convergence — here it
+prevents nail-authorization.) A **single-reviewer** completeness dispatch
+(e.g. per-slice, only one leg) is no special case: the round-wide ledger
+trivially holds just that leg's findings, so the rule degrades gracefully.
+
+Once a surface is nailed this way, that surface
 **permanently leaves completeness's jurisdiction**: later rounds do NOT
 re-litigate an already-DONE-and-nailed surface. Its guard from then on is
 the **test red at the write-point** plus the **correctness channel** —

@@ -279,6 +279,88 @@ def test_orchestrator_persists_done_and_nailed_list_mode_general():
     )
 
 
+# --- 0.3.18.8 codex r8 P1: nail authorization requires round-wide
+#     merged-ledger agreement. A single leg judging a surface DONE must NOT
+#     nail it when ANOTHER leg reports a blocking gap on the same surface
+#     that round — otherwise the surface leaves jurisdiction (later rounds
+#     skip it) and neither the dissenting leg's gap nor the DONE judgment
+#     ever gets the two-round confirmation. Same principle as doc-mode ②(c):
+#     a single dissenting leg's blocking finding prevents convergence — here
+#     it prevents nail-authorization.
+
+
+def test_nail_authorization_requires_round_wide_merged_ledger_positive():
+    sec = _nail_section()
+    # the authorization precondition is stated as DONE-judgment AND a clean
+    # round-wide merged ledger for that specific surface
+    assert "round-wide\nmerged ledger" in COMPLETENESS.read_text(
+        encoding="utf-8"
+    ) or "round-wide merged ledger" in sec, (
+        "nail authorization must require the ROUND-WIDE MERGED LEDGER, not a "
+        "single leg's DONE judgment"
+    )
+    assert "zero blocking finding on that specific surface" in sec, (
+        "the merged ledger must show zero blocking finding on THAT surface "
+        "before the surface may be nailed"
+    )
+    assert "necessary but not sufficient" in sec, (
+        "one leg's DONE judgment is necessary but not sufficient to nail"
+    )
+    assert "NOT nailed this round" in sec, (
+        "if another leg reports a blocking gap on the same surface the same "
+        "round, the surface is NOT nailed that round"
+    )
+    # same aggregation the doc-mode zero-blocking-ledger check uses
+    assert "the doc-mode zero-blocking-ledger check uses" in sec, (
+        "the merged ledger is the same aggregation as the doc-mode "
+        "zero-blocking-ledger check — cross-reference must be present"
+    )
+    # single-reviewer dispatch degrades gracefully (no special case)
+    assert "single-reviewer" in sec and "degrades gracefully" in sec, (
+        "a single-reviewer completeness dispatch must degrade gracefully — "
+        "the round-wide ledger trivially holds just that one leg's findings"
+    )
+
+
+def test_nail_authorization_requires_round_wide_merged_ledger_negative():
+    sec = _nail_section()
+    # the OLD "single leg DONE = nail unconditionally" wording must be gone:
+    # the section no longer says merely judging a surface DONE (+ nail) hands
+    # it out of jurisdiction with no round-wide-ledger check.
+    assert "Once you judge a surface DONE **and it has a nail**, that surface" not in sec, (
+        "the old 'any one leg's DONE + nail = leaves jurisdiction' wording "
+        "must be replaced by the round-wide-ledger precondition"
+    )
+    low = sec.lower()
+    assert "one leg judging done is enough to nail" not in low
+    assert "a single leg's done judgment nails the surface" not in low
+
+
+def test_skill_step5_nail_authorization_round_wide_ledger():
+    """0.3.18.8 codex r8 P1 — SKILL.md Step 5's mode-general orchestrator
+    note must also gate nail-authorization on the round-wide merged ledger,
+    so the orchestrator does not add a surface to DONE-and-nailed on one
+    leg's DONE when another leg flagged a blocking gap that round."""
+    step5 = _norm(SKILL)[
+        _norm(SKILL).index("## Step 5 — termination signals") : _norm(SKILL).index(
+            "## Step 6"
+        )
+    ]
+    assert "round-wide merged ledger" in step5, (
+        "Step 5 must gate nail-authorization on the round-wide merged ledger"
+    )
+    assert "zero blocking finding on\nthat surface" in SKILL.read_text(
+        encoding="utf-8"
+    ) or "zero blocking finding on that surface" in step5, (
+        "Step 5 must require zero blocking finding on that surface before it "
+        "earns a place on the DONE-and-nailed list"
+    )
+    assert "one leg's DONE judgment does NOT nail a surface" in step5, (
+        "Step 5 must say one leg's DONE does NOT nail a surface another leg "
+        "flagged as a blocking gap the same round"
+    )
+
+
 def test_nail_token_sits_after_submission_contract():
     # the nail token is the SECOND 0.3.17.0 half; it must land after the
     # 交卷契约 paragraph (added by 7bc9e9e) and before the golden-hashed

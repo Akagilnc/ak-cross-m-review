@@ -4,6 +4,37 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.8 — 2026-07-12
+
+- **[P1] Nail authorization ignored a dissenting leg's blocking gap**
+  (`prompts/cmr-completeness.md` §钉子令牌, ~L141-146; codex round-8). As
+  worded, a single reviewer leg judging a surface DONE (with its nail)
+  could add that surface to the persistent `DONE-and-nailed surfaces` list
+  and take it out of completeness jurisdiction — **even when another leg in
+  the same round reported a BLOCKING gap on that same surface**. Once
+  nailed, later rounds skip the surface entirely, so neither the other
+  leg's gap nor the DONE judgment ever gets the two-round confirmation the
+  convergence mechanism requires — a single dissenting leg's finding was
+  silently swallowed. Fix: a surface may be nailed **only when the
+  round-wide MERGED LEDGER** — aggregating every leg's findings for that
+  surface, the same aggregation the doc-mode zero-blocking-ledger check
+  uses — **shows zero blocking finding on that specific surface that
+  round**. One leg's DONE is necessary but not sufficient; if another leg
+  flags a blocking gap on the same surface the same round, the surface is
+  NOT nailed that round (fix, re-audit, nail once the merged ledger is
+  clean for it). Same principle already applied to majority-complete in
+  doc-mode ②(c). A single-reviewer dispatch (per-slice) degrades
+  gracefully — the round-wide ledger trivially holds just that one leg's
+  findings, no special case. `SKILL.md` Step 5's mode-general orchestrator
+  note got the matching precondition so the orchestrator does not add to
+  the list on one leg's DONE. Both edits are outside the doc-mode
+  golden-hashed ranges (`prompts` `## Doc mode addendum` → `## The gate`;
+  `SKILL.md` `## Doc mode discipline` → `## Anti-patterns`); no hash
+  recompute. Phrase-pin regressions added in `tests/test_nail_token.py`
+  (positive: round-wide merged-ledger precondition + graceful
+  single-reviewer degrade + Step-5 mirror; negative: old "single leg DONE +
+  nail = leaves jurisdiction" wording gone).
+
 ## 0.3.18.7 — 2026-07-12
 
 - **[P2] Mode-blind wording in the Step-5 concur definition** (`SKILL.md`
