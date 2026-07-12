@@ -4,6 +4,60 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.21 — 2026-07-13
+
+- **Root-cause consolidation of the "terminal outcomes" concept in
+  `prompts/cmr-fixer.md` (ship-pre correctness gate, PR #32 Step 6, round 3
+  — coverage-drift fix, not another point patch).** Versions 0.3.18.16
+  through .20 each patched ONE site that stated an incomplete version of
+  "what are the valid terminal outcomes for a supplied finding" (the
+  First-duty overview, the Scope-rules routing tail, the Defer-protocol
+  closing paragraph, the JSON `claim_quote` instruction). Round 3 found
+  the SAME rule-class recurring on two more sites, so per the wiki Step-6
+  "coverage drift ≠ architectural drift" doctrine (same rule-class on new
+  sites each round → centralize the rule) this consolidates the concept
+  into ONE authoritative **`## Terminal outcomes`** section instead of
+  patching the Nth sentence.
+  - **New `## Terminal outcomes` section** exhaustively enumerates every
+    valid exit for a supplied finding, resolving all
+    (FALSE/REAL) × (blocking/non-blocking) × (locatable/not) combinations
+    to exactly one path: **FALSE (any severity)** → `adjudications` entry,
+    resolved before any severity branch; **REAL, blocking** (P0/P1/P2; doc
+    mode also P3) → fixed OR routed via `fixes_skipped`, never deferred,
+    with the three named routed reasons; **REAL, non-blocking**
+    (`low`/`clarity`; doc mode `clarity` only) → fixed OR
+    deferred-with-all-three-parts, never routed. The violation clause is a
+    REAL finding reaching NONE of these (a silent drop).
+  - **Round-3 Finding 1 (non-blocking/clarity, Claude + codex) — the
+    First-duty overview and intro summary line were not severity-qualified**,
+    reading as if ALL non-trivial REAL findings route regardless of
+    severity. Both now point at Terminal outcomes rather than asserting the
+    fix-vs-route split inline; only blocking findings route, non-blocking
+    findings fix-or-defer.
+  - **Round-3 Finding 2 (medium/blocking, codex; also flagged by Claude) —
+    the `claim_quote`-not-found instruction created an unblessed 4th
+    outcome** (bare `fixes_skipped` reason, outside the terminal-outcome
+    framework, tripping the terminal rule's own violation clause). Folded
+    in as a NAMED blocking-route reason
+    (`claim_quote not found → main-session /diagnosing-bugs (needs
+    verification)`); on a non-blocking finding an unlocatable claim now
+    routes to a FALSE adjudication, not a silent park.
+  - **Every other site is now a pointer, not an independent restatement**:
+    the Scope rules keep the classification (WHICH findings are fixable:
+    medium is blocking, doc-mode low, MUST-NOT-fix conditions, the
+    anti-down-rank ban) and point at Terminal outcomes for the route; the
+    Defer protocol keeps the three-part deferral mechanics and points at
+    the section; First-duty, the header, the intro, and the JSON
+    `claim_quote` bullet all cross-reference it.
+- `tests/test_defer_severity.py` consolidated to match: a `_section()`
+  helper asserts the enumeration lives IN the single `## Terminal outcomes`
+  section and is absent (as an independent restatement) from Scope rules
+  and Defer protocol; the six input traces each pin to their one exit;
+  negative pins confirm the old scattered restatements (bare
+  `claim_quote not found` reason, tier-blind "neither fixed nor deferred",
+  un-REAL-qualified drop set, low-only SHOULD-fix body, intro summary line)
+  are gone.
+
 ## 0.3.18.20 — 2026-07-12
 
 - **Two correctness fixes in `prompts/cmr-fixer.md` (ship-pre correctness

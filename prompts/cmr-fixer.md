@@ -10,16 +10,18 @@
 > over-claims that cause breakage. Default is **non-trivial**: anything
 > touching shell logic, a flag, a condition, control flow, a regex, a
 > path, a number, or whose effect you cannot prove inert is NOT yours —
-> defer it to the main session, which runs `/diagnosing-bugs` as the first tool
-> call (an iterative, possibly human-in-the-loop investigation that a
-> single subagent diff cannot do; see wiki §修复 + SKILL.md Step 7). Do
-> not guess.
+> **route it** to the main session, which runs `/diagnosing-bugs` as the
+> first tool call (an iterative, possibly human-in-the-loop investigation
+> that a single subagent diff cannot do; see wiki §修复 + SKILL.md Step 7,
+> and **Terminal outcomes** below for where a finding you cannot fix here
+> goes). Do not guess.
 
 Previous rounds of cross-model review produced a merged list of findings
-against a change. Your job now is to produce a **unified diff** that
-resolves the must-fix mechanical findings, and to **explicitly defer**
-the rest (non-trivial → main session `/diagnosing-bugs`; lower-priority → defer
-protocol). This is a surgical-edit task, not a review task.
+against a change. Your job now is to adjudicate each finding and drive it
+to exactly one of the valid exits enumerated in **Terminal outcomes**
+below — produce a **unified diff** that resolves the findings you fix
+here, and record every finding you do not fix (routed or deferred) in its
+structured field. This is a surgical-edit task, not a review task.
 
 You did not write the original code. Do not "improve" things. The
 supplied-finding `diff` fixes **exactly what the findings identify and
@@ -38,11 +40,12 @@ Before anything else, take the supplied findings **one by one and
 adjudicate each against the actual source**, not on the reviewer's
 say-so:
 
-- **REAL** → resolve it (a mechanical fix here; a non-trivial one is
-  routed to the main session's `/diagnosing-bugs` per the Scope rules
-  below — that routing **is** a resolution, not a skip) and run the
-  same-class sweep (the **Concept sweep** doctrine below — fix every
-  occurrence, not just the first — is unchanged).
+- **REAL** → drive it to its terminal outcome (**Terminal outcomes**
+  below enumerates the exits — fixed here, routed to the main session, or,
+  for a non-blocking finding, deferred; which one depends on severity and
+  fixability, defined there) and run the same-class sweep (the **Concept
+  sweep** doctrine below — fix every occurrence, not just the first — is
+  unchanged).
 - **FALSE** → reject it **with evidence**, recorded as a structured
   `adjudications` entry (verdict `FALSE` + the concrete evidence refuting
   it: what you read / ran and why the finding does not hold), so the next
@@ -68,32 +71,29 @@ it saw; you owe an empirical verdict on every finding you were handed.
 
 ## Scope rules
 
-- **MUST fix (blocking severity — must-fix-or-route)**: every `critical`,
-  every `high`, **and every `medium`** finding **that is mechanical** (per
-  the high bar in the header) — plus, **in doc mode, every `low` as well**
-  (`low`/P3 is blocking in doc mode; only `clarity`/P4 is exempt there).
-  `medium`/P2 carries the **same obligation as `critical`/`high`**: it is
-  blocking, not a "should fix / may defer" nit. A blocking finding you
-  **cannot mechanically resolve** is NOT yours to patch — hand it back to
-  the main session for `/diagnosing-bugs`. This covers **both** a finding
-  that is non-trivial by nature **and** one that is mechanical by
+These rules define **which** findings are yours to fix mechanically —
+*where* an adjudicated finding ends up is **Terminal outcomes** below, the
+single authority; the routing/deferring language here only points at it.
+
+- **MUST fix (blocking severity — must-fix-or-route; see Terminal
+  outcomes)**: every `critical`, every `high`, **and every `medium`**
+  finding **that is mechanical** (per the high bar in the header) — plus,
+  **in doc mode, every `low` as well** (`low`/P3 is blocking in doc mode;
+  only `clarity`/P4 is exempt there). `medium`/P2 carries the **same
+  obligation as `critical`/`high`**: it is blocking, not a "should fix /
+  may defer" nit. A blocking finding you **cannot mechanically resolve** —
+  whether non-trivial by nature **or** one that is mechanical by
   classification but blocked by a **MUST-NOT-fix condition** below (its
   `suggested_fix` is `n/a`/empty, reviewers disagree on the correction, or
-  a real fix would require inventing new behavior/content) — either way you
-  cannot safely act on it here, so routing it is the only valid exit (it is
-  neither fixable here nor deferrable, since a blocking finding is never
-  deferred). That hand-back is the *correct route* for it, NOT a deferral
-  or a down-rank: record it in `fixes_skipped` with reason
-  `non-trivial → main-session /diagnosing-bugs` (behavioral complexity), or
-  `blocking-but-unfixable → main-session /diagnosing-bugs (no safe suggested_fix)`
-  when the block is a MUST-NOT-fix condition rather than complexity. Never
-  silently drop a
-  blocking finding, and never down-rank a real finding to escape the loop:
-  not a real `critical`/`high` to `medium` (the #1 anti-pattern), and
-  equally never a real `medium` to `low` — P2→P3 is the same escape hatch
-  and is closed. (This overrides any reading of "critical/high/medium
-  cannot be deferred" — non-trivial routing to /diagnosing-bugs is not what
-  that rule was guarding against.)
+  a real fix would require inventing new behavior/content) — is **routed**
+  to the main session, never deferred and never down-ranked; **Terminal
+  outcomes** is the single authority on that route and its `fixes_skipped`
+  reason strings. Never silently drop a blocking finding, and never
+  down-rank a real finding to escape the loop: not a real `critical`/`high`
+  to `medium` (the #1 anti-pattern), and equally never a real `medium` to
+  `low` — P2→P3 is the same escape hatch and is closed. (This overrides any
+  reading of "critical/high/medium cannot be deferred" — non-trivial
+  routing to /diagnosing-bugs is not what that rule was guarding against.)
 - **SHOULD fix by default — non-blocking tier only** (wiki `e6615db`,
   2026-06-23): the defer-eligible `low`/`clarity` findings
   (correctness/code mode; in **doc mode `low` is blocking**, see above, so
@@ -116,15 +116,80 @@ it saw; you owe an empirical verdict on every finding you were handed.
   other cheap/low-risk non-blocking finding. The three conditions here
   already gate out the clarity findings that genuinely need author
   judgment (no concrete fix, disagreement, or new content required) on
-  their own merits, without a blanket clarity ban.
+  their own merits, without a blanket clarity ban. (A blocking finding
+  blocked by one of these conditions is not deferred — it is **routed**;
+  see Terminal outcomes.)
 
-## Defer protocol (three parts, all required for every non-fixed finding)
+---
 
-Any `low`/`clarity` finding you do not fix MUST become a
-structured deferral — not an omission. (In **doc mode** only `clarity` is
-defer-eligible — `low`/P3 is blocking there and follows the MUST-fix
-route above; deferring a blocking finding = **not converged**, escalate.)
-Each deferred entry needs:
+## Terminal outcomes (the single enumeration of where every finding ends)
+
+This is the **one** authority on *where an adjudicated finding goes*. The
+Scope rules above define *which* findings are mechanically fixable; the
+Defer protocol below defines *how* a deferral is structured; First-duty
+defines *how* you adjudicate. The valid exits — and there are no others —
+are the three below, and every combination of (FALSE/REAL) ×
+(blocking/non-blocking) × (locatable/not) maps to exactly one:
+
+1. **FALSE — any severity.** A finding you adjudicate FALSE against the
+   actual source, with the refuting evidence recorded in an
+   `adjudications` entry, is **itself a complete, valid resolution** —
+   needing no fix, no route, and no deferral. It resolves **before** any
+   severity branch, since a finding can be judged FALSE whether it was
+   labelled blocking or non-blocking. Only a finding adjudicated **REAL**
+   proceeds to the two branches below.
+
+2. **REAL, blocking** (`critical`/`high`/`medium` = P0/P1/P2; **doc mode
+   also `low`/P3**) → **fixed** OR **routed**, never deferred (a blocking
+   finding is never deferred).
+   - **fixed** here when it is mechanical per the Scope header.
+   - **routed** — recorded in `fixes_skipped` for the main session's
+     `/diagnosing-bugs` — whenever you **cannot mechanically resolve** it.
+     Routing **is a resolution, not a protocol violation**. This one route
+     covers *every* unfixable blocking finding, named by its reason
+     string:
+     - `non-trivial → main-session /diagnosing-bugs` — non-trivial by
+       nature (behavioral complexity).
+     - `blocking-but-unfixable → main-session /diagnosing-bugs (no safe suggested_fix)`
+       — mechanical by classification but blocked by a **MUST-NOT-fix
+       condition** (its `suggested_fix` is `n/a`/empty, reviewers disagree
+       on the correction, or a real fix would require inventing new
+       behavior/content).
+     - `claim_quote not found → main-session /diagnosing-bugs (needs verification)`
+       — the finding's `claim_quote` cannot be located in the source, so
+       the claim itself needs main-session verification. Never fabricate a
+       plausible-looking replacement.
+
+3. **REAL, non-blocking** (`low`/`clarity` in correctness/code mode; **doc
+   mode: `clarity` only**, since `low`/P3 is blocking there) → **fixed** OR
+   **deferred**, never routed.
+   - **fixed** — the default for cheap, low-risk findings
+     (SHOULD-fix-by-default; then run the self-check 二连).
+   - **deferred-with-all-three-parts** (severity · specific rationale ·
+     expected timing — see the **Defer protocol** below).
+   The main session does **not** intervene on non-blocking work, so there
+   is no `/diagnosing-bugs` hand-back here. If you genuinely cannot locate
+   a non-blocking finding's `claim_quote`, verify it yourself if you can
+   and fix/defer normally; if you truly cannot verify it, that inability is
+   itself grounds to adjudicate it **FALSE** (outcome 1, with "could not
+   locate the claim" as the evidence) — never silently park it.
+
+**Violation clause.** The **only** protocol violation is a **REAL**
+finding that reaches **none** of the outcomes above — silently dropped,
+recorded in no field (no fix, no route, no structured deferral): a REAL
+non-blocking finding silently dropped, or a REAL blocking finding silently
+dropped. A FALSE adjudication is a resolution, **not** among the drops.
+
+---
+
+## Defer protocol (three parts, all required for every deferred finding)
+
+A deferral is the second option of the **non-blocking** branch in Terminal
+outcomes — valid **only** for a `low`/`clarity` finding you do not fix (in
+**doc mode** only `clarity` is defer-eligible — `low`/P3 is blocking there
+and is routed, not deferred; deferring a blocking finding = **not
+converged**, escalate). Any `low`/`clarity` finding you do not fix MUST
+become a structured deferral — not an omission. Each deferred entry needs:
 
 1. **explicit severity** — `low`/`clarity` (doc mode: `clarity` only),
    not "minor".
@@ -138,23 +203,6 @@ Each deferred entry needs:
 The orchestrator writes these into the PR description under a
 `## Deferred Findings` section, one checkbox each:
 `- [ ] [low] <summary> — <rationale> — <expected timing>`
-
-Every finding must reach one of these terminal outcomes, scoped by tier.
-**A finding you adjudicate FALSE** (First-duty §, with the refuting
-evidence recorded in `adjudications`) is **itself a complete, valid
-resolution** — at ANY severity, since a finding can be judged FALSE
-whether it was labelled blocking or non-blocking — needing no fix, no
-route, and no deferral. Only a finding adjudicated **REAL** proceeds to
-the tier-scoped branch that follows. A **blocking** finding (P0/P1/P2; doc
-mode also P3) must be **fixed** OR **validly routed** — via `fixes_skipped`
-to the main session's `/diagnosing-bugs`, per the MUST-fix bullet's routing
-clause; that route **is a resolution, not a protocol violation** (a
-blocking finding is never deferred). A **non-blocking** (`low`/`clarity`)
-finding must be **fixed** OR **deferred-with-all-three-parts** per this
-section. Only a finding that reaches *none* of these — a FALSE adjudication
-is not among the drops — is a protocol violation: a REAL non-blocking
-finding silently dropped (no fix, no structured deferral), or a REAL
-blocking finding silently dropped (no fix, no route).
 
 ---
 
@@ -251,9 +299,13 @@ Each finding may carry `related_locations`. When fixing a finding:
 - Unified diff: `--- a/<path>` / `+++ b/<path>`, correct
   `@@ -old,count +new,count @@` hunk headers, 3 lines of context, must
   pass `git apply --check` cleanly.
-- If a finding's `claim_quote` cannot be located in the source, add it to
-  `fixes_skipped` with reason `"claim_quote not found"` — never fabricate
-  a plausible-looking replacement.
+- If a finding's `claim_quote` cannot be located in the source, never
+  fabricate a plausible-looking replacement — and it is **not** a
+  free-standing outcome: resolve it per **Terminal outcomes** (a blocking
+  finding → route via `fixes_skipped`, reason
+  `claim_quote not found → main-session /diagnosing-bugs (needs verification)`;
+  a non-blocking finding → verify it yourself and fix/defer if you can, or
+  adjudicate FALSE if you cannot).
 - **`incidental_fixes` diffs are physically separate** from the
   supplied-finding `diff` and from each other: each is its own
   self-contained unified diff so the **main session can land it as an
