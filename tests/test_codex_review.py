@@ -375,3 +375,57 @@ def test_readme_effort_doc_drops_uniform_absolute_negative():
         "the stale absolute 'effort is uniformly medium' claim (no override "
         "caveat) must be gone"
     )
+
+
+TESTING_MD = ROOT / "TESTING.md"
+
+
+def test_every_codex_effort_value_claim_carries_override_caveat():
+    # THE comprehensive guard — the ONE test that would have caught ALL of
+    # rounds 4, 5, and 6. Each earlier round patched a *narrower* pattern and
+    # missed a site:
+    #   round 4: matched the one exact retired phrase "mandatory and uniform"
+    #   round 5: matched the "uniform*" family (still missed non-"uniform"
+    #            phrasings — see test_skill_every_uniform_medium_claim_...)
+    #   round 6: two Step-1 sites reading "codex effort = `medium`" with no
+    #            "uniform" anywhere, so the round-5 guard structurally could
+    #            not see them.
+    #
+    # Root fix: stop keying on any one phrase/adjective. Key on the VALUE
+    # TOKEN itself. Anywhere the operative docs state codex's reasoning-effort
+    # value as the standalone backticked token `medium` in an effort/reasoning
+    # context, an override acknowledgment (`overrid`) MUST appear in the same
+    # window. Phrase-agnostic and adjective-agnostic by construction.
+    #
+    # Why the standalone `medium` token cleanly selects the (b) prose class
+    # and excludes the irrelevant classes with no carve-out list:
+    #   (b) genuine prose claim  -> "= `medium`", "defaults to `medium`",
+    #       "`medium` uniform default", "`medium` for ship-pre" — all write
+    #       the value as the lone backticked token `medium`  → GATED.
+    #   (c1) code/config form  -> `model_reasoning_effort=medium` and the
+    #        selftest's `model_reasoning_effort=medium` in TESTING.md: "medium"
+    #        is preceded by "=", not a backtick, so `medium` (backtick-delimited)
+    #        never matches it  → excluded automatically.
+    #   (c2) severity vocabulary  -> critical|high|medium|low / critical/high/
+    #        medium/low: "medium" sits inside a pipe/slash group, never as the
+    #        lone backticked token, and no "effort"/"reasoning" co-occurs
+    #        → excluded automatically.
+    WINDOW = 320
+    for label, path in (
+        ("SKILL.md", SKILL_MD),
+        ("README.md", README_MD),
+        ("TESTING.md", TESTING_MD),
+    ):
+        txt = _norm_doc(path)
+        matches = list(re.finditer(r"`medium`", txt))
+        for m in matches:
+            window = txt[max(0, m.start() - WINDOW): m.end() + WINDOW]
+            if not re.search(r"effort|reasoning", window):
+                continue  # a `medium` unrelated to codex reasoning-effort
+            assert re.search(r"overrid", window), (
+                f"{label}: a codex reasoning-effort `medium` value claim has "
+                f"no override acknowledgment (token `overrid`) in its window — "
+                f"the value must be stated as an overridable DEFAULT, never as "
+                f"a flat absolute (rounds 4/5/6 all leaked exactly this):\n"
+                f"…{window}…"
+            )

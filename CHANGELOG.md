@@ -4,6 +4,39 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.24 — 2026-07-13
+
+- **Ship-pre correctness-gate finding (round 6) — a THIRD leftover site of
+  the same "codex effort stated as absolute" class, and a definitive fix.**
+  `SKILL.md` Step 1 (which a reader meets BEFORE Step 2's already-fixed
+  callout) had two more sites: `codex effort = `medium`
+  (`CMR_CODEX_EFFORT=medium`)` and `codex effort = `medium`, the same as
+  per-slice`. Both stated the value flat with no override acknowledgment,
+  and — crucially — neither contained the word "uniform", so round 5's
+  regression guard (which only scanned `uniform`-bearing windows) was
+  structurally blind to them. Reworded both to state `medium` as the
+  **default** used when `CMR_CODEX_EFFORT` is unset, **overridable** (passed
+  through verbatim, no whitelist), matching the L266/L289 sites' spirit.
+  Only `SKILL.md` touched (no backend/dispatch/prompt changes).
+- **Replaced the narrow guard with THE comprehensive one
+  (`tests/test_codex_review.py`).** Rounds 4/5/6 each patched a
+  progressively different but still-incomplete pattern (exact phrase →
+  `uniform*` family → this). New guard
+  `test_every_codex_effort_value_claim_carries_override_caveat` stops
+  keying on any phrase/adjective and keys on the **value token itself**:
+  every standalone backticked `` `medium` `` in an effort/reasoning context,
+  across `SKILL.md` / `README.md` / `TESTING.md`, must carry an override
+  token (`overrid`) within a 320-char window. The lone-backtick form cleanly
+  selects genuine prose claims and excludes the `model_reasoning_effort=medium`
+  code/config form and the `critical|high|medium|low` severity vocabulary
+  with no carve-out list. Mutation-tested: reintroducing each of the three
+  historical buggy phrasings (round-4 "mandatory and uniform", round-5
+  "`medium` uniformly", round-6 "codex effort = `medium`") one at a time,
+  in real SKILL.md context, makes the new guard fire — the one test that
+  would have caught all three incidents from the start. Repo-wide
+  scope-check (same pattern, all 11 operative `.md` files, CHANGELOG
+  exempt): zero uncaveated instances remain.
+
 ## 0.3.18.23 — 2026-07-13
 
 - **Ship-pre correctness-gate finding (PR #32, round 5) — one leftover
