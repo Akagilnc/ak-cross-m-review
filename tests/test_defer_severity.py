@@ -217,9 +217,29 @@ def test_fixer_deferrable_set_is_low_clarity_only():
 
 def test_terminal_outcomes_section_is_the_single_authority():
     ts = _section("Terminal outcomes")
-    assert "the **one** authority on *where an adjudicated finding goes*" in ts, (
+    assert (
+        "the **one** authority on *where a **supplied/adjudicated** finding "
+        "goes*"
+    ) in ts, (
         "the Terminal-outcomes section must declare itself the single "
-        "authority on where a finding goes"
+        "authority on where a SUPPLIED/adjudicated finding goes"
+    )
+    # round-7 F1: it must ALSO make explicit it does NOT govern incidental
+    # defects (First-duty's separate track), which follow their own
+    # severity-independent non-trivial→route rule, not this blocking/
+    # non-blocking split
+    assert (
+        "It does **not** govern an **incidental** defect you spot in passing "
+        "(First-duty's separate, parallel track)"
+    ) in ts, (
+        "the scope line must exclude incidental defects from these branches"
+    )
+    assert (
+        "a **non-trivial** one is reported in `reported_defects` for the main "
+        "session **regardless of its own severity**"
+    ) in ts, (
+        "the scope line must state incidental defects route by triviality, "
+        "severity-independently — not via the blocking/non-blocking split"
     )
 
 
@@ -288,27 +308,36 @@ def test_terminal_real_non_blocking_is_fixed_or_deferred_never_routed():
         "the non-blocking branch's valid exits are fixed OR deferred (never "
         "routed — no /diagnosing-bugs hand-back for non-blocking work)"
     )
-    # a non-blocking finding whose claim_quote can't be located stays REAL
-    # and is DEFERRED with the verification gap as rationale — inability to
-    # verify (absence of evidence) is NOT laundered into a FALSE adjudication
-    # (0.3.18.22: epistemic-error fix)
+    # a non-blocking finding whose claim_quote can't be verified is sent
+    # STRAIGHT to deferred[] WITHOUT an adjudications entry claiming REAL —
+    # adjudications records a *confirmed* REAL/FALSE conclusion, and an
+    # unverifiable finding is neither. round-7 F2: the old "it stays REAL"
+    # wording asserted a certainty (absence-of-evidence proving REAL) that
+    # is the same epistemic error as the FALSE-default it replaced.
     assert (
-        "if you truly cannot verify it, it stays **REAL** and is "
-        "**deferred** (the outcome above), with the deferral's rationale "
-        "field stating the verification gap"
+        "if you truly cannot verify it **either way**, do **not** write an "
+        "`adjudications` entry for it at all"
     ) in ts, (
-        "an unlocatable claim on a NON-blocking finding stays REAL and is "
-        "deferred with the gap as rationale, not auto-adjudicated FALSE"
+        "an unverifiable non-blocking finding must NOT get an adjudications "
+        "entry (neither REAL nor FALSE is confirmed)"
     )
     assert (
-        "Inability to verify is the **absence** of evidence, not evidence "
-        "the finding is false, so it is **never** laundered into a FALSE "
-        "adjudication"
+        "As a **safety default** (visibility over the risk of discarding a "
+        "real bug), send it straight to `deferred[]`"
     ) in ts, (
-        "the text must state that inability-to-verify is absence of evidence "
-        "and never becomes a FALSE adjudication"
+        "it must be framed as a safety/visibility default routed to "
+        "deferred[], not an epistemic claim it is proven real"
     )
-    assert "never silently park it." in ts
+    assert (
+        "neither evidence the finding is false (so it is **never** laundered "
+        "into a FALSE adjudication" in ts
+        and "**nor** evidence it is true (so it is **not** stamped REAL "
+        "either)" in ts
+    ), (
+        "the text must state inability-to-verify is neither evidence-of-false "
+        "NOR evidence-of-true — not stamped either way"
+    )
+    assert "never silently parked." in ts
 
 
 def test_terminal_violation_clause_scoped_to_real_silent_drops_only():
@@ -359,16 +388,19 @@ def test_six_input_traces_each_resolve_cleanly():
         "**fixed** — the default for cheap, low-risk findings "
         "(SHOULD-fix-by-default"
     ) in ts, "(e) REAL non-blocking cheap must resolve to a default fix"
-    # (f) REAL non-blocking with claim_quote unlocatable → DEFERRED (stays
-    # REAL), verification gap as rationale — NOT auto-FALSE (0.3.18.22)
+    # (f) non-blocking with claim_quote unverifiable → sent STRAIGHT to
+    # deferred[] with NO adjudications verdict (neither REAL nor FALSE
+    # confirmed), verification gap as rationale — a safety/visibility
+    # default, NOT auto-FALSE and NOT stamped REAL (round-7 F2)
     assert (
         "If you genuinely cannot locate a non-blocking finding's "
         "`claim_quote`, verify it yourself if you can and fix/defer normally; "
-        "if you truly cannot verify it, it stays **REAL** and is "
-        "**deferred** (the outcome above)"
+        "if you truly cannot verify it **either way**, do **not** write an "
+        "`adjudications` entry for it at all"
     ) in ts, (
-        "(f) REAL non-blocking with unlocatable claim_quote must resolve to "
-        "a deferred REAL outcome, not a FALSE adjudication or a park"
+        "(f) unverifiable non-blocking must resolve to deferred[] with no "
+        "adjudications verdict, not a FALSE adjudication, a forced REAL, or a "
+        "park"
     )
 
 
@@ -545,21 +577,27 @@ def test_header_drops_unqualified_route_it_verb_negative():
 
 
 # --- cmr-fixer.md: inability-to-verify a non-blocking finding is NOT a
-# --- route to FALSE — it stays REAL and is deferred (0.3.18.22, Finding 2) ---
+# --- route to FALSE — but it is ALSO not stamped REAL: it is deferred with
+# --- NO adjudications verdict, a safety/visibility default (round-7 F2;
+# --- was 0.3.18.22 "stays REAL", which was the same epistemic error) ---
 
 
 def test_diff_requirements_unverifiable_nonblocking_defers_not_false():
     full = _norm(FIXER)
     # the Diff-requirements claim_quote bullet: non-blocking unverifiable →
-    # deferred (stays REAL), never auto-FALSE
+    # deferred straight to deferred[] with NO adjudications entry, never
+    # auto-FALSE and never force-stamped REAL
     assert (
         "a non-blocking finding → verify it yourself and fix/defer if you "
-        "can, or **defer** it (it stays REAL) with the verification gap as "
-        "the deferral rationale if you cannot — never adjudicate it FALSE "
-        "merely because you could not verify it"
+        "can, or **defer** it straight to `deferred[]` with **no** "
+        "accompanying `adjudications` entry (you have neither a confirmed "
+        "REAL nor FALSE), the verification gap as the deferral rationale, if "
+        "you cannot — as a safety default for visibility; never adjudicate it "
+        "FALSE **nor** stamp it REAL merely because you could not verify it"
     ) in full, (
-        "the Diff-requirements bullet must defer (stay REAL) an unverifiable "
-        "non-blocking finding, not adjudicate it FALSE"
+        "the Diff-requirements bullet must defer an unverifiable non-blocking "
+        "finding to deferred[] with no adjudications verdict — not adjudicate "
+        "it FALSE, not force it REAL"
     )
 
 

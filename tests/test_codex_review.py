@@ -380,52 +380,59 @@ def test_readme_effort_doc_drops_uniform_absolute_negative():
 TESTING_MD = ROOT / "TESTING.md"
 
 
-def test_every_codex_effort_value_claim_carries_override_caveat():
-    # THE comprehensive guard — the ONE test that would have caught ALL of
-    # rounds 4, 5, and 6. Each earlier round patched a *narrower* pattern and
-    # missed a site:
-    #   round 4: matched the one exact retired phrase "mandatory and uniform"
-    #   round 5: matched the "uniform*" family (still missed non-"uniform"
-    #            phrasings — see test_skill_every_uniform_medium_claim_...)
-    #   round 6: two Step-1 sites reading "codex effort = `medium`" with no
-    #            "uniform" anywhere, so the round-5 guard structurally could
-    #            not see them.
+def test_selftest_validates_effort_form_not_value():
+    # ROOT fix for the 4th recurrence (round 7, F3) of "codex effort
+    # documented as an absolute". Rounds 4/5/6 each added a NARROWER regex
+    # chasing a specific PHRASING (retired phrase → "uniform*" family →
+    # standalone `medium` token), and each new round's bug evaded the
+    # previous guard via a new wording — round 7's TESTING.md bug wrote the
+    # compound token `model_reasoning_effort=medium` (medium preceded by "=",
+    # not a backtick), which the round-6 backtick-delimited `medium` guard
+    # structurally could not see.
     #
-    # Root fix: stop keying on any one phrase/adjective. Key on the VALUE
-    # TOKEN itself. Anywhere the operative docs state codex's reasoning-effort
-    # value as the standalone backticked token `medium` in an effort/reasoning
-    # context, an override acknowledgment (`overrid`) MUST appear in the same
-    # window. Phrase-agnostic and adjective-agnostic by construction.
+    # Stop chasing phrasings. Tie the test to the REAL invariant instead:
+    # the selftest validates the invocation FORM, pinning
+    # `model_reasoning_effort=${CMR_CODEX_EFFORT}` — whatever effort is in
+    # effect — NOT the literal value `medium`. Two structural anchors:
     #
-    # Why the standalone `medium` token cleanly selects the (b) prose class
-    # and excludes the irrelevant classes with no carve-out list:
-    #   (b) genuine prose claim  -> "= `medium`", "defaults to `medium`",
-    #       "`medium` uniform default", "`medium` for ship-pre" — all write
-    #       the value as the lone backticked token `medium`  → GATED.
-    #   (c1) code/config form  -> `model_reasoning_effort=medium` and the
-    #        selftest's `model_reasoning_effort=medium` in TESTING.md: "medium"
-    #        is preceded by "=", not a backtick, so `medium` (backtick-delimited)
-    #        never matches it  → excluded automatically.
-    #   (c2) severity vocabulary  -> critical|high|medium|low / critical/high/
-    #        medium/low: "medium" sits inside a pipe/slash group, never as the
-    #        lone backticked token, and no "effort"/"reasoning" co-occurs
-    #        → excluded automatically.
-    WINDOW = 320
+    #   (A) Backend: extract the selftest block from the ACTUAL script and
+    #       confirm its canonical-form check interpolates ${CMR_CODEX_EFFORT}
+    #       and hard-codes NO `model_reasoning_effort=medium`. The test now
+    #       tracks the real code, not a wording pattern.
+    #   (B) Docs: no .md may describe the selftest (window around every
+    #       "selftest" mention) as checking a fixed
+    #       `model_reasoning_effort=medium` — the value the selftest does
+    #       NOT check. Any doc that does is asserting form-as-value again.
+    src = SCRIPT.read_text(encoding="utf-8")
+
+    # (A) isolate the selftest block: from the `--selftest` guard to EOF.
+    marker = 'if [ "${1:-}" = "--selftest" ]'
+    assert marker in src, "selftest guard block not found in backend"
+    selftest_block = src[src.index(marker):]
+    assert "model_reasoning_effort=${CMR_CODEX_EFFORT}" in selftest_block, (
+        "the selftest's canonical-form check must interpolate "
+        "${CMR_CODEX_EFFORT} — it validates the FORM (whatever effort is in "
+        "effect), not a fixed value"
+    )
+    assert "model_reasoning_effort=medium" not in selftest_block, (
+        "the selftest block must NOT hard-code model_reasoning_effort=medium "
+        "— that would pin the VALUE instead of the form; the invariant is "
+        "form-not-value (round-7 F3, 4th recurrence)"
+    )
+
+    # (B) no doc may present that fixed value as what the selftest validates.
+    WINDOW = 250
     for label, path in (
+        ("TESTING.md", TESTING_MD),
         ("SKILL.md", SKILL_MD),
         ("README.md", README_MD),
-        ("TESTING.md", TESTING_MD),
     ):
         txt = _norm_doc(path)
-        matches = list(re.finditer(r"`medium`", txt))
-        for m in matches:
+        for m in re.finditer(r"selftest", txt):
             window = txt[max(0, m.start() - WINDOW): m.end() + WINDOW]
-            if not re.search(r"effort|reasoning", window):
-                continue  # a `medium` unrelated to codex reasoning-effort
-            assert re.search(r"overrid", window), (
-                f"{label}: a codex reasoning-effort `medium` value claim has "
-                f"no override acknowledgment (token `overrid`) in its window — "
-                f"the value must be stated as an overridable DEFAULT, never as "
-                f"a flat absolute (rounds 4/5/6 all leaked exactly this):\n"
-                f"…{window}…"
+            assert "model_reasoning_effort=medium" not in window, (
+                f"{label}: text describing --selftest states a fixed "
+                f"`model_reasoning_effort=medium`, but the selftest validates "
+                f"the FORM (model_reasoning_effort=${{CMR_CODEX_EFFORT}}), not "
+                f"that value — this is the round-4/5/6/7 recurrence:\n…{window}…"
             )

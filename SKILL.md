@@ -148,17 +148,17 @@ tight to run Claude on the high-frequency per-slice gate):
 - **per-slice** (after each slice's baseline commit — within-slice lens):
   **`N codex + agy` = 2-vendor, NO Claude.** Run by the slice's own
   implementing subagent (both legs are Bash CLIs, so no nested-Agent
-  problem). codex effort defaults to **`medium`** (used when
-  `CMR_CODEX_EFFORT` is unset; overridable — the backend passes any value
-  through verbatim, no whitelist). Convergence =
+  problem). codex effort defaults to **`medium`**, overridable via
+  `CMR_CODEX_EFFORT` (full contract in the §调用规范 callout below — the
+  single source of truth). Convergence =
   (N+1)/(N+1) + flag `per-slice 不用 Claude (credit)`.
 - **ship-pre** (after all slices done — cross-slice cumulative-diff
   lens): **+Claude → 1+1+1 (N+1+1).** The **main session** orchestrates;
   the Claude leg runs via the **`Agent` subagent** (cheap, never
   `claude -p`). codex effort defaults to **`medium`**, the same as
-  per-slice (used when `CMR_CODEX_EFFORT` is unset; overridable via
-  `CMR_CODEX_EFFORT`, passed through verbatim). This is the two-phase
-  dispatch (Step 2).
+  per-slice, overridable via `CMR_CODEX_EFFORT` (full contract in the
+  §调用规范 callout below — the single source of truth). This is the
+  two-phase dispatch (Step 2).
 
 Strongest review model (both scenarios): Claude leg = `opus` (Opus 4.8) —
 cmr does not use Fable (Step 2 recorded rule; ship-pre only); codex

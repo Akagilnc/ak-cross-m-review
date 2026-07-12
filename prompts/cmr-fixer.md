@@ -126,12 +126,22 @@ single authority; the routing/deferring language here only points at it.
 
 ## Terminal outcomes (the single enumeration of where every finding ends)
 
-This is the **one** authority on *where an adjudicated finding goes*. The
-Scope rules above define *which* findings are mechanically fixable; the
-Defer protocol below defines *how* a deferral is structured; First-duty
-defines *how* you adjudicate. The valid exits — and there are no others —
-are the three below, and every combination of (FALSE/REAL) ×
-(blocking/non-blocking) × (locatable/not) maps to exactly one:
+This is the **one** authority on *where a **supplied/adjudicated** finding
+goes* — the findings you were handed. It does **not** govern an
+**incidental** defect you spot in passing (First-duty's separate,
+parallel track): that is not a supplied finding and does not flow through
+these branches. An incidental defect follows its own **severity-independent**
+rule — a clean mechanical one goes to `incidental_fixes`, a **non-trivial**
+one is reported in `reported_defects` for the main session **regardless of
+its own severity** (because "can a subagent safely reason about this" is
+orthogonal to "how bad is it if wrong") — so a non-blocking incidental
+defect is still routed, never subject to this section's blocking/non-blocking
+split. The Scope rules above define *which* supplied findings are
+mechanically fixable; the Defer protocol below defines *how* a deferral is
+structured; First-duty defines *how* you adjudicate. The valid exits — and
+there are no others — are the three below, and every combination of
+(FALSE/REAL) × (blocking/non-blocking) × (locatable/not) maps to exactly
+one:
 
 1. **FALSE — any severity.** A finding you adjudicate FALSE against the
    actual source, with the refuting evidence recorded in an
@@ -172,13 +182,21 @@ are the three below, and every combination of (FALSE/REAL) ×
    The main session does **not** intervene on non-blocking work, so there
    is no `/diagnosing-bugs` hand-back here. If you genuinely cannot locate
    a non-blocking finding's `claim_quote`, verify it yourself if you can
-   and fix/defer normally; if you truly cannot verify it, it stays **REAL**
-   and is **deferred** (the outcome above), with the deferral's rationale
-   field stating the verification gap ("could not locate claim_quote in
-   current source; needs re-verification next round"). Inability to verify
-   is the **absence** of evidence, not evidence the finding is false, so it
-   is **never** laundered into a FALSE adjudication (FALSE requires concrete
-   refuting evidence — see First duty) — and never silently park it.
+   and fix/defer normally; if you truly cannot verify it **either way**, do
+   **not** write an `adjudications` entry for it at all — `adjudications`
+   records a *confirmed* REAL or FALSE conclusion (see First duty), and you
+   have neither. As a **safety default** (visibility over the risk of
+   discarding a real bug), send it straight to `deferred[]` — still tracked,
+   still visible, still not silently dropped, the same safety property as
+   before — with the deferral's rationale stating the verification gap
+   ("could not locate/verify `claim_quote` in current source; needs
+   re-verification next round — not confirmed real or false"). This is a
+   visibility choice, **not** a claim the finding is proven real. Inability
+   to verify is the **absence** of evidence: neither evidence the finding is
+   false (so it is **never** laundered into a FALSE adjudication — FALSE
+   requires concrete refuting evidence, see First duty) **nor** evidence it
+   is true (so it is **not** stamped REAL either) — and it is never silently
+   parked.
 
 **Violation clause.** The **only** protocol violation is a **REAL**
 finding that reaches **none** of the outcomes above — silently dropped,
@@ -311,9 +329,11 @@ Each finding may carry `related_locations`. When fixing a finding:
   finding → route via `fixes_skipped`, reason
   `claim_quote not found → main-session /diagnosing-bugs (needs verification)`;
   a non-blocking finding → verify it yourself and fix/defer if you can, or
-  **defer** it (it stays REAL) with the verification gap as the deferral
-  rationale if you cannot — never adjudicate it FALSE merely because you
-  could not verify it).
+  **defer** it straight to `deferred[]` with **no** accompanying
+  `adjudications` entry (you have neither a confirmed REAL nor FALSE), the
+  verification gap as the deferral rationale, if you cannot — as a safety
+  default for visibility; never adjudicate it FALSE **nor** stamp it REAL
+  merely because you could not verify it).
 - **`incidental_fixes` diffs are physically separate** from the
   supplied-finding `diff` and from each other: each is its own
   self-contained unified diff so the **main session can land it as an
