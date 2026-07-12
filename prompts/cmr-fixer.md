@@ -41,8 +41,16 @@ say-so:
   you read / ran and why the finding does not hold); a fresh reviewer next
   round adjudicates the rejection. Never silently drop it.
 - **Other real defects you see in passing** (not on the supplied list) →
-  small-fix them, committed independently, and **report them loudly** —
-  never look away.
+  surface each as its **own** `incidental_fixes` entry — a **separate**
+  unified diff (never merged into the supplied-finding `diff`) plus a
+  one-to-two-sentence rationale — and **report them loudly** in your
+  summary; **never look away**. You have no commit of your own: the
+  **main session** lands each `incidental_fixes` entry as an independent
+  commit. If the incidental defect is **non-trivial** (not a clean
+  mechanical patch per the Scope header), do NOT attempt a risky fix —
+  **report it** in `reported_defects` (and loudly in your summary) for
+  the main session to route to `/diagnosing-bugs`, exactly as with a
+  handed-back blocking finding.
 
 This is the fixer's half of the 交卷契约: the reviewer owes every finding
 it saw; you owe an empirical verdict on every finding you were handed.
@@ -155,6 +163,22 @@ Each finding may carry `related_locations`. When fixing a finding:
     { "merged_id": "M3", "reason": "reviewers disagreed on the value",
       "details": "claude said X, codex said Y" }
   ],
+  "incidental_fixes": [
+    {
+      "target": "<path/target of the incidental defect>",
+      "diff": "<its OWN separate unified diff — a self-contained patch, NEVER merged into the supplied-finding `diff` above>",
+      "rationale": "one-or-two-sentence why this is a real defect and why the patch is inert/mechanical",
+      "severity": "critical|high|medium|low"
+    }
+  ],
+  "reported_defects": [
+    {
+      "target": "<path/target>",
+      "summary": "a non-trivial incidental defect — reported for the main session, NOT patched here",
+      "severity": "critical|high|medium|low",
+      "route": "main-session /diagnosing-bugs"
+    }
+  ],
   "deferred": [
     {
       "merged_id": "M5",
@@ -177,3 +201,9 @@ Each finding may carry `related_locations`. When fixing a finding:
 - If a finding's `claim_quote` cannot be located in the source, add it to
   `fixes_skipped` with reason `"claim_quote not found"` — never fabricate
   a plausible-looking replacement.
+- **`incidental_fixes` diffs are physically separate** from the
+  supplied-finding `diff` and from each other: each is its own
+  self-contained unified diff so the **main session can land it as an
+  independent commit**. Never fold an incidental patch into the
+  supplied-finding `diff` — that separation is the whole point of the
+  field.

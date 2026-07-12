@@ -169,10 +169,61 @@ def test_fixer_first_duty_adjudicates_each_finding_positive():
     assert "**FALSE**" in txt
     assert "reject it **with evidence** written into your summary" in txt
     assert "a fresh reviewer next round adjudicates the rejection" in txt
-    # other real defects seen in passing → small-fix + report loudly
+    # other real defects seen in passing → surface as a SEPARATE patch +
+    # report loudly; the MAIN SESSION commits it (the subagent has no commit)
     assert "Other real defects you see in passing" in txt
-    assert "small-fix them, committed independently" in txt
+    assert "surface each as its **own** `incidental_fixes` entry" in txt, (
+        "an incidental defect must be surfaced as its own separate-patch "
+        "entry, not folded into the supplied-finding diff"
+    )
+    assert (
+        "a **separate** unified diff (never merged into the "
+        "supplied-finding `diff`)"
+    ) in txt, "the incidental patch must be physically separate"
     assert "**report them loudly**" in txt
+    assert (
+        "the **main session** lands each `incidental_fixes` entry as an "
+        "independent commit"
+    ) in txt, (
+        "the independent commit is a MAIN-SESSION action — the subagent has "
+        "no commit of its own"
+    )
+    # non-trivial incidental defect → report only, route to main session
+    assert "reported_defects" in txt, (
+        "a non-trivial incidental defect is reported, not risk-patched"
+    )
+
+
+def test_fixer_incidental_fix_is_separate_patch_not_subagent_commit():
+    """The incidental-defect clause must be representable AND correctly
+    leveled: a separate `incidental_fixes` patch surfaced by the subagent,
+    committed by the MAIN SESSION — never a git commit run by the subagent.
+
+    Regression pin for the codex round-2 outside-voice P2: the prompt used
+    to tell the subagent to "commit it independently", but its only output
+    is one strict-JSON response with a single unified diff — it has no
+    commit mechanism, so the instruction was impossible to satisfy.
+    """
+    full = _norm(FIXER)
+    low = full.lower()
+    # the output schema must carry the dedicated incidental-fix field...
+    assert '"incidental_fixes"' in full, (
+        "the fixer output schema must expose an incidental_fixes array so "
+        "an in-passing defect is representable without polluting the "
+        "supplied-finding diff"
+    )
+    # ...each entry a separate self-contained diff with rationale + severity
+    assert (
+        "its OWN separate unified diff" in full
+        and "NEVER merged into the supplied-finding `diff`" in full
+    ), "each incidental_fixes entry must be its own separate patch"
+    # negative pin: the old subagent-commits-it instruction must be GONE
+    assert "committed independently" not in low, (
+        "the subagent has no commit; 'committed independently' assigned an "
+        "orchestration-level action to the subagent — must be removed"
+    )
+    assert "commit it independently" not in low
+    assert "small-fix them, committed" not in low
 
 
 def test_fixer_first_duty_no_scope_restriction_negative():

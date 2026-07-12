@@ -4,6 +4,37 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.2 — 2026-07-12
+
+- **Fixer output contract extended so incidental fixes are representable
+  as separate patches.** The 交卷契约 first-duty section told the fixer
+  subagent that other real defects seen in passing should be "small-fix
+  them, committed independently" — but the same prompt defines the
+  subagent's only output as ONE strict-JSON response carrying a SINGLE
+  unified diff, with no commit mechanism. The subagent literally could not
+  "independently commit" an incidental fix: it would have to pollute the
+  supplied-finding patch or silently drop the required action. Level
+  mismatch — "独立提交 (independent commit)" is a fix-LOOP / main-session
+  action wrongly assigned to a subagent whose interface can't do it.
+  Caught by codex's round-2 outside-voice review of the
+  submission-contract branch (P2).
+  - `prompts/cmr-fixer.md`: the fixer output schema gains a dedicated
+    `incidental_fixes` array — each entry is a target, its **OWN separate**
+    unified diff (never merged into the supplied-finding `diff`), a 1–2
+    sentence rationale, and a severity — plus a `reported_defects` array
+    for non-trivial incidental defects the subagent only reports (routed to
+    the main session's `/diagnosing-bugs`, never risk-patched).
+  - The first-duty incidental-defect clause is reworded: the subagent
+    **surfaces** each incidental defect as its own `incidental_fixes` entry
+    (separate patch) and **reports it loudly** — the **main session** is
+    what lands each entry as an independent commit. "大报 / never look away"
+    is preserved; "committed independently" (a subagent-level instruction it
+    could not satisfy) is gone.
+  - The 交卷约定 semantic (小修 / 独立提交 / 大报) is now representable
+    end-to-end: the subagent produces separable patches, the main session
+    commits each independently. No wiki change needed — §额外硬规则 #8's
+    "独立提交" is an orchestration-level end-state, not a subagent action.
+
 ## 0.3.18.1 — 2026-07-12
 
 - **Fixer / defer protocol aligned to severity-aware convergence — P2 is
