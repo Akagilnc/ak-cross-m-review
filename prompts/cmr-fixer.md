@@ -51,13 +51,14 @@ say-so:
 - **Other real defects you see in passing** (not on the supplied list) →
   surface each as its **own** `incidental_fixes` entry — a **separate**
   unified diff (never merged into the supplied-finding `diff`) plus a
-  one-to-two-sentence rationale — and **report them loudly** in your
-  summary; **never look away**. You have no commit of your own: the
+  one-to-two-sentence rationale — and **report them loudly** in the
+  `summary` field; **never look away**. You have no commit of your own: the
   **main session** lands each `incidental_fixes` entry as an independent
   commit. If the incidental defect is **non-trivial** (not a clean
   mechanical patch per the Scope header), do NOT attempt a risky fix —
-  **report it** in `reported_defects` (and loudly in your summary) for
-  the main session to route to `/diagnosing-bugs`, exactly as with a
+  **report it** in `reported_defects` (and loudly in the `summary`
+  field) for the main session to route to `/diagnosing-bugs`, exactly as
+  with a
   handed-back blocking finding.
 
 This is the fixer's half of the 交卷契约: the reviewer owes every finding
@@ -188,14 +189,14 @@ Each finding may carry `related_locations`. When fixing a finding:
       "target": "<path/target of the incidental defect>",
       "diff": "<its OWN separate unified diff — a self-contained patch, NEVER merged into the supplied-finding `diff` above>",
       "rationale": "one-or-two-sentence why this is a real defect and why the patch is inert/mechanical",
-      "severity": "critical|high|medium|low"
+      "severity": "critical|high|medium|low|clarity"
     }
   ],
   "reported_defects": [
     {
       "target": "<path/target>",
       "summary": "a non-trivial incidental defect — reported for the main session, NOT patched here",
-      "severity": "critical|high|medium|low",
+      "severity": "critical|high|medium|low|clarity",
       "route": "main-session /diagnosing-bugs"
     }
   ],
@@ -208,6 +209,7 @@ Each finding may carry `related_locations`. When fixing a finding:
       "expected_timing": "follow-up PR / next slice / issue # / won't-fix:reason"
     }
   ],
+  "summary": "the LOUD report (大报): prominently surface EVERY incidental_fixes and reported_defects entry so the main session cannot miss them, plus a one-line overview of the adjudication outcome — this is the concrete schema field that the 'report them loudly / 大报' instructions point at (a FALSE verdict's refuting evidence still goes in `adjudications`, never here)",
   "confidence": "high|medium|low",
   "notes": "optional"
 }

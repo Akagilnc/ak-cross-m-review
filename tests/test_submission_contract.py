@@ -323,3 +323,92 @@ def test_incidental_fixes_is_the_single_scope_exception_positive():
         "Safety rule #2 must reference the supplied-diff 'nothing more' rule "
         "so the two rules cross-reference and do not contradict"
     )
+
+
+# --- 0.3.18.6 holistic schema completeness: every prose-required output is
+# --- representable in the strict JSON (same class as the round-3 FALSE fix)
+
+
+def test_fixer_incidental_fixes_severity_enum_includes_clarity():
+    """A pure-formatting / typo / comment incidental defect is clarity/P4,
+    so `incidental_fixes[].severity` must be able to represent `clarity`.
+
+    Regression pin for codex round-6 P2 (~L186-192): the enum was the
+    4-value `critical|high|medium|low`, so a clarity-level incidental had
+    no representable severity — schema under-built vs the prose.
+    """
+    full = _norm(FIXER)
+    # positive: the incidental_fixes severity enum carries clarity
+    assert '"severity": "critical|high|medium|low|clarity"' in full, (
+        "incidental_fixes[].severity must enumerate the full 5-value set "
+        "including clarity, so a P4 incidental is representable"
+    )
+    # negative: the old 4-value enum (no clarity) is gone everywhere
+    assert '"severity": "critical|high|medium|low"' not in full, (
+        "the old clarity-less severity enum must not survive anywhere in "
+        "the schema"
+    )
+
+
+def test_fixer_reported_defects_severity_enum_includes_clarity():
+    """A non-trivial incidental defect reported for main-session routing
+    can be clarity-level, so `reported_defects[].severity` must include
+    clarity too — the schema uses one consistent 5-value set.
+    """
+    full = _norm(FIXER)
+    # both incidental_fixes and reported_defects use the 5-value enum, so
+    # the clarity-bearing enum string appears at least twice
+    assert full.count('"severity": "critical|high|medium|low|clarity"') >= 2, (
+        "both incidental_fixes and reported_defects severity enums must "
+        "carry the full 5-value set including clarity"
+    )
+
+
+def test_fixer_summary_field_exists_and_report_loudly_points_at_it_positive():
+    """The 'report them loudly / 大报' prose must point at a real schema
+    field. The strict JSON now carries a top-level `summary` field and the
+    report-loudly instructions reference it.
+
+    Regression pin for codex round-6 P2 (~L51-60): the report-loudly duty
+    required a summary the strict schema had no field for — output forbids
+    text outside the schema, so the requirement was unrepresentable.
+    """
+    full = _norm(FIXER)
+    # the dedicated top-level LOUD-report field exists (distinct from the
+    # per-entry `summary` keys inside deferred/reported_defects)
+    assert '"summary": "the LOUD report (大报)' in full, (
+        "the fixer output schema must expose a top-level summary field that "
+        "is the home for the report-loudly / 大报 narrative"
+    )
+    # the incidental-defect instruction now points AT the summary field
+    assert "**report them loudly** in the `summary` field" in full, (
+        "the incidental-defect report-loudly instruction must reference the "
+        "concrete `summary` schema field"
+    )
+    # the non-trivial-defect instruction routes loudly into summary too
+    assert "loudly in the `summary`" in full, (
+        "the reported_defects report-loudly instruction must reference the "
+        "`summary` field"
+    )
+    # the FALSE-verdict evidence still lands in adjudications, NOT summary
+    assert "refuting evidence still goes in `adjudications`, never here" in full, (
+        "the summary field must not become a re-opened sink for FALSE "
+        "adjudication evidence (that stays in adjudications, round-3 rule)"
+    )
+
+
+def test_fixer_summary_field_negative_no_fieldless_report_loudly():
+    """Negative counterpart: the report-loudly instructions must no longer
+    point at a bare 'in your summary' with no backing schema field.
+    """
+    full = _norm(FIXER)
+    assert "report them loudly** in your summary" not in full, (
+        "the incidental report-loudly instruction must not reference a "
+        "fieldless summary"
+    )
+    assert "loudly in your summary" not in full, (
+        "the reported_defects report-loudly instruction must not reference "
+        "a fieldless summary"
+    )
+    # the round-3 rule still holds: FALSE evidence never routed to a summary
+    assert "written into your summary" not in full

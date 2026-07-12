@@ -4,6 +4,48 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.6 — 2026-07-12
+
+- **[P2×2] Fixer output schema systematically under-built vs the prose it
+  serves** (`prompts/cmr-fixer.md`; codex round-6, two findings that are
+  one class — the same class as the round-3 FALSE-adjudication-field fix).
+  A holistic audit enumerated every output the fixer PROSE requires and
+  checked each has a representable strict-JSON field with a complete
+  severity enum:
+  - supplied-finding fix → `diff` (was already representable).
+  - per-finding REAL/FALSE adjudication + evidence → `adjudications[]`
+    (finding_id/verdict/evidence; verdict enum REAL|FALSE) — complete,
+    the FALSE-reject-with-evidence duty is representable.
+  - incidental mechanical fixes → `incidental_fixes[]`: its `severity`
+    enum was the 4-value `critical|high|medium|low`, so a typo/comment/
+    pure-formatting incidental (which is `clarity`/P4) was
+    **unrepresentable**. Added `clarity` → full 5-value set.
+  - non-trivial incidental defects routed to the main session →
+    `reported_defects[]`: same 4-value gap, now the same 5-value set for
+    consistency (a clarity-level non-trivial defect is representable).
+  - the "report loudly / 大报" narrative required a **summary**, but the
+    strict schema had no such field (only a vague optional `notes`), and
+    output forbids text outside the schema → the loud-report duty was
+    **unrepresentable**. Added a top-level `summary` field and pointed
+    both report-loudly instructions (incidental_fixes and reported_defects)
+    at it; the `summary` explicitly notes a FALSE verdict's refuting
+    evidence still lands in `adjudications`, never here (round-3 rule
+    preserved).
+  - skipped/deferred → `fixes_skipped[]` and `deferred[]`: unchanged; the
+    defer protocol (P3/P4 code, P4 doc; deferred severity is low/clarity
+    by design — the one field with a documented reason to exclude the
+    blocking severities) is correctly represented.
+  No fix-loop behavior changed — 交卷契约 first duty, EXAM/concept sweep,
+  钉子/convergence references, mechanical-vs-nontrivial routing, and
+  P2-blocking defer-severity all preserved; the change ADDS schema fields,
+  completes two enums, and points prose at concrete fields. cmr-fixer.md is
+  outside every golden-hash range (no hash test references it). Tests:
+  `tests/test_submission_contract.py` gains 4 pins (both severity enums
+  include `clarity`; the top-level `summary` field exists and the
+  report-loudly instructions reference it; negatives that the clarity-less
+  enum and the fieldless "in your summary" are gone, and that FALSE
+  evidence still routes to `adjudications`).
+
 ## 0.3.18.5 — 2026-07-12
 
 - **[P1] Nail-tamper × cumulative-diff full-re-review × two-round
