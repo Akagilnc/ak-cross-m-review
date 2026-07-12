@@ -163,66 +163,6 @@ def test_early_stop_keeps_full_rereview_no_ap14_exception():
     )
 
 
-def _step5_handoff_note():
-    """The mode-general Step-5 'Cross-round jurisdiction hand-off' note lives
-    BEFORE the doc-mode section, so _doc_mode_section() does not cover it."""
-    txt = _skill_text()
-    start = txt.index("Cross-round jurisdiction hand-off")
-    # the note ends where the doc-mode-exception blockquote begins
-    end = txt.index("Doc mode is the explicit exception to all-legs-concur")
-    assert start < end, "the Step-5 note must precede the doc-mode-exception note"
-    return txt[start:end]
-
-
-def test_step5_handoff_note_states_confirmation_round_gate():
-    """SKILL.md's Step-5 'Cross-round jurisdiction hand-off' note must carry
-    BOTH nail preconditions and agree with cmr-completeness.md §钉子令牌
-    (0.3.18.10 — codex round-10 P1: the confirmation-round gate 0.3.18.9
-    landed ONLY in cmr-completeness.md; SKILL.md still implied immediate
-    permanent nailing on a clean qualifying-round ledger, skipping the
-    confirmation round's substantive re-audit)."""
-    note = _step5_handoff_note()
-    # precondition (1) — round-wide merged ledger (0.3.18.8) still present
-    assert "round-wide merged ledger" in note, (
-        "the qualifying-round nail-eligibility precondition must survive"
-    )
-    # precondition (2) — the confirmation-round gate (0.3.18.9), the fix:
-    # a qualifying-round nail is NOT yet permanent; the confirmation round
-    # re-audits it; permanent only after re-confirmation.
-    assert "NOT yet permanently out of jurisdiction" in note, (
-        "a qualifying-round nail must be stated as NOT yet permanent"
-    )
-    assert "stays in-jurisdiction" in note, (
-        "the surface must stay in-jurisdiction until the confirmation round"
-    )
-    assert "next confirmation round still audits it" in note, (
-        "the confirmation round must be stated to still audit the surface"
-    )
-    assert "independently reconfirms DONE-and-nailed" in note, (
-        "permanent hand-off requires the confirmation round to reconfirm"
-    )
-    assert "qualifying-round nail not yet confirmed is explicitly" in note
-    assert "on the `DONE-and-nailed surfaces` list" in note, (
-        "an unconfirmed qualifying-round nail must be stated NOT on the "
-        "permanent DONE-and-nailed surfaces list"
-    )
-    # negative: the old confirmation-less framing that equated a clean
-    # qualifying-round ledger with nail authorization must be gone
-    assert "(its nail authorization) **only when the round-wide merged ledger**" not in note, (
-        "the old wording that authorized a permanent nail on a clean "
-        "qualifying-round ledger alone (no confirmation-round gate) must be "
-        "removed"
-    )
-    # cross-file: SKILL.md and cmr-completeness.md must now agree that a
-    # qualifying-round nail is not permanent until the confirmation round
-    comp = _norm(COMPLETENESS.read_text(encoding="utf-8"))
-    assert "not yet permanently out of jurisdiction" in comp.lower()
-    assert "not yet permanently out of jurisdiction" in note.lower(), (
-        "SKILL.md must state the same qualifying-round-≠-permanent rule as "
-        "cmr-completeness.md §钉子令牌"
-    )
-
-
 def test_round_gate_is_10_and_escalates_not_terminates():
     sec = _doc_mode_section()
     assert "round 10" in sec, "the round-gate value is the user's decided 10"

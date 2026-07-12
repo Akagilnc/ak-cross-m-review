@@ -130,96 +130,15 @@ after an earlier one is closed — is expected, not a contract breach.
 
 ---
 
-## 钉子令牌 (nail token — 完整性辖区移交, ADR 0130)
+## 缺钉闸 (missing-nail gate — ADR 0130)
 
 Judging any spec-surface **DONE** has a **precondition: that surface's
 contract test is already in the repo.** A missing nail is itself a
 **blocking** finding — category **缺钉 (missing-nail)** — and you name a
 **suggested nail point** (the assertion + where it lands) so the fixer can
-drive it in. You do not sign DONE against a surface no test pins.
-
-A surface may be **nailed** — added to the persistent `DONE-and-nailed
-surfaces` list and thereby leave completeness's jurisdiction — only when
-**both** of these hold **this round**: (a) the reviewing leg(s) judge that
-surface **DONE** and it has a nail in the repo, AND (b) the **round-wide
-merged ledger** — aggregating *every* leg's findings for that surface, the
-same aggregation the doc-mode zero-blocking-ledger check uses — shows
-**zero blocking finding on that specific surface** this round. One leg's
-DONE judgment is **necessary but not sufficient**: if another leg reports a
-blocking gap on the *same* surface in the *same* round, the surface is
-**NOT nailed this round** — fix the gap, re-audit next round, and nail it
-only once the merged ledger is clean for it. (This is the same principle
-already applied to majority-complete in the doc-mode ②(c) ledger clause: a
-single dissenting leg's blocking finding must prevent convergence — here it
-prevents nail-authorization.) A **single-reviewer** completeness dispatch
-(e.g. per-slice, only one leg) is no special case: the round-wide ledger
-trivially holds just that leg's findings, so the rule degrades gracefully.
-
-Nailing a surface this way does **not** take it out of jurisdiction
-immediately. A surface nailed in a **qualifying round** is **not yet
-permanently out of jurisdiction** — the very next **confirmation round**
-still audits it (this is what makes the confirmation round substantive:
-it re-verifies the qualifying round's DONE-and-nail judgments, not just
-newly-touched surfaces). **Only after the confirmation round
-independently confirms DONE-and-nailed** for that surface — the same
-round-wide merged ledger clean for it again — **does it permanently leave
-completeness's jurisdiction for ALL subsequent rounds**: rounds after the
-confirmation round do NOT re-litigate an already-confirmed
-DONE-and-nailed surface. **Baseline refresh at permanent hand-off:** when
-the reviewer confirms a qualifying-round nail in the confirmation round,
-the baseline ref recorded for the surface's permanent `DONE-and-nailed
-surfaces` entry is the **CONFIRMATION round's state**, NOT the original
-qualifying-round baseline. This captures any legitimate change made to the
-surface **between** the qualifying and confirmation rounds — e.g. a
-non-blocking P3 fix the confirmation round re-audited and approved on the
-UPDATED surface — inside the baseline, so that already-reviewed update is
-never later misread as post-nail tampering. Nail-tamper going forward is
-scoped beyond THIS refreshed (confirmation-round) baseline; the ref is
-refreshed exactly once, at this permanent hand-off. This composes with the round-wide-merged-ledger
-precondition above — nail-eligible this (qualifying) round → still audited
-next (confirmation) round → permanent only after that. Its guard from then
-on is the **test red at the write-point** plus the **correctness channel**
-— completeness verifies *whether it was done*; correctness guards *whether
-it still holds*. The boundary is temporal, and the token is the test.
-
-This hand-off needs cross-round state, so the **orchestrator** carries it:
-each round's dispatch packet includes a **`DONE-and-nailed surfaces`**
-list — surfaces whose DONE-with-a-nail judgment has already **survived a
-confirmation round** (permanently nailed) in prior rounds, each with the
-nail's **authorization token** and its **baseline ref** — the commit/tree
-ref (or the nail test's state) **currently recorded on the entry**, which
-per the **baseline refresh** rule above is the **confirmation-round** state
-(refreshed exactly once at permanent hand-off), NOT the original
-qualifying-round baseline — so "changed since the nail" is checkable (SKILL.md §Step 5 records that the
-orchestrator persists this list across **every** completeness round —
-ship-pre code gate AND doc mode — and injects it). A surface nailed in a
-qualifying round but **not yet confirmed** is NOT on this list — it
-remains in-jurisdiction so the confirmation round can re-audit it.
-Treat every surface on that list as **out of your jurisdiction**: do NOT
-re-audit it — its guard is test-red at the write-point plus the
-correctness channel. Note the trap: SKILL.md makes every round
-full-re-review the **cumulative** diff (vs main), so the surface's
-**original authorized-and-nailed change legitimately still appears** in
-that diff — its authorized change is part of the PR. That original change
-is **NOT** tamper; do **not** re-flag it. Nail-tamper is scoped to change
-**beyond the entry's baseline ref** (as defined above — for a permanently
-nailed surface, the confirmation-round-refreshed state): you audit the
-remaining in-jurisdiction clauses **plus any diff that modifies a nailed
-surface *beyond that baseline ref*** (a NEW change
-layered on top of the nailed baseline — check the diff against the entry's
-**baseline ref**). Only that post-nail modification is a
-**nail-tamper → blocking** (per 钉上刻字 below), not a fresh completeness
-re-litigation. A nailed surface that appears in the cumulative diff
-**unchanged since its nail** is out-of-jurisdiction — skip it.
-
-**钉上刻字 (engraving — the paired convention).** A contract-nail test's
-name / first-line comment carries an **authorization token** (e.g.
-`契约钉 #491·永不喂全知`). When you suggest a nail point, name it by this
-convention. And when you see a **marked / engraved nail** in the diff with
-**no authorization provenance** (issue AC / ADR / prior-round ruling),
-that is **blocking** — same family as the existing
-`preexistingAssertionTouched` assertion-hunting and the #732
-silent-nail-flip prohibition.
+drive it in. You do not sign DONE against a surface no test pins. This is a
+**same-round, diff-and-repo-only** check — judged from the change and
+the current repo, with no cross-round state.
 
 ---
 

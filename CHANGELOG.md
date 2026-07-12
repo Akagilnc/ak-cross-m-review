@@ -4,6 +4,51 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.14 — 2026-07-12
+
+- **REVERSAL — the 钉子令牌 (nail-token) jurisdiction-handoff apparatus is
+  removed** (`prompts/cmr-completeness.md`, `SKILL.md` Step 5, tests; owner
+  authorization 2026-07-12). The nail-token mechanism introduced in 0.3.17.0
+  and patched across eight subsequent commits (0.3.18.3, .4, .5, .8, .9, .10,
+  .11, .12) is reverted, keeping **only** its original sound piece — the
+  same-round 缺钉 (missing-nail) precondition. Two reasons, both verified
+  against the repo:
+  1. **It required cross-round persistence the skill has no way to
+     implement.** `ak-cross-m-review` is a SKILL invoked by an external
+     session; it holds no cross-round memory of its own, and a repo-wide grep
+     confirms NO script or file anywhere (`backends/`, `scripts/`) implements
+     the "orchestrator persists a `DONE-and-nailed surfaces` list across
+     rounds and injects it into every round's dispatch packet" mechanism.
+     Eight rounds of review-fixes were polishing the WORDING of a protocol
+     describing a nonexistent implementation.
+  2. **Even if implemented, the tamper logic was wrong.** "Any diff that
+     modifies a nailed surface beyond its baseline ref = nail-tamper =
+     blocking" had NO carve-out for a legitimate multi-commit fix addressing a
+     currently-reported finding on that surface — it would unconditionally
+     flag good engineering (e.g. a fixer's clean 3-commit refactor fixing a
+     real bug) as a blocking violation.
+- **What survives (the one sound piece):** judging any spec-surface DONE has
+  a precondition — that surface's contract test is already in the repo; a
+  missing nail is itself a blocking finding (category 缺钉/missing-nail) with
+  a named suggested nail point. This is a **same-round, diff-and-repo-only**
+  check — no persistence needed, so the stateless skill can actually run it.
+  Renamed the completeness-lens section header `## 钉子令牌` → `## 缺钉闸
+  (missing-nail gate)`.
+- **Deleted:** the "nailed-surface" jurisdiction handoff, round-wide
+  merged-ledger nail-authorization, qualifying/confirmation two-step nailing,
+  baseline-ref / baseline-refresh, nail-tamper scoping, 钉上刻字 (engraving),
+  and orchestrator-persistence paragraphs from `prompts/cmr-completeness.md`;
+  the entire "Cross-round jurisdiction hand-off" note from `SKILL.md` Step 5.
+  Reduced `tests/test_nail_token.py` (renamed → `tests/test_missing_nail_gate.py`)
+  to the surviving 缺钉-precondition pins plus a reversal guard that fails if
+  any deleted jurisdiction-handoff phrase re-appears in either file; removed
+  the matching `test_step5_handoff_note_*` from `tests/test_doc_mode.py`.
+- **Untouched (separate, unrelated mechanisms):** the severity-aware
+  convergence machinery (P0–P4 blocking thresholds, two-round
+  qualifying+confirmation convergence, 交卷契约 submission contract) and the
+  doc-mode ②(c) majority-complete + zero-blocking-ledger check — including
+  their golden-hashed ranges, which are not touched and need no recompute.
+
 ## 0.3.18.13 — 2026-07-12
 
 - **[P2] Step-7 flow line presented deferral as the default action for
