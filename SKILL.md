@@ -549,7 +549,26 @@ category, reviewer count, first claim quote); count the rest.
 > Team) are different lenses and are not skippable. Reading concur as
 > ship-ready is a category error.
 
-**Positive termination (may proceed to next step):**
+**concur = no blocking finding.** A leg counts as approving
+(`converged` / `complete`) iff it raised **no blocking finding** this
+round — blocking = **P0 / P1 / P2** (correctness/per-slice and the
+ship-pre completeness gate on code), **doc mode also P3** (only P4
+exempt). A leg may still have raised — and MUST still report (交卷契约) —
+P3/P4 findings; those go to Deferred and do **not** cost its concur vote.
+**P4 never blocks in any mode.**
+
+**Positive termination = two consecutive clear rounds** (ALL modes, not
+just doc — 2026-07-12 user ratification). A round is **clear** when it
+has no blocking finding, i.e. every non-degraded leg concurs by the
+fractions below. One clear round no longer converges on its own: it is
+the **qualifying round**, and the next round is a **full re-review
+confirmation round**. Two consecutive clear rounds (qualifying +
+confirmation) → converged, stop. A blocking finding in the confirmation
+round → NOT converged: fix it and the early-stop arm **re-qualifies from
+scratch** (a single clear round again becomes merely qualifying). The
+fractions below describe what **one fully-concurring (clear) round**
+requires by squad shape:
+
 - ship-pre / main=Claude default: **3/3 concur** (all reviewers approve).
 - Upgraded 1+N+1, 3 vendors present: **(N+2)/(N+2) concur**.
 - One vendor degraded (1+1+1 → 2 reviewers): **2/2 concur + flag**.
@@ -593,12 +612,19 @@ a round counter (no-3-cap, see `iterative-adversarial-review`).
 ## Step 7 — the loop
 
 ```
-findings present
-  → P0/P1 exist → FIX → MANDATORY self-check二连 (see below) → commit
-                  (note "自查二连 done") → next round (FULL re-review)
-  → no P0/P1     → STOP (normal convergence)
-  → not converging / drift hit → STOP, architectural/implementation
-                  rework (Step 6), not "one more round"
+blocking finding (P0/P1/P2; doc mode also P3)
+  → FIX → MANDATORY self-check二连 (see below) → commit
+          (note "自查二连 done") → next round (FULL re-review)
+no blocking finding (round is CLEAR)
+  → confirmation round (FULL re-review); two consecutive clear rounds
+    (this one + the confirmation) → STOP (normal convergence).
+    A blocking finding in the confirmation round → re-qualify from
+    scratch (FIX, then a fresh clear round is needed again).
+P3/P4 only  → reported-but-Deferred (交卷契约); they do NOT block and do
+              NOT by themselves trigger another fix round — a round with
+              only P3/P4 (P4 in doc mode) counts as CLEAR.
+not converging / drift hit → STOP, architectural/implementation
+              rework (Step 6), not "one more round"
 ```
 
 > **After every fix, before the next round: the mandatory self-check
@@ -810,17 +836,21 @@ review can only ever make the text longer.
   by fix-fix / invention → STOP, escalate to the user with the ledger.
 - **(c) Early stop via a FULL confirmation round (no #14 exception).**
   A round where the **majority of legs judge `complete`** AND the ledger
-  shows **zero original-defect findings** → the next round is a
-  **confirmation round that is still a FULL re-review** (anti-pattern
-  #14 stays fully intact — the spot-check variant was considered and
-  rejected: one full round costs nothing against the ~30 wasted ones it
-  prevents, and it keeps the fresh-full-read guarantee). Confirmation
-  round again majority-complete **AND the ledger again showing zero
-  original-defect findings** → **converged, stop**. A fresh
-  original-defect finding in the confirmation round → NOT converged:
-  fix it and the loop continues (the early-stop arm must re-qualify
-  from scratch — bare majority-complete never converges on its own,
-  or the dissenting leg's real finding gets swallowed).
+  shows **zero blocking (P0/P1/P2/P3) original-defect findings** (only P4
+  exempt; P4 clarity reported-but-Deferred, doesn't block the
+  confirmation round) → the next round is a **confirmation round that is
+  still a FULL re-review** (anti-pattern #14 stays fully intact — the
+  spot-check variant was considered and rejected: one full round costs
+  nothing against the ~30 wasted ones it prevents, and it keeps the
+  fresh-full-read guarantee). Confirmation round again majority-complete
+  **AND the ledger again showing zero blocking (P0/P1/P2/P3)
+  original-defect findings** (only P4 exempt; P4 clarity
+  reported-but-Deferred, doesn't block the confirmation round) →
+  **converged, stop**. A fresh blocking original-defect finding in the
+  confirmation round → NOT converged: fix it and the loop continues (the
+  early-stop arm must re-qualify from scratch — bare majority-complete
+  never converges on its own, or the dissenting leg's real finding gets
+  swallowed).
 - **(d) Round gate at 10 — an escalation checkpoint, NOT a hard cap.**
   Doc mode reaching **round 10** without convergence → stop dispatching
   and **escalate to the user with the ledger + current state**; the user

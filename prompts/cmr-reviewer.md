@@ -156,10 +156,13 @@ For **each finding**, give (in whatever prose layout is clearest):
 - if the same wrong value/concept recurs **elsewhere** in the diff, name
   every location — the fixer fixes them all, not just the first.
 
-If you find no defects, **say so plainly**. An explicit "no findings /
-converged" is a valid and expected answer — it is how you vote
-**approve** (the loop terminates positively when every reviewer returns
-no findings). Do NOT invent nitpicks to look thorough.
+If you raised no **critical / high / medium** defect, **say so plainly**.
+An explicit "no blocking findings / converged" is a valid and expected
+answer — it is how you vote **approve** (the loop terminates positively
+when every reviewer raises no blocking defect for two consecutive
+rounds). A `low` / `clarity` you noticed is still owed to the fixer under
+the submission contract — report it — but it does **not** cost you the
+approve vote. Do NOT invent nitpicks to look thorough.
 
 **End your review with a single verdict line** — the last line of your
 output must be **exactly** one of these two strings, with nothing else on
@@ -170,8 +173,15 @@ CMR-VERDICT: converged
 CMR-VERDICT: findings
 ```
 
-- `CMR-VERDICT: converged` — use when you found no defects (your approve vote).
-- `CMR-VERDICT: findings` — use when you raised one or more issues above.
+- `CMR-VERDICT: converged` — use when you raised **no critical / high /
+  medium defect** this round (P0 / P1 / P2 in the wiki's scale; Step 4
+  maps your words to those levels). This is your approve vote. You MAY
+  have raised `low` / `clarity` (P3 / P4) findings — you still report
+  them (submission contract), but they do **not** block and do **not**
+  cost your converged vote.
+- `CMR-VERDICT: findings` — use when you raised **at least one critical /
+  high / medium** (P0 / P1 / P2) defect above. A round with only `low` /
+  `clarity` findings is still `converged`.
 
 That verdict line is the *only* fixed-format ask; everything above it is
 free prose. It lets the orchestrator tell an approve from a

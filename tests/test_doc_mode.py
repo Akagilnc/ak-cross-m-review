@@ -115,10 +115,19 @@ def test_early_stop_keeps_full_rereview_no_ap14_exception():
     )
     # the trigger condition and the terminal state, not just the mechanism
     assert "majority of legs judge `complete`" in sec
-    assert "zero original-defect findings" in sec, (
+    # 0.3.18.0 severity-aware convergence: the early-stop predicate is now
+    # "zero BLOCKING original-defect findings" — blocking in doc mode =
+    # P0/P1/P2/P3, only P4 exempt. A pure-P4 (clarity) finding is
+    # reported-but-Deferred and does NOT block the confirmation round.
+    assert "zero blocking (P0/P1/P2/P3) original-defect findings" in sec, (
         "the early-stop predicate must use the LEDGER's key "
-        "(original-defect) — a second name for the same category makes "
+        "(original-defect) gated by the doc-mode blocking severity "
+        "(P0/P1/P2/P3) — a second name for the same category makes "
         "the measuring instrument ambiguous"
+    )
+    assert "only P4 exempt" in sec, (
+        "doc mode blocks P0-P3; only P4 (clarity) is exempt and "
+        "reported-but-Deferred — the exemption must be pinned"
     )
     assert "original-design" not in sec, (
         "unified vocabulary: the taxonomy key is original-defect; no "
@@ -133,8 +142,8 @@ def test_early_stop_keeps_full_rereview_no_ap14_exception():
         sec.index("Confirmation round again majority-complete")
         : sec.index("converged, stop")
     ]
-    assert "zero original-defect findings" in terminal, (
-        "the confirmation round's convergence must require zero "
+    assert "zero blocking (P0/P1/P2/P3) original-defect findings" in terminal, (
+        "the confirmation round's convergence must require zero blocking "
         "original-defect findings again, not bare majority-complete"
     )
 
@@ -284,7 +293,7 @@ def test_golden_freeze_of_doc_mode_texts():
 
     sec = _doc_mode_section()
     assert hashlib.sha256(sec.encode()).hexdigest() == (
-        "39f475bec6e3f314df287ebf79c897fbcff4cbe68213371e63ed57ffd3380c1d"
+        "7f53655b142153ca0a271f83760ff5c0b62c7dffa641a88ab30eba6fa318adb5"
     ), (
         "SKILL.md doc-mode section text changed — if intentional, update "
         "this hash in the same commit (see docstring); if you did not "

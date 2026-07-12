@@ -4,6 +4,47 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.0 — 2026-07-12
+
+- **Severity-aware convergence + two-round confirmation for ALL modes
+  (user ratification 2026-07-12; wiki §终止信号 sync done by the main
+  session).** A review round is now **CLEAR** when it has **no blocking
+  finding**, where blocking is mode-dependent: **correctness / per-slice
+  and the ship-pre completeness gate on code → P0/P1/P2** (P3/P4 defer);
+  **doc mode → P0/P1/P2/P3** (only P4 defers). **P4 never blocks in any
+  mode.** Every finding is still graded and REPORTED (交卷契约,
+  0.3.17.0) — P3/P4 go to Deferred, never silently dropped.
+  - **Two-round confirmation extended from doc-only to every mode.**
+    Positive termination = **two consecutive clear rounds** (a qualifying
+    round + a full-re-review confirmation round, both clear). A single
+    clear round no longer converges on its own; a blocking finding in the
+    confirmation round re-qualifies the early-stop arm from scratch. The
+    relaxed predicate "clear = no blocking" is what makes two-round
+    non-endless (the old "zero-finding = approve" × two-round never
+    would).
+  - `prompts/cmr-reviewer.md`: `converged` verdict redefined — you raised
+    **no critical/high/medium** defect this round (you MAY have raised
+    low/clarity, still reported, they don't cost the approve vote);
+    `findings` = at least one critical/high/medium. (Was "found no
+    defects".)
+  - `prompts/cmr-completeness.md`: each gap now **graded P0–P4**; the gate
+    is **no BLOCKING gap** (mode-dependent threshold) instead of the old
+    zero-any-verdict binary; `complete` = no blocking gap (deferred P3/P4
+    — P4 in doc mode — allowed), `gaps` = at least one blocking gap.
+  - `SKILL.md`: Step 5 §终止信号 (concur = no blocking finding; positive
+    termination = two consecutive clear rounds, all modes), Step 7 loop
+    (blocking → FIX; clear → confirmation round; two consecutive clear →
+    STOP), and doc-mode ②(c) (early-stop predicate now "zero **blocking
+    (P0/P1/P2/P3)** original-defect findings — only P4 exempt"). The ②(c)
+    edit is inside the golden-hashed doc-mode section → golden hash
+    recomputed in `tests/test_doc_mode.py` in the same commit.
+  - `tests/test_convergence.py`: new phrase pins (positive + negative
+    counterpart) for the severity-aware verdict/gate/loop wording;
+    `tests/test_doc_mode.py`: early-stop assertions updated to the new
+    blocking predicate + recomputed SKILL.md doc-mode golden hash (the
+    completeness addendum hash is unchanged — the severity layer lands
+    outside that hashed range).
+
 ## 0.3.17.0 — 2026-07-12
 
 - **Review submission contract (交卷契约) landed in the prompts (ADR 0130;
