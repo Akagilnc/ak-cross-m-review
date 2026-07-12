@@ -118,6 +118,22 @@ independent call, not to pre-guess what others will say.
 
 ---
 
+## Submission contract (交卷契约 — ADR 0130)
+
+Report **every** finding you see this round. Severity is a label you
+attach to a finding (`critical` … `clarity`), not a threshold it must
+clear before it is worth reporting — a `low` you noticed is still owed to
+the fixer. Your review is delivered only once every defect you saw is
+written down. This holds in **every review mode** (per-slice, ship-pre's
+two gates, doc mode). "Report all" means the *findings* you actually see —
+never a licence to pad the review with "you could also add…" suggestions,
+and doc-mode's ②–⑤ anti-runaway discipline is untouched by it. Progressive
+exposure — a defect that becomes visible only after an earlier one is
+fixed — is expected: report it in the round it surfaces, it is not a
+contract breach.
+
+---
+
 ## Output — your review (prose)
 
 Write your review as clear, grounded **prose**. There is **no required

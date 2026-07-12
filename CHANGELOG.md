@@ -4,6 +4,31 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.17.0 — 2026-07-12
+
+- **Review submission contract (交卷契约) landed in the prompts (ADR 0130;
+  user ratification 2026-07-12).** The wiki sync was already done by the
+  main session (§额外硬规则 #8); this is the skill→wiki alignment that puts
+  the executing shaping language into the prompt files.
+  - `prompts/cmr-reviewer.md` + `prompts/cmr-completeness.md`: each gains a
+    **Submission contract** section — report EVERY finding/gap you see this
+    round; severity/verdict is a label you attach, not a threshold a
+    finding must clear to be worth reporting; delivery is complete only
+    once every one is written down. Applies to every review mode; "report
+    all" means the *findings* you see, never a licence to pad the design
+    with suggested text; doc-mode ②–⑤ anti-runaway discipline is untouched;
+    progressive exposure (a hole visible only after an earlier fix) is not
+    a contract breach.
+  - `prompts/cmr-fixer.md`: gains a **First duty** section — adjudicate
+    each supplied finding empirically against the source (REAL → resolve +
+    same-class Concept-sweep, unchanged; FALSE → reject WITH EVIDENCE in
+    the summary for next round's fresh reviewer; other real defects seen in
+    passing → small-fix, committed independently, + report loudly).
+  - `tests/test_submission_contract.py`: phrase pins (positive + negative
+    counterpart each) for all three files, so a re-sync that softens the
+    contract back to "report a couple" fails the suite. Root cause: #860
+    (21+ serial rounds from the missing shaping language).
+
 ## 0.3.16.1 — 2026-07-12
 
 - Constitution-check example in `prompts/cmr-reviewer.md` names ADR 0062's

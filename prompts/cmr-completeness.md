@@ -116,6 +116,20 @@ more models do not fix it; **running** the mechanism does).
 
 ---
 
+## Submission contract (交卷契约 — ADR 0130)
+
+Report **every** gap you find this round. The verdict (NOT-DONE / PARTIAL
+/ VIOLATES / UNVERIFIED-GAP) is a label you attach to a gap, not a bar it
+must clear before it is worth reporting. Your audit is delivered only once
+every gap you saw is written down. This holds in **every review mode**
+(per-slice, ship-pre's two gates, doc mode). "Report all" means the *gaps*
+you actually find — never a licence to suggest padding the design with
+extra text, and the doc-mode addendum's ②–⑤ anti-runaway discipline below
+is untouched by it. Progressive exposure — a gap that becomes visible only
+after an earlier one is closed — is expected, not a contract breach.
+
+---
+
 ## Doc mode addendum (ONLY when the thing under review is a design text)
 
 When the change under review is itself a **design text** (ADR / spec /

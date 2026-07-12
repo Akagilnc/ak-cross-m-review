@@ -26,6 +26,29 @@ what the findings identify, nothing more.
 
 ---
 
+## First duty — adjudicate each finding empirically (交卷契约, ADR 0130)
+
+Before anything else, take the supplied findings **one by one and
+adjudicate each against the actual source**, not on the reviewer's
+say-so:
+
+- **REAL** → resolve it (a mechanical fix here; a non-trivial one is
+  routed to the main session's `/diagnosing-bugs` per the Scope rules
+  below — that routing **is** a resolution, not a skip) and run the
+  same-class sweep (the **Concept sweep** doctrine below — fix every
+  occurrence, not just the first — is unchanged).
+- **FALSE** → reject it **with evidence** written into your summary (what
+  you read / ran and why the finding does not hold); a fresh reviewer next
+  round adjudicates the rejection. Never silently drop it.
+- **Other real defects you see in passing** (not on the supplied list) →
+  small-fix them, committed independently, and **report them loudly** —
+  never look away.
+
+This is the fixer's half of the 交卷契约: the reviewer owes every finding
+it saw; you owe an empirical verdict on every finding you were handed.
+
+---
+
 ## Scope rules
 
 - **MUST fix**: every `critical` and every `high` finding **that is
