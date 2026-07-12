@@ -4,6 +4,38 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.18 — 2026-07-12
+
+- **Close a three-way routing trap in `prompts/cmr-fixer.md`'s Scope rules
+  (ship-pre completeness-gate P2, round 5).** A specific-but-realistic
+  input had no valid exit: a **blocking** (`medium`/P2) finding classified
+  **mechanical** by the header allowlist (typo/dead-anchor/stale-label/
+  date/whitespace + zero-executing-code + single-site + provably-inert)
+  whose `suggested_fix` is `n/a`/empty. MUST-fix said fix it (mechanical +
+  medium); MUST-NOT-fix said never patch it (empty `suggested_fix`) —
+  contradiction; the non-trivial→`/diagnosing-bugs` route's literal
+  precondition ("non-trivial") did not apply, because the header makes
+  mechanical and non-trivial **disjoint**; and the defer protocol covers
+  only `low`/`clarity`, never P2. Net: not fixable, not deferrable, and the
+  route didn't cover it → the fixer's own "neither fixed nor deferred =
+  protocol violation" trap. **Fix:** reword the route trigger from "a
+  blocking finding that is **non-trivial**" to "a blocking finding you
+  **cannot mechanically resolve**", explicitly covering **both**
+  non-trivial-by-nature **and** mechanical-by-classification-but-blocked-by-
+  a-MUST-NOT-fix-condition (empty `suggested_fix` / reviewer disagreement /
+  needs new content). Uses the **existing** `fixes_skipped` field and
+  **existing** main-session hand-back — no new field, tier, or defer
+  category. A distinct reason string `blocking-but-unfixable →
+  main-session /diagnosing-bugs (no safe suggested_fix)` marks the
+  MUST-NOT-fix-blocked case vs the behavioral-complexity `non-trivial →
+  main-session /diagnosing-bugs`. Post-fix the trap example has exactly one
+  route; routing is not patching, so no contradiction with MUST-NOT-fix
+  remains. Scope check: the reword scopes to all three MUST-NOT-fix
+  conditions, so reviewer-disagreement and needs-new-content blocking
+  findings are covered too, not just empty-`suggested_fix`. Wording pins
+  (positive + negative, with an embedded concrete-example trace) added in
+  `tests/test_defer_severity.py`.
+
 ## 0.3.18.17 — 2026-07-12
 
 - **Close a loose-coupling gap in `test_completeness_grades_gaps_and_gate_is_no_blocking`

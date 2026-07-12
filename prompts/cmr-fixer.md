@@ -73,11 +73,21 @@ it saw; you owe an empirical verdict on every finding you were handed.
   the high bar in the header) — plus, **in doc mode, every `low` as well**
   (`low`/P3 is blocking in doc mode; only `clarity`/P4 is exempt there).
   `medium`/P2 carries the **same obligation as `critical`/`high`**: it is
-  blocking, not a "should fix / may defer" nit. A blocking finding that is
-  **non-trivial** is NOT yours to patch — hand it back to the main session
-  for `/diagnosing-bugs`. That hand-back is the *correct route* for it, NOT
-  a deferral or a down-rank: record it in `fixes_skipped` with reason
-  `non-trivial → main-session /diagnosing-bugs`. Never silently drop a
+  blocking, not a "should fix / may defer" nit. A blocking finding you
+  **cannot mechanically resolve** is NOT yours to patch — hand it back to
+  the main session for `/diagnosing-bugs`. This covers **both** a finding
+  that is non-trivial by nature **and** one that is mechanical by
+  classification but blocked by a **MUST-NOT-fix condition** below (its
+  `suggested_fix` is `n/a`/empty, reviewers disagree on the correction, or
+  a real fix would require inventing new behavior/content) — either way you
+  cannot safely act on it here, so routing it is the only valid exit (it is
+  neither fixable here nor deferrable, since a blocking finding is never
+  deferred). That hand-back is the *correct route* for it, NOT a deferral
+  or a down-rank: record it in `fixes_skipped` with reason
+  `non-trivial → main-session /diagnosing-bugs` (behavioral complexity), or
+  `blocking-but-unfixable → main-session /diagnosing-bugs (no safe suggested_fix)`
+  when the block is a MUST-NOT-fix condition rather than complexity. Never
+  silently drop a
   blocking finding, and never down-rank a real finding to escape the loop:
   not a real `critical`/`high` to `medium` (the #1 anti-pattern), and
   equally never a real `medium` to `low` — P2→P3 is the same escape hatch

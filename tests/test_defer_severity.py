@@ -158,3 +158,88 @@ def test_fixer_drops_medium_deferrable_wording_negative():
         "must be gone"
     )
     assert "P2/P3/P4" not in txt, "no P2/P3/P4-deferrable wording in the fixer"
+
+
+# --- cmr-fixer.md: the fixes_skipped route covers EVERY unresolvable
+# --- blocking finding, not only "non-trivial" ones (0.3.18.18) ---
+#
+# Round-5 ship-pre found a three-way routing trap. Concrete example:
+# a finding that is medium/P2, classified MECHANICAL by nature (per the
+# header allowlist: typo/dead-anchor/stale-label/date/whitespace +
+# zero-executing-code + single-site + provably-inert), whose `suggested_fix`
+# is `n/a`/empty (reviewer flagged it without concrete replacement text).
+#
+# Trace through the PRE-fix rules on that input:
+#   * MUST-fix: "every `medium` ... that is mechanical" → should be fixed.
+#     This qualifies (mechanical + medium).
+#   * MUST-NOT-fix: "any finding whose `suggested_fix` is `n/a`/empty" →
+#     MUST NOT be patched. This ALSO qualifies → contradicts MUST-fix.
+#   * Non-trivial routing: scoped to a finding that is "non-trivial". But
+#     the header makes mechanical and non-trivial DISJOINT, so a
+#     mechanical-by-classification finding does not satisfy that clause's
+#     literal precondition → the route didn't cover it either.
+#   * Defer protocol: only `low`/`clarity` — P2/medium is excluded.
+# Net: could not be fixed, could not be deferred, and the routing clause's
+# stated trigger didn't apply → "neither fixed nor deferred = protocol
+# violation" with no valid exit.
+#
+# Fix (0.3.18.18): the routing trigger is reworded from "non-trivial" to
+# "a blocking finding you cannot mechanically resolve", explicitly covering
+# BOTH non-trivial-by-nature AND mechanical-but-blocked-by-a-MUST-NOT-fix-
+# condition (empty suggested_fix / reviewer disagreement / needs new
+# content). Uses the EXISTING `fixes_skipped` field + EXISTING main-session
+# hand-back — no new field / tier / defer category. Post-fix, the same
+# example has exactly ONE route: fixes_skipped → main-session
+# /diagnosing-bugs (via the `blocking-but-unfixable` reason), no
+# contradiction against MUST-fix or MUST-NOT-fix (routing is not patching).
+
+
+def test_fixer_unresolvable_blocking_routes_via_fixes_skipped():
+    txt = _norm(FIXER)
+    # positive: the route trigger is "cannot mechanically resolve", not just
+    # "non-trivial" by nature
+    assert "A blocking finding you **cannot mechanically resolve**" in txt, (
+        "the fixes_skipped/main-session route must trigger on ANY "
+        "unresolvable blocking finding, not only non-trivial-by-nature ones"
+    )
+    # positive: it explicitly names the MUST-NOT-fix-condition case
+    assert (
+        "one that is mechanical by classification but blocked by a "
+        "**MUST-NOT-fix condition** below"
+    ) in txt, (
+        "the route must explicitly cover a mechanical-by-classification "
+        "finding that a MUST-NOT-fix condition blocks (e.g. empty "
+        "suggested_fix) — the round-5 three-way trap"
+    )
+    # positive: all three MUST-NOT-fix conditions are the scope, so the trap
+    # is closed for reviewer-disagreement and needs-new-content too, not just
+    # the empty-suggested_fix case
+    assert (
+        "its `suggested_fix` is `n/a`/empty, reviewers disagree on the "
+        "correction, or a real fix would require inventing new "
+        "behavior/content"
+    ) in txt, (
+        "the route must scope to ALL three MUST-NOT-fix conditions so the "
+        "trap is closed for disagreement / new-content too, not only "
+        "empty-suggested_fix"
+    )
+    # positive: the distinct fixes_skipped reason string for this case exists
+    assert (
+        "`blocking-but-unfixable → main-session /diagnosing-bugs "
+        "(no safe suggested_fix)`"
+    ) in txt, (
+        "the MUST-NOT-fix-blocked case must have its own fixes_skipped "
+        "reason string, distinct from the behavioral-complexity one"
+    )
+
+
+def test_fixer_route_uses_existing_machinery_only_negative():
+    txt = _norm(FIXER)
+    # negative: the old scoping that pinned the route to "non-trivial" alone
+    # must be gone — that phrasing left the mechanical-but-blocked finding
+    # with no exit
+    assert "A blocking finding that is **non-trivial** is NOT yours" not in txt, (
+        "the old 'A blocking finding that is non-trivial is NOT yours' "
+        "scoping must be gone — it excluded mechanical-but-MUST-NOT-fix "
+        "blocking findings from the route"
+    )
