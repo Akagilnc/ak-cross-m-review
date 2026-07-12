@@ -51,25 +51,34 @@ it saw; you owe an empirical verdict on every finding you were handed.
 
 ## Scope rules
 
-- **MUST fix**: every `critical` and every `high` finding **that is
-  mechanical** (per the high bar in the header). A `critical`/`high`
-  finding that is **non-trivial** is NOT yours to patch — hand it back to
-  the main session for `/diagnosing-bugs`. That hand-back is the *correct route*
-  for it, NOT a deferral or a down-rank: record it in `fixes_skipped`
-  with reason `non-trivial → main-session /diagnosing-bugs`. Never silently drop
-  a finding, and never down-rank a real `critical`/`high` to `medium` to
-  escape the loop (that is the #1 anti-pattern). (This overrides any
-  reading of "critical/high cannot be deferred" — non-trivial routing to
-  /diagnosing-bugs is not what that rule was guarding against.)
-- **SHOULD fix by default** (wiki `e6615db`, 2026-06-23): `medium` / `low`
-  findings that are cheap and low-risk — **fix them** (then the self-check
-  二连), do NOT bank them as backlog debt. Filing an issue for a nit ≈
-  never fixing it; the context is here now and the post-push bots re-review
-  it anyway. **Defer is ONLY for** a finding that is genuinely
-  out-of-scope, needs a design decision, or is high-risk enough to warrant
-  its own PR — never "we hit round 3, so defer the rest." If fixing the
-  mediums keeps surfacing **new** findings (drift), THEN stop and defer the
-  remainder — the drift triple governs the stop, not a round counter.
+- **MUST fix (blocking severity — must-fix-or-route)**: every `critical`,
+  every `high`, **and every `medium`** finding **that is mechanical** (per
+  the high bar in the header) — plus, **in doc mode, every `low` as well**
+  (`low`/P3 is blocking in doc mode; only `clarity`/P4 is exempt there).
+  `medium`/P2 carries the **same obligation as `critical`/`high`**: it is
+  blocking, not a "should fix / may defer" nit. A blocking finding that is
+  **non-trivial** is NOT yours to patch — hand it back to the main session
+  for `/diagnosing-bugs`. That hand-back is the *correct route* for it, NOT
+  a deferral or a down-rank: record it in `fixes_skipped` with reason
+  `non-trivial → main-session /diagnosing-bugs`. Never silently drop a
+  blocking finding, and never down-rank a real finding to escape the loop:
+  not a real `critical`/`high` to `medium` (the #1 anti-pattern), and
+  equally never a real `medium` to `low` — P2→P3 is the same escape hatch
+  and is closed. (This overrides any reading of "critical/high/medium
+  cannot be deferred" — non-trivial routing to /diagnosing-bugs is not what
+  that rule was guarding against.)
+- **SHOULD fix by default — non-blocking tier only** (wiki `e6615db`,
+  2026-06-23): the defer-eligible `low` findings (correctness/code mode;
+  in **doc mode `low` is blocking**, see above, so nothing here is
+  defer-eligible except `clarity`) that are cheap and low-risk — **fix
+  them** (then the self-check 二连), do NOT bank them as backlog debt.
+  Filing an issue for a nit ≈ never fixing it; the context is here now and
+  the post-push bots re-review it anyway. **Defer is ONLY for** a
+  non-blocking finding that is genuinely out-of-scope, needs a design
+  decision, or is high-risk enough to warrant its own PR — never "we hit
+  round 3, so defer the rest." If fixing the lows keeps surfacing **new**
+  findings (drift), THEN stop and defer the remainder — the drift triple
+  governs the stop, not a round counter.
 - **MUST NOT fix**: `clarity` findings (author judgment); any finding
   whose `suggested_fix` is `n/a`/empty; any finding where reviewers
   disagreed on the correction; anything that would require inventing new
@@ -77,10 +86,14 @@ it saw; you owe an empirical verdict on every finding you were handed.
 
 ## Defer protocol (three parts, all required for every non-fixed finding)
 
-Any `medium`/`low`/`clarity` finding you do not fix MUST become a
-structured deferral — not an omission. Each deferred entry needs:
+Any `low`/`clarity` finding you do not fix MUST become a
+structured deferral — not an omission. (In **doc mode** only `clarity` is
+defer-eligible — `low`/P3 is blocking there and follows the MUST-fix
+route above; deferring a blocking finding = **not converged**, escalate.)
+Each deferred entry needs:
 
-1. **explicit severity** — `medium`/`low`/`clarity`, not "minor".
+1. **explicit severity** — `low`/`clarity` (doc mode: `clarity` only),
+   not "minor".
 2. **specific rationale** — one or two sentences on why this is not fixed
    in this change. Not generic ("low priority"); concrete ("touches the
    billing schema; needs the migration in #1241 first").
@@ -90,7 +103,7 @@ structured deferral — not an omission. Each deferred entry needs:
 
 The orchestrator writes these into the PR description under a
 `## Deferred Findings` section, one checkbox each:
-`- [ ] [medium] <summary> — <rationale> — <expected timing>`
+`- [ ] [low] <summary> — <rationale> — <expected timing>`
 
 A finding that is neither fixed nor deferred-with-all-three-parts is a
 protocol violation.
@@ -145,7 +158,7 @@ Each finding may carry `related_locations`. When fixing a finding:
   "deferred": [
     {
       "merged_id": "M5",
-      "severity": "medium",
+      "severity": "low",
       "summary": "short description of the finding",
       "rationale": "specific why-not-now (concrete, not generic)",
       "expected_timing": "follow-up PR / next slice / issue # / won't-fix:reason"

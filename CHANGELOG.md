@@ -4,6 +4,39 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.1 — 2026-07-12
+
+- **Fixer / defer protocol aligned to severity-aware convergence — P2 is
+  blocking, not deferrable.** 0.3.18.0 made **medium/P2 a blocking
+  severity** (a round is CLEAR only with no P0/P1/P2; doc mode no
+  P0/P1/P2/P3), but the fixer/defer protocol still treated medium/P2 as
+  "SHOULD fix … may defer." A fixer could therefore legitimately defer a
+  P2 that still blocks convergence → the next full review re-finds it →
+  the loop never terminates. Caught by the codex outside-voice review of
+  the submission-contract branch; wiki tdd-autonomous-dev §切片内纪律 sync
+  (P2 into the 必修/阻塞级 row with P0/P1, deferrable row = P3/P4 only) was
+  done by the main session and this aligns the skill to it.
+  - `SKILL.md` defer protocol: deferral is now **ONLY for the non-blocking
+    tier — P3/P4 in correctness/code mode, P4 only in doc mode** (P3/low
+    blocks in doc mode). A blocking finding (P0/P1/P2; doc mode also P3)
+    is **must-fix-or-route, NEVER deferred**; trying to defer one = not
+    converged → escalate to the user, do not silently stage it as
+    converged. (P2→P3 down-ranking to escape = same anti-pattern as
+    critical/high→medium.) The staging example tag went `[P2]` → `[P3]`.
+  - `prompts/cmr-fixer.md`: **medium/P2 moved from the deferrable set into
+    MUST-fix (blocking)** — same obligation as critical/high (mechanical
+    fix now, or route non-trivial to the main session's
+    `/diagnosing-bugs`). Deferrable set is now **low/clarity (P3/P4) in
+    correctness/code mode, clarity only (P4) in doc mode** (low/P3 blocks
+    in doc mode). Structured-deferral obligation re-keyed to low/clarity;
+    the "never down-rank critical/high→medium" ban mirrored to "never
+    down-rank medium→low." EXAM-818 sweep, critical/high routing, the
+    交卷契约 first-duty section, and the JSON schema untouched.
+  - `tests/test_defer_severity.py`: positive+negative phrase pins that the
+    deferrable tier is P3/P4 (P2 gone) and medium = blocking/must-fix, so
+    a re-sync cannot silently revert. The doc-mode golden-hash range is
+    untouched (the defer protocol sits outside it).
+
 ## 0.3.18.0 — 2026-07-12
 
 - **Severity-aware convergence + two-round confirmation for ALL modes

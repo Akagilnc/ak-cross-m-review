@@ -765,11 +765,19 @@ misses far more than an independent reviewer; the self-check only adds
 the narrow "did my own fix regress / repeat a pattern" pass on top of
 review, never instead of it.
 
-**Defer protocol** (tdd-autonomous-dev §切片内纪律, three parts, none
-optional): ① explicit P2/P3/P4 (not "minor") ② a specific 1–2 sentence
-reason (not generic) ③ accumulate to deferred staging; `gstack-ship`
-lands it into the PR body `## Deferred Findings`
-(`- [ ] [P2] <summary> — <reason> — <expected timing>`).
+**Defer protocol** (tdd-autonomous-dev §切片内纪律). Deferral is ONLY for
+the **non-blocking tier** — **P3/P4** in correctness/code mode, **P4 only**
+in doc mode (P3/low is blocking there). Three parts, none optional: ①
+explicit **P3/P4** (doc mode: **P4** only) — not "minor" ② a specific 1–2
+sentence reason (not generic) ③ accumulate to deferred staging;
+`gstack-ship` lands it into the PR body `## Deferred Findings`
+(`- [ ] [P3] <summary> — <reason> — <expected timing>`). A **blocking**
+finding (P0/P1/P2; doc mode also P3) is NEVER deferred: it is
+must-fix-or-route — mechanical fixes land now, non-trivial ones route to
+the main session (`/diagnosing-bugs`). Trying to defer a blocking finding
+= **not converged**: escalate to the user, do not silently stage it as
+converged (P2→P3 down-ranking to escape is the same anti-pattern as
+critical/high→medium).
 
 ## Doc mode discipline (design-text reviews — the additive-runaway defense)
 
