@@ -180,29 +180,28 @@ def _selftest(effort=None):
     )
 
 
-def test_selftest_passes_with_default_xhigh_effort():
-    # Default (no env) → ship-pre xhigh; selftest green + names the pin.
+def test_selftest_passes_with_default_medium_effort():
+    # Default (no env) → every scenario uses medium; selftest green + names the pin.
     r = _selftest()
     assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert "model_reasoning_effort=xhigh" in r.stdout
+    assert "model_reasoning_effort=medium" in r.stdout
+    assert "--model gpt-5.6-sol" in r.stdout
 
 
-def test_selftest_passes_with_per_slice_high_effort():
-    # CMR_CODEX_EFFORT=high (per-slice) → selftest still green, matching
-    # the LIVE effort (not hardcoded xhigh).
-    r = _selftest("high")
+def test_selftest_passes_with_explicit_medium_effort():
+    # Explicit medium matches the uniform reviewer policy.
+    r = _selftest("medium")
     assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert "model_reasoning_effort=high" in r.stdout
+    assert "model_reasoning_effort=medium" in r.stdout
     assert "model_reasoning_effort=xhigh" not in r.stdout
 
 
 def test_invalid_effort_is_rejected():
-    # Only high|xhigh are valid reasoning tiers for review; anything else
-    # (e.g. a typo, or `medium` which would make per-slice a rubber stamp)
-    # must hard-fail, not silently run at the wrong depth.
-    r = _selftest("medium")
+    # Only medium is valid for CMR review; stale scenario-dependent tiers
+    # and typos must hard-fail, not silently run at the wrong depth.
+    r = _selftest("high")
     assert r.returncode == 64, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert "CMR_CODEX_EFFORT must be high|xhigh" in r.stderr
+    assert "CMR_CODEX_EFFORT must be medium" in r.stderr
 
 
 def test_default_idle_timeout_is_900s():

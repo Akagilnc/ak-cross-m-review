@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## Unreleased — 2026-07-12
+
+- CMR Codex reviewers now use `gpt-5.6-sol` with
+  `model_reasoning_effort=medium` uniformly for per-slice and ship-pre.
+  Squad composition, dispatch, timeout, and degradation policy are unchanged.
+
 ## 0.3.16.1 — 2026-07-12
 
 - Constitution-check example in `prompts/cmr-reviewer.md` names ADR 0062's
