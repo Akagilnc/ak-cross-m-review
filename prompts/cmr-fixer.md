@@ -96,10 +96,17 @@ it saw; you owe an empirical verdict on every finding you were handed.
   round 3, so defer the rest." If fixing the lows keeps surfacing **new**
   findings (drift), THEN stop and defer the remainder — the drift triple
   governs the stop, not a round counter.
-- **MUST NOT fix**: `clarity` findings (author judgment); any finding
-  whose `suggested_fix` is `n/a`/empty; any finding where reviewers
-  disagreed on the correction; anything that would require inventing new
-  behavior or new content.
+- **MUST NOT fix**: any finding whose `suggested_fix` is `n/a`/empty; any
+  finding where reviewers disagreed on the correction; anything that would
+  require inventing new behavior or new content. This list is
+  **severity-blind** — being `clarity` severity is NOT by itself a
+  fix-ban. A `clarity` finding that HAS a concrete `suggested_fix`, has no
+  reviewer disagreement, and needs no new-content invention is
+  fix-eligible under the SHOULD-fix-by-default rule above, exactly like any
+  other cheap/low-risk non-blocking finding. The three conditions here
+  already gate out the clarity findings that genuinely need author
+  judgment (no concrete fix, disagreement, or new content required) on
+  their own merits, without a blanket clarity ban.
 
 ## Defer protocol (three parts, all required for every non-fixed finding)
 

@@ -4,6 +4,29 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.16 — 2026-07-12
+
+- **Fix an internal contradiction in `prompts/cmr-fixer.md`'s Scope rules
+  (ship-pre completeness-gate P2, PR #32).** The MUST-NOT-fix list carried
+  a standalone unconditional ban — "`clarity` findings (author judgment)"
+  — that directly contradicted the SHOULD-fix-by-default bullet
+  immediately above it (and `SKILL.md`'s "cheap/low-risk P3/P4 should
+  still be FIXED now ... NOT banked as backlog debt", where P4 = clarity).
+  A fixer handed a cheap, obviously-correct clarity finding (a comment
+  typo, a clear rename with an explicit `suggested_fix`) was told to fix it
+  by one rule and forbidden to fix it by the next. The blanket
+  severity-based clarity ban is removed; the list is now **severity-blind**
+  and the three remaining conditions (no concrete `suggested_fix`,
+  reviewer disagreement, requires inventing new behavior/content) already
+  gate out the genuinely un-fixable clarity subset on their own merits. A
+  clarity finding with a concrete fix, no disagreement, and no new-content
+  invention is now fix-eligible like any other cheap/low-risk non-blocking
+  finding. Scope check confirmed `SKILL.md` has no second instance — its
+  clarity mentions are all about blocking/convergence status (correct,
+  untouched). Wording pins added in `tests/test_defer_severity.py`
+  (positive: severity-blind + clarity fix-eligible; negative: the old
+  standalone `clarity` findings (author judgment) bullet is gone).
+
 ## 0.3.18.15 — 2026-07-12
 
 - **Merge `codex/cmr-gpt56-sol-medium` into this branch** — the codex leg's

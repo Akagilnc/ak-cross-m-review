@@ -107,6 +107,46 @@ def test_fixer_deferrable_set_is_low_clarity_only():
     )
 
 
+# --- cmr-fixer.md: clarity is NOT unconditionally fix-banned (0.3.18.16) ---
+#
+# The MUST-NOT-fix list used to carry a standalone "`clarity` findings
+# (author judgment)" bullet — an unconditional severity-based ban that
+# directly contradicted the SHOULD-fix-by-default bullet immediately above
+# (which says cheap/low-risk non-blocking findings, clarity included per
+# SKILL.md's "cheap/low-risk P3/P4 should still be FIXED", must be fixed
+# now). Removed: the remaining three conditions (no concrete suggested_fix,
+# reviewer disagreement, needs new content) already gate out the
+# un-fixable clarity subset on their own merits, severity-blind.
+
+
+def test_fixer_clarity_not_unconditionally_fix_banned():
+    txt = _norm(FIXER)
+    # positive: the MUST-NOT-fix list is declared severity-blind, and a
+    # clarity finding with a concrete fix / no disagreement / no new content
+    # is explicitly fix-eligible
+    assert "This list is **severity-blind**" in txt, (
+        "the MUST-NOT-fix list must be marked severity-blind — being "
+        "clarity severity is not by itself a fix-ban"
+    )
+    assert (
+        "A `clarity` finding that HAS a concrete `suggested_fix`, has no "
+        "reviewer disagreement, and needs no new-content invention is "
+        "fix-eligible under the SHOULD-fix-by-default rule above"
+    ) in txt, (
+        "a mechanically-fixable clarity finding must be stated as "
+        "fix-eligible, matching SKILL.md's cheap/low-risk P3/P4 SHOULD-fix"
+    )
+
+
+def test_fixer_drops_blanket_clarity_fix_ban_negative():
+    txt = _norm(FIXER)
+    # negative: the old standalone blanket ban is gone
+    assert "`clarity` findings (author judgment);" not in txt, (
+        "the standalone '`clarity` findings (author judgment)' MUST-NOT-fix "
+        "bullet must be gone — it contradicted the SHOULD-fix-by-default rule"
+    )
+
+
 def test_fixer_drops_medium_deferrable_wording_negative():
     txt = _norm(FIXER)
     assert "`medium`/`low`/`clarity`" not in txt, (
