@@ -4,6 +4,47 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.21.0 — 2026-07-13
+
+Architecture deletion campaign W1 (umbrella #35; slices #37 / #38 / #40).
+Net −2946 lines: the review engine's prose rules are now guarded by git
+history and RECORDED markers alone — pytest guards executable behavior only.
+
+### Removed
+
+- **ALL doc-consistency tests (#38)** — 10 test files (98 test functions:
+  golden hashes ×3, phrase pins, anti-dual-source, frontmatter/structure
+  assertions) plus 14 doc-pin / source-grep tests inside
+  `tests/test_codex_review.py`. Owner adjudication: in-repo tests cannot
+  bind an agent that can edit tests; the adjudication ledger is prose
+  `RECORDED` markers + `git log -S`, not pytest. The surviving suite is
+  39 subprocess behavioral tests (codex 16, gemini 23) + the
+  `--selftest` invocation-form guard; TESTING.md rewritten to match. No
+  doc-pin / golden-hash / prose-freeze test may be added again (ADR 0003,
+  issue #41).
+- **cmr-gate L1 audit, entirely (#37)** — `scripts/cmr-gate/`,
+  `.githooks/post-commit`, the `.review-unconverged.log` trail, its
+  `.gitignore` entries, and the repo-local `core.hooksPath`. Zero
+  producers ever wrote its frontmatter report format; the 64-line audit
+  log was 100% `NO_REPORT` noise (bypassed and reviewed commits were
+  indistinguishable); its companion `verify_report.py` never existed.
+  Review discipline lives in the orchestrator flow itself. The vendored
+  copy in ak-ai-vela is torn down in the same campaign (vela branch
+  `cleanup/cmr-gate-teardown`).
+- **Dead shells (#40)** — `lib/` (stale bytecode of sources removed in
+  0.2.0.0 / 0.3.9.0), empty `eval/`, `outputs/` (1.8 MB of dead-pipeline
+  scratch + tracked `.gitkeep`), the false `pythonpath = ["lib"]`
+  pyproject entry, and the stale `extract_json` CI step name.
+
+### Fixed
+
+- **Stale test-enforcement claims in surviving docs (per-slice review r1,
+  1 medium, codex leg; agy quota-degraded both rounds).** SKILL.md and
+  DOC-MODE.md banners no longer claim "the golden-hash test enforces
+  this"; ADR 0001 carries a supersession note under Status marking its
+  test-side protections historical (自查二连 done). Review r2: clear,
+  zero findings all severities.
+
 ## 0.3.20.1 — 2026-07-13
 
 - **S6-fixes review round-1 (1 medium + 2 low, both legs exercised the
