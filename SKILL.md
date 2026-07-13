@@ -296,132 +296,48 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
 >
 > Codex is explicitly pinned rather than inheriting host config.
 
-- **Codex** — only via `backends/codex-review.sh` (pins `printf %s
-  "$PROMPT" | codex exec --ephemeral -c
-  model_reasoning_effort=medium --model gpt-5.6-sol - 2>&1`).
-  **`--ephemeral` is mandatory** — cmr runs N codex in parallel; without
-  it concurrent instances collide on `~/.codex/session` → cross-talk
-  (prompt A surfaces in instance B's context). Wiki §额外硬规则 #6 /
-  codex#11435. **The reasoning-effort pin defaults to `medium`** — the
-  operational convention for both ship-pre and per-slice (`CMR_CODEX_EFFORT`
-  unset → `medium`), pinned via `-c` so codex cannot silently inherit the
-  machine's `~/.codex/config.toml` value and drift. `CMR_CODEX_EFFORT`
-  stays a genuine override: the backend passes any value
-  (`low`/`high`/`xhigh`/…) through verbatim, with no whitelist; the point
-  of pinning is that `-c` sets *something* explicitly, not that the value
-  can never differ from `medium`. `--selftest` guards the form. Never
-  `codex exec "$(...)"` (hangs → pkill), never `-C <dir>` (wrong
-  workdir), never `codex review --base B "PROMPT"` (can't pass both).
-- **Gemini** — only via `backends/gemini.sh`, which calls
-  `agy --sandbox --print '' <<<prompt` (Antigravity CLI, the in-kind
-  replacement after `gemini` CLI's 2026-06-18 EOL; locked to 3.5 Flash).
-  **NOT the old `agy -p --sandbox`**: agy 1.0.7 made `--print`/`-p` a
-  string flag that takes its value from the next token, so `-p
-  --sandbox` silently swallowed `--sandbox` as the prompt value —
-  `--sandbox` never engaged and the diff rode in only via agy's
-  stdin-concatenation (prompt = `<--print value>` + `\n` + stdin).
-  `--sandbox` BEFORE an explicit empty `--print ''` keeps sandbox a real
-  flag (verified: "enabling terminal sandbox" log line) and the diff on
-  stdin (no ARG_MAX limit). cwd = repo root; large diff →
-  `AGY_PRINT_TIMEOUT=15m` (default 5m is short). Never
-  `agy --dangerously-skip-permissions` (re-consents high scope, breaks
-  headless auth); never the deprecated `gemini --approval-mode plan`.
-  **agy is agentic — `--sandbox` does NOT stop it editing files / running
-  commands** (first-run: an agy review rewrote tracked files + ran
-  pytest). `gemini.sh` therefore prepends an explicit "REVIEW ONLY, do
-  not modify any file, do not run commands" preamble to every agy prompt
-  (wiki §调用规范 line 185); the preamble is the real read-only guard,
-  `--sandbox` is defense-in-depth. cmr-reviewer.md carries the same
-  read-only hard-constraint for all vendors.
-  **Quota / 429 visibility**: agy routes fatal backend errors
-  (RESOURCE_EXHAUSTED / 429 quota, etc.) to its `--log-file`, NOT
-  stdout/stderr — a quota-exhausted run looks like a plain empty success
-  (rc=0, empty stdout). `gemini.sh` passes `--log-file` and greps it on
-  degrade, so the flag names the real cause (e.g. `本轮缺 gemini (empty
-  output, agy rc=0; quota/429 — agy individual quota exhausted; Resets
-  in 63h…)`) instead of a bare "empty output".
-  **agy model-degradation ladder** (the leg's own fallback): agy's
-  Gemini quota is a small consumer Code Assist bucket that exhausts. When
-  the preferred model **Gemini 3.5 Flash** quota-429s, `gemini.sh` steps
-  the agy leg DOWN to **`Claude Sonnet 4.6 (Thinking)` via agy** — a
-  SEPARATE quota bucket (verified), and deliberately a DIFFERENT model
-  from the squad's Claude-Agent leg (Opus 4.8) for a distinct voice — so
-  a third independent read survives. Only when EVERY rung is quota-
-  exhausted does the agy leg step down entirely (degrade → `本轮缺
-  gemini`). When a fallback rung runs, the round has **no Google voice**;
-  `gemini.sh` flags that on stderr (the 3rd voice is then agy-served
-  Claude, separate quota). `AGY_MODEL` env pins one explicit model
-  (manual / tests). (Cross-family is the ideal, but Gemini is already
-  quota-dead either way — a distinct same-family 3rd read beats only
-  two; the wiki §降级链 should bless this rung.) **Workspace = the reviewed
-  repo, not the skill dir**: agy reads its cwd as the workspace, so
-  `gemini.sh` cd's into the **reviewed repo root** (`REVIEW_ROOT` = the
-  invocation cwd's `git rev-parse --show-toplevel`), NOT `PROTO_ROOT`
-  (the skill's own dir — which lives under `~/.claude/skills/...`, hidden,
-  and would make agy refuse the workspace and run diff-only on EVERY
-  registered-skill invocation). agy still refuses a workspace whose path
-  has a hidden (dot) component ("is hidden: ignore uri"), so if the
-  *reviewed repo itself* is under a dot-path (e.g. reviewing from a
-  `.claude/worktrees/...` checkout) the Gemini leg is diff-only;
-  `gemini.sh` warns (does not degrade). For full agy grep-grounding
-  (esp. the completeness audit, spine Step 5) review from a non-hidden checkout.
-  The backend handles agy's keychain auth-race with warm + retry (4
-  attempts total = initial 1 + 3 retries; each attempt pre-warms
-  `Antigravity Safe Storage` keychain item). All 4 failing → emit the
-  exact flag `本轮缺 gemini (auth race after retry×3)`, do not block
-  (§降级链).
-  **Intentional divergence from the wiki here**: the wiki's auth-race
-  `[!note]` says the 1s-keyring race was fixed upstream in agy 1.0.1
-  (#85/#51) and that 1.0.8 needs no warm+retry. The skill **keeps** the
-  warm+retry recipe anyway, because the OAuth login page still pops up
-  intermittently on 1.0.8 in practice (author-observed) — so the safety
-  net stays until that stops recurring. (The wiki note is the one that's
-  out of date here; flag it for correction.)
-- **Claude reviewer** — the `Agent` tool, full-diff reviewer prompt,
-  model = **`opus` (Claude Opus 4.8)**. This bullet is the ONE
-  authoritative place for the Claude leg's model.
-  - The model MUST be set **explicitly** on the `Agent` call — it does
-    **NOT** inherit the session model. (A dev-tier session would
-    otherwise silently drag the reviewer below the strongest-review-model
-    rule; you got lucky only if the session itself ran Opus 4.8.)
+**Reasoning-effort contract:** **The reasoning-effort pin defaults to
+`medium`** — the operational convention for ship-pre and per-slice — and
+is explicitly set via `-c` so codex cannot silently inherit the machine's
+`~/.codex/config.toml`. `CMR_CODEX_EFFORT` stays a genuine override: the
+backend passes any value (`low`/`high`/`xhigh`/…) through verbatim, with no
+whitelist.
 
-  > **⚠ RECORDED RULE — cmr does NOT use Fable on any leg; the Claude leg
-  > is Opus 4.8, period (user decision 2026-06-24).** Even when Claude
-  > Fable 5 is available, cmr will not dispatch it: Fable's quota is too
-  > scarce for a high-frequency review gate. This is a **deliberate
-  > skill-vs-wiki divergence** — the wiki (§操作规程 model table) says "use
-  > the strongest available Claude = Fable when up", which is the *ideal*;
-  > the skill's *operational decision* is Opus 4.8. **Do NOT re-add Fable
-  > on a wiki re-sync** (same standing-divergence handling as the agy
-  > warm+retry). Revisit only if the user changes the decision.
+- **Codex** — **入口：** only via `backends/codex-review.sh`. **硬禁令：**
+  Never omit `--ephemeral`; always `2>&1` from the repo root. Never
+  `codex exec "$(...)"`, never `-C <dir>`, never
+  `codex review --base B "PROMPT"`, never send a >10K-line prompt as one
+  segment, and never a global `pkill -f codex` (kill only the hung
+  instance's pid tree). **降级旗：** `本轮缺 codex` means the backend
+  observed a true outage (idle timeout, empty final message, or nonzero
+  exit); take the backend flag as authoritative and do not retry by hand.
+- **Gemini** — **入口：** only via `backends/gemini.sh`. **硬禁令：** Never
+  call `agy -p --sandbox`; Never `agy --dangerously-skip-permissions`;
+  never the deprecated `gemini --approval-mode plan`. Never relax the
+  injected strict `REVIEW ONLY, do not modify any file, do not run commands`
+  ban. **降级旗：** `本轮缺 gemini` means every backend model rung is
+  unavailable after the backend's own checks; the reason comes from the
+  agy exit/output, auth-race retry result, and `--log-file` quota/429
+  evidence. Do not retry by hand.
+  **⚠ RECORDED divergence（新建）— agy warm+retry：** 相对 wiki“agy 1.0.8 无需 warm+retry”的结论，本 skill 仍保留每次预热 + 共 4 次尝试；sync 时不得删除。
+  **⚠ RECORDED divergence（新建）— strict REVIEW-ONLY：** 相对 wiki 2026-07-06 放宽的 exercise carve-out，本 skill 仍禁止 reviewer 修改文件或运行命令；sync 时不得放宽。
+- **Claude reviewer** — **入口：** only via the main session's `Agent`
+  tool with the full-diff prompt and explicit model = **`opus` (Claude
+  Opus 4.8)**; it never inherits the session model. **硬禁令：** Never use
+  headless `claude -p` for this leg. **降级旗：** `本轮缺 claude` means the
+  orchestrator could not dispatch or obtain a result from the Agent leg;
+  report the flag rather than silently shrinking the squad.
+  **⚠ RECORDED RULE（存续）— Fable 禁用：** cmr 不在任何腿使用 Fable；Claude 腿显式固定为 `opus`（Claude Opus 4.8）。这有意不同于 wiki 的最强可用 Claude 规则；sync 时不得重新加入 Fable。
 
-  Never the headless `claude -p` path for the Claude reviewer (rate-limit
-  + 25min timeout footgun, plus the
-  2026-05-17 capability correction: subagents cannot spawn subagents, so
-  here the Claude reviewer MUST be spawned by the main session via
-  `Agent`).
-- Always `2>&1`. Run from the repo root, no `-C`. The backends
-  self-time-out on an **idle/hang** (`backends/codex-review.sh`:
-  `CMR_CODEX_TIMEOUT` = seconds of NO output before kill, default 900s =
-  15min — **not** a total wall-clock cap, so a codex still streaming runs
-  as long as it needs; scoped kill of its own pid tree) and degrade
-  automatically — you rarely need to intervene. If you must kill a hung
-  reviewer, kill ONLY its specific pid; **never a global
-  `pkill -f codex`** (msg1 launched N parallel codex reviewers — a global pkill
-  takes the siblings down too). **Hang judgment = > 15min** of no
-  stdout/stderr (user decision 2026-07-06; escalation history 3min →
-  8min → 15min — deep reasoning / large diffs think silently for many
-  minutes before the first byte, and an xhigh codex was false-killed at
-  the 8min threshold too, twice. Wiki §额外硬规则 #4 was updated to
-  15min the same day (vault `b5495e8`) — skill and wiki are in sync; do
-  not regress either side on a re-sync. 900s matches agy's
-  `--print-timeout 15m`, which gemini.sh already passes for the same
-  reason). rate / quota / limit → the backend degrades and flags
-  "本轮缺 X"; do not retry by hand.
-- **Huge diff (> 10K lines): segment the prompt** to avoid saturating the
-  pipe buffer (wiki §额外硬规则 #3). This is separate from the N-table
-  (which scales reviewer *count*) — it is about not shoving a single
-  >10K-line payload through one stdin pipe.
+### 待补守护（暂不得删）
+
+以下行为叙事当前无可执行守护，不得删；本轮 `backends/` 冻结，先集中在此：
+
+- agy 的 `--sandbox` 不能硬阻止 workspace 写入或命令执行；strict
+  REVIEW-ONLY prompt 是纪律层而非 sandbox-hard 保证。
+- 大 diff 的 agy timeout 需为 15m（默认 5m 可能不足）。
+- Claude reviewer 必须由有 `Agent` 能力的 main session 派发；subagent
+  不能再嵌套派发该 Agent 腿。
 
 Findings channel: reviewers return their review as **prose** (the wiki
 model — §「.result 是 review 文本」: a reviewer returns review text and

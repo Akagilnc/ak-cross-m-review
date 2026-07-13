@@ -4,6 +4,30 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.19.6 — 2026-07-13
+
+- **S3 (#30, PRD #25): Step-2 invocation forms compressed to contract
+  level + wiki upstreaming checklist.** Each leg's invocation bullet now
+  carries exactly the four contract elements — 唯一入口 backend / 硬禁令
+  / 降级旗语义 / one-line ⚠ RECORDED marker: codex (via
+  codex-review.sh; never `"$(...)"`, `-C`, global pkill…), gemini (via
+  gemini.sh; never `-p --sandbox`, `--dangerously-skip-permissions`…),
+  Claude (via Agent tool, model=opus; never headless `claude -p`).
+  Three sync-recognizable RECORDED markers, correctly classified: Fable
+  禁用 = 存续; **agy warm+retry = 新建** (vs wiki "1.0.8 无需
+  warm+retry"); **strict REVIEW-ONLY = 新建** (vs wiki's 2026-07-06
+  exercise carve-out) — behavior guards ≠ sync markers, so the two new
+  ones now exist as markers, closing the sync-erasure vacuum. Unguarded
+  behavior narratives (agy `--sandbox` not write-hard) moved to a
+  `### 待补守护（暂不得删）` section, not deleted (backends/ frozen this
+  round). Archaeology narratives deleted only after wiki collation;
+  the one un-collated piece (agy model-degradation ladder → Sonnet rung)
+  is preserved verbatim in `UPSTREAM-CHECKLIST.md` for the next sync PR.
+  The reasoning-effort contract callout (TESTING.md's single source of
+  truth) survives intact. SKILL.md 842 → 758 lines (net −84). 128 → 131
+  tests (three new red-first contract assertions), all green; selftest
+  green; doc-mode residual hash unchanged.
+
 ## 0.3.19.5 — 2026-07-13
 
 - **S2 round-2 nits + convergence.** Pin the last unpinned table flag
