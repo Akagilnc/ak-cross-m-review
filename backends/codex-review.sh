@@ -43,7 +43,7 @@
 # nothing; both are fully overridable (CMR_CODEX_MODEL / CMR_CODEX_EFFORT)
 # and any override is passed through verbatim, never validated or rejected.
 #
-# Source of truth:
+# Historical lineage (wiki sync cancelled 2026-07-13, ADR 0002):
 #   wiki/concepts/cross-model-review.md  §调用规范 / §额外硬规则
 #   wiki/concepts/codex-bot-conventions.md  §CLI 侧的正确 pattern / §模型变体
 #
@@ -68,8 +68,8 @@
 #                     reasoning / large diffs go silent for MANY minutes
 #                     before the first token. Escalation history: 3min →
 #                     8min → 15min. Wiki §额外硬规则 #4 updated to 15min
-#                     the same day (vault b5495e8) — in sync, do not
-#                     regress either side. Matches agy --print-timeout 15m).
+#                     the same day (vault b5495e8; historical note). Matches
+#                     agy --print-timeout 15m).
 #   CMR_CODEX_IDLE_POLL  watchdog poll interval seconds (default 5).
 #   CMR_DRY_RUN=1     print the exact command that WOULD run, do not call
 #                     codex, emit a dry_run payload, and exit 2. This is
@@ -104,7 +104,7 @@ MODEL="${CMR_CODEX_MODEL:-gpt-5.6-sol}"
 # IDLE/silence timeout — seconds with NO new output before we call it a hang
 # and kill (NOT a total wall-clock cap). Default 900 = 15min (user decision
 # 2026-07-06 after an 8min false-kill; wiki §额外硬规则 #4 updated to 15min
-# the same day — in sync). A streaming codex is never killed for total
+# the same day, historical note). A streaming codex is never killed for total
 # runtime.
 IDLE_TIMEOUT="${CMR_CODEX_TIMEOUT:-900}"
 IDLE_POLL="${CMR_CODEX_IDLE_POLL:-5}"

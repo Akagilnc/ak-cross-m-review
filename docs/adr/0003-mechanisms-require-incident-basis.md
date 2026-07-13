@@ -38,8 +38,9 @@ never 走正常设计流程。实例：
 ## Consequences
 
 - 未来 architecture review / 新 session 不得把 doc-pin 测试、audit
-  hook、对称 selftest 类项目当"改进"重新提案（2026-07-13 审查中两个
-  被标 Strong 的候选正是此类，均被 grilling 推翻）。
+  hook 重新提案（永久禁止），也不得以"对称性"为由提案无事故基础的
+  selftest（有真实事故基础的按 Decision §4 重开，非永久禁止）。
+  2026-07-13 审查中两个被标 Strong 的候选正是此类，均被 grilling 推翻。
 - 提案新机制的模板问题固定为：「哪次事故？谁在读？」
 - 测试套件缩为行为层（39 个行为用例 + selftest），TESTING.md 的两层模型
   自此成为对套件的真实描述（#38）。
