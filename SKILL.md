@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: Local pre-PR cross-model review — the executable form of the wiki's cross-model-review.md (tdd-autonomous-dev spine step 4 per-slice / step 5–6 ship-pre, Layer 1). The squad depends on the trigger point — ship-pre uses N codex gpt-5.6-sol + 1 Claude Agent + 1 Gemini via agy = N+1+1, dispatched two-phase (msg1 = all CLI Bash run-in-background, msg2 = Claude Agent, no-peek between); per-slice uses N codex + agy = N+1 (no Claude — credit; run by the slice's own subagent, no two-phase). N by effective (core-logic) diff lines. Then merge / grade / drift-check / loop as the agent judgment the wiki prescribes. Use every dev cycle before a PR, so the agent runs the wiki step the same way instead of re-deciding by feel.
+description: Cross-model review gate for development changes. Use per-slice after a baseline commit, ship-pre before a PR, and when reviewing design documents. Squad, N, and dispatch rules are in the body.
 allowed-tools:
   - Bash
   - Read
@@ -96,7 +96,8 @@ Pre-flight gates (wiki §操作规程 / §边界):
   code** (wiki §设计文档). A design doc carries decisions *more
   upstream* than code (a wrong spec → the whole implementation is built
   on a wrong premise; TDD-green ≠ spec-correct — code can perfectly
-  implement a wrong design). So an ADR / spec / contract **MUST run a
+  implement a wrong design). **review 对象是 ADR/spec/plan → 先 Read
+  `DOC-MODE.md` 再派单.** So an ADR / spec / contract **MUST run a
   full cmr in `doc` mode** — not "written → approved → done" — and when
   you *produce* such a doc you **proactively remind the user to review
   it**, without waiting to be asked. Doc-mode dispatches the same way as
@@ -111,9 +112,10 @@ Pre-flight gates (wiki §操作规程 / §边界):
   ming-salvage-sim ADR 0008 — a *design doc* — took multiple cmr rounds
   to converge, each catching a real spec-level hole like a
   poison-payload soft-lock that no code read would surface.) Doc mode
-  ALSO carries its own loop discipline — **§Doc mode discipline** below
-  (constitution kill-axis, fix-classification ledger, bloat audit line,
-  full confirmation-round early stop, round-10 escalation gate) — the
+  ALSO carries its own loop discipline — constitution kill-axis (①
+  below); fix-classification ledger, bloat audit line, full
+  confirmation-round early stop, round-10 escalation gate (②–⑤ in
+  `DOC-MODE.md`) — the
   additive-runaway defense. Code-diff mode is untouched by that section
   — EXCEPT its ①: the constitution packet + kill-axis applies to EVERY
   review mode, code-diff included (owner decision 2026-07-12).
@@ -142,7 +144,7 @@ Pre-flight gates (wiki §操作规程 / §边界):
 ## Step 1 — setup: who runs it decides the squad + the N table
 
 **The squad depends on the trigger point** (wiki §谁跑 cmr, 2026-06-18 —
-Claude is concentrated to ship-pre because `claude -p` credit is too
+Claude is concentrated to ship-pre because Claude credit is too
 tight to run Claude on the high-frequency per-slice gate):
 
 - **per-slice** (after each slice's baseline commit — within-slice lens):
@@ -154,8 +156,8 @@ tight to run Claude on the high-frequency per-slice gate):
   (N+1)/(N+1) + flag `per-slice 不用 Claude (credit)`.
 - **ship-pre** (after all slices done — cross-slice cumulative-diff
   lens): **+Claude → 1+1+1 (N+1+1).** The **main session** orchestrates;
-  the Claude leg runs via the **`Agent` subagent** (cheap, never
-  `claude -p`). codex effort defaults to **`medium`**, the same as
+  the Claude leg runs via the **`Agent` subagent**. codex effort defaults
+  to **`medium`**, the same as
   per-slice, overridable via `CMR_CODEX_EFFORT` (full contract in the
   §调用规范 callout below — the single source of truth). This is the
   two-phase dispatch (Step 2).
@@ -215,9 +217,23 @@ it into review).
 > (2026-06-19: the old main-session-self-run-small-slices exception is
 > removed), so per-slice review **always** runs inside that subagent — a
 > **nested layer** — as `N codex + agy` (N+1) with **every leg a Bash
-> CLI** (nested Agent / native-subagent spawning is forbidden on both
-> hosts). The native codex-subagent path exists **only for ship-pre** (the
-> main-session top level). See Step 1 / wiki §谁跑 cmr.
+> CLI** (nested reviewer-subagent spawning is forbidden). See Step 1 /
+> wiki §谁跑 cmr.
+
+## main=Codex 宿主替换表
+
+Codex 宿主进场先读本节；之后走同一条按 main=Claude 写成的主干，只在
+下列点替换：
+
+| 替换点 | main=Codex 执行 |
+|---|---|
+| codex reviewer 腿 | **ship-pre 顶层**改用 Codex **native subagent**，逐腿设置 `model` / `model_reasoning_effort` / `developer_instructions`（wiki hypothesis，未在本 skill 实测）；per-slice 位于禁止嵌套派生的 slice subagent 内，仍走 `backends/codex-review.sh` 的 **`codex exec`**。 |
+| Claude reviewer 腿 | **勿用 file/env 判 Claude 可用性**（keychain/GUI 登录假阴性）——只认 live-smoke：`printf 'Return exactly: CLAUDE_OK\n' \| claude -p --output-format json --disable-slash-commands --tools ""`，仅 `.result == "CLAUDE_OK"` 算可用；再以 `claude -p` review：`cat "$PROMPT_FILE" \| claude -p --model claude-opus-4-8 --output-format json --disable-slash-commands`。review 调用须 pin **`--model claude-opus-4-8`**、**无 `--effort max`**、**reviewer 不带 `--tools ""`**（保留 Read/Grep/Glob）。 |
+| Claude down | Codex + Gemini；flag `本轮缺 claude`。 |
+| Gemini down | Codex + Claude；flag `本轮缺 gemini`。 |
+| Claude + Gemini both down | Codex only；flag `本轮无 outside voice`。 |
+| 固定双腿场景 | per-slice / correctness (Step 6) 固定为 `codex + agy`，flag `不用 Claude (credit)`；completeness (Step 5) 仍含 Claude 腿。计分同 mainline By-design 2-vendor 行：`(N+1)/(N+1) concur + flag`。 |
+| codex-solo 正向终止例外 | main=Codex 的 per-slice / correctness (Step 6) 遇 agy down 时，**codex solo** 可正向终止并 flag `单腿 codex (agy down)，无 cross-vendor，质量降级`；**不适用于 Step 5 completeness**、main=Claude，或仍有其他 cross-family vendor 可用的场景。 |
 
 ## Step 2 — two-phase dispatch (wiki §并行启动, 2026-05-18 顺机理 reorder)
 
@@ -276,153 +292,60 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
 >   default and **cannot be dialed up** — the `Agent` tool exposes no
 >   effort param, and `ultrathink` in a subagent prompt is inert literal
 >   text (claude-code#25669).
-> - **Claude `claude -p`** (only main=Codex completeness one-pass, spine Step 5, now) = default
->   effort. **`--effort max` was RETRACTED** (2026-06-18): it does give
->   ≈5× depth, but `claude -p` billing on isolated/capped credit (the
->   6/15 policy is paused but may restart) burns 5× tokens too fast.
 > - **agy / Gemini** = 3.5 Flash, no knob.
 >
 > Codex is explicitly pinned rather than inheriting host config.
 
-- **Codex** — only via `backends/codex-review.sh` (pins `printf %s
-  "$PROMPT" | codex exec --ephemeral -c
-  model_reasoning_effort=medium --model gpt-5.6-sol - 2>&1`).
-  **`--ephemeral` is mandatory** — cmr runs N codex in parallel; without
-  it concurrent instances collide on `~/.codex/session` → cross-talk
-  (prompt A surfaces in instance B's context). Wiki §额外硬规则 #6 /
-  codex#11435. **The reasoning-effort pin defaults to `medium`** — the
-  operational convention for both ship-pre and per-slice (`CMR_CODEX_EFFORT`
-  unset → `medium`), pinned via `-c` so codex cannot silently inherit the
-  machine's `~/.codex/config.toml` value and drift. `CMR_CODEX_EFFORT`
-  stays a genuine override: the backend passes any value
-  (`low`/`high`/`xhigh`/…) through verbatim, with no whitelist; the point
-  of pinning is that `-c` sets *something* explicitly, not that the value
-  can never differ from `medium`. `--selftest` guards the form. Never
-  `codex exec "$(...)"` (hangs → pkill), never `-C <dir>` (wrong
-  workdir), never `codex review --base B "PROMPT"` (can't pass both).
-  *(main=Codex host only: the codex leg runs as a Codex **native
-  subagent** with per-agent `model`/`model_reasoning_effort`/
-  `developer_instructions`, NOT `codex exec` — but this native-subagent
-  path is **ship-pre only** (top level); per-slice slices are always
-  implemented by a clean-context subagent (nested, 2026-06-19), where
-  subagent-spawning is forbidden, so the per-slice codex leg always falls
-  back to `codex exec`. Wiki §主=Codex codex reviewer 腿走原生
-  subagent, hypothesis. This skill executes main=Claude, where the codex
-  leg is always `codex exec` via this backend.)*
-- **Gemini** — only via `backends/gemini.sh`, which calls
-  `agy --sandbox --print '' <<<prompt` (Antigravity CLI, the in-kind
-  replacement after `gemini` CLI's 2026-06-18 EOL; locked to 3.5 Flash).
-  **NOT the old `agy -p --sandbox`**: agy 1.0.7 made `--print`/`-p` a
-  string flag that takes its value from the next token, so `-p
-  --sandbox` silently swallowed `--sandbox` as the prompt value —
-  `--sandbox` never engaged and the diff rode in only via agy's
-  stdin-concatenation (prompt = `<--print value>` + `\n` + stdin).
-  `--sandbox` BEFORE an explicit empty `--print ''` keeps sandbox a real
-  flag (verified: "enabling terminal sandbox" log line) and the diff on
-  stdin (no ARG_MAX limit). cwd = repo root; large diff →
-  `AGY_PRINT_TIMEOUT=15m` (default 5m is short). Never
-  `agy --dangerously-skip-permissions` (re-consents high scope, breaks
-  headless auth); never the deprecated `gemini --approval-mode plan`.
-  **agy is agentic — `--sandbox` does NOT stop it editing files / running
-  commands** (first-run: an agy review rewrote tracked files + ran
-  pytest). `gemini.sh` therefore prepends an explicit "REVIEW ONLY, do
-  not modify any file, do not run commands" preamble to every agy prompt
-  (wiki §调用规范 line 185); the preamble is the real read-only guard,
-  `--sandbox` is defense-in-depth. cmr-reviewer.md carries the same
-  read-only hard-constraint for all vendors.
-  **Quota / 429 visibility**: agy routes fatal backend errors
-  (RESOURCE_EXHAUSTED / 429 quota, etc.) to its `--log-file`, NOT
-  stdout/stderr — a quota-exhausted run looks like a plain empty success
-  (rc=0, empty stdout). `gemini.sh` passes `--log-file` and greps it on
-  degrade, so the flag names the real cause (e.g. `本轮缺 gemini (empty
-  output, agy rc=0; quota/429 — agy individual quota exhausted; Resets
-  in 63h…)`) instead of a bare "empty output".
-  **agy model-degradation ladder** (the leg's own fallback): agy's
-  Gemini quota is a small consumer Code Assist bucket that exhausts. When
-  the preferred model **Gemini 3.5 Flash** quota-429s, `gemini.sh` steps
-  the agy leg DOWN to **`Claude Sonnet 4.6 (Thinking)` via agy** — a
-  SEPARATE quota bucket (verified), and deliberately a DIFFERENT model
-  from the squad's Claude-Agent leg (Opus 4.8) for a distinct voice — so
-  a third independent read survives. Only when EVERY rung is quota-
-  exhausted does the agy leg step down entirely (degrade → `本轮缺
-  gemini`). When a fallback rung runs, the round has **no Google voice**;
-  `gemini.sh` flags that on stderr (the 3rd voice is then agy-served
-  Claude, separate quota). `AGY_MODEL` env pins one explicit model
-  (manual / tests). (Cross-family is the ideal, but Gemini is already
-  quota-dead either way — a distinct same-family 3rd read beats only
-  two; the wiki §降级链 should bless this rung.) **Workspace = the reviewed
-  repo, not the skill dir**: agy reads its cwd as the workspace, so
-  `gemini.sh` cd's into the **reviewed repo root** (`REVIEW_ROOT` = the
-  invocation cwd's `git rev-parse --show-toplevel`), NOT `PROTO_ROOT`
-  (the skill's own dir — which lives under `~/.claude/skills/...`, hidden,
-  and would make agy refuse the workspace and run diff-only on EVERY
-  registered-skill invocation). agy still refuses a workspace whose path
-  has a hidden (dot) component ("is hidden: ignore uri"), so if the
-  *reviewed repo itself* is under a dot-path (e.g. reviewing from a
-  `.claude/worktrees/...` checkout) the Gemini leg is diff-only;
-  `gemini.sh` warns (does not degrade). For full agy grep-grounding
-  (esp. the completeness audit, spine Step 5) review from a non-hidden checkout.
-  The backend handles agy's keychain auth-race with warm + retry (4
-  attempts total = initial 1 + 3 retries; each attempt pre-warms
-  `Antigravity Safe Storage` keychain item). All 4 failing → emit the
-  exact flag `本轮缺 gemini (auth race after retry×3)`, do not block
-  (§降级链).
-  **Intentional divergence from the wiki here**: the wiki's auth-race
-  `[!note]` says the 1s-keyring race was fixed upstream in agy 1.0.1
-  (#85/#51) and that 1.0.8 needs no warm+retry. The skill **keeps** the
-  warm+retry recipe anyway, because the OAuth login page still pops up
-  intermittently on 1.0.8 in practice (author-observed) — so the safety
-  net stays until that stops recurring. (The wiki note is the one that's
-  out of date here; flag it for correction.)
-- **Claude reviewer** — the `Agent` tool, full-diff reviewer prompt,
-  model = **`opus` (Claude Opus 4.8)**. This bullet is the ONE
-  authoritative place for the Claude leg's model.
-  - The model MUST be set **explicitly** on the `Agent` call — it does
-    **NOT** inherit the session model. (A dev-tier session would
-    otherwise silently drag the reviewer below the strongest-review-model
-    rule; you got lucky only if the session itself ran Opus 4.8.)
+**Reasoning-effort contract:** **The reasoning-effort pin defaults to
+`medium`** — the operational convention for ship-pre and per-slice — and
+is explicitly set via `-c` so codex cannot silently inherit the machine's
+`~/.codex/config.toml`. `CMR_CODEX_EFFORT` stays a genuine override: the
+backend passes any value (`low`/`high`/`xhigh`/…) through verbatim, with no
+whitelist.
 
-  > **⚠ RECORDED RULE — cmr does NOT use Fable on any leg; the Claude leg
-  > is Opus 4.8, period (user decision 2026-06-24).** Even when Claude
-  > Fable 5 is available, cmr will not dispatch it: Fable's quota is too
-  > scarce for a high-frequency review gate. This is a **deliberate
-  > skill-vs-wiki divergence** — the wiki (§操作规程 model table) says "use
-  > the strongest available Claude = Fable when up", which is the *ideal*;
-  > the skill's *operational decision* is Opus 4.8. **Do NOT re-add Fable
-  > on a wiki re-sync** (same standing-divergence handling as the agy
-  > warm+retry). Revisit only if the user changes the decision.
+All legs: always `2>&1`; hang = idle >15min (backends self-time-out,
+`CMR_CODEX_TIMEOUT`=900s default — wall-clock is not a hang); kill only
+the hung instance's own pid tree, never global pkill.
 
-  Never the headless `claude -p` path **for the Claude reviewer in this
-  (main = Claude) flow** (rate-limit + 25min timeout footgun, plus the
-  2026-05-17 capability correction: subagents cannot spawn subagents, so
-  here the Claude reviewer MUST be spawned by the main session via
-  `Agent`). (Exception — a *different host*: when the main session is
-  **Codex**, Step 3, it has no `Agent` tool, so there the Claude reviewer
-  legitimately runs via `claude -p`; and the Step 3 Claude-auth
-  *live-smoke* is a `claude -p` probe too — both are outside this ban,
-  which is only about dispatching the reviewer in the main=Claude flow.)
-- Always `2>&1`. Run from the repo root, no `-C`. The backends
-  self-time-out on an **idle/hang** (`backends/codex-review.sh`:
-  `CMR_CODEX_TIMEOUT` = seconds of NO output before kill, default 900s =
-  15min — **not** a total wall-clock cap, so a codex still streaming runs
-  as long as it needs; scoped kill of its own pid tree) and degrade
-  automatically — you rarely need to intervene. If you must kill a hung
-  reviewer, kill ONLY its specific pid; **never a global
-  `pkill -f codex`** (msg1 launched N parallel codex reviewers — a global pkill
-  takes the siblings down too). **Hang judgment = > 15min** of no
-  stdout/stderr (user decision 2026-07-06; escalation history 3min →
-  8min → 15min — deep reasoning / large diffs think silently for many
-  minutes before the first byte, and an xhigh codex was false-killed at
-  the 8min threshold too, twice. Wiki §额外硬规则 #4 was updated to
-  15min the same day (vault `b5495e8`) — skill and wiki are in sync; do
-  not regress either side on a re-sync. 900s matches agy's
-  `--print-timeout 15m`, which gemini.sh already passes for the same
-  reason). rate / quota / limit → the backend degrades and flags
-  "本轮缺 X"; do not retry by hand.
-- **Huge diff (> 10K lines): segment the prompt** to avoid saturating the
-  pipe buffer (wiki §额外硬规则 #3). This is separate from the N-table
-  (which scales reviewer *count*) — it is about not shoving a single
-  >10K-line payload through one stdin pipe.
+- **Codex** — **入口：** only via `backends/codex-review.sh`. **硬禁令：**
+  Never omit `--ephemeral`; run from the repo root. Never `codex exec
+  "$(...)"`, never `-C <dir>`, never
+  `codex review --base B "PROMPT"`, never send a >10K-line prompt as one
+  segment, and never a global `pkill -f codex` (kill only the hung
+  instance's pid tree). **降级旗：** `本轮缺 codex` means the backend
+  observed a true outage (idle timeout, empty final message, or nonzero
+  exit); take the backend flag as authoritative and do not retry by hand.
+- **Gemini** — **入口：** only via `backends/gemini.sh`. **硬禁令：** Never
+  call `agy -p --sandbox`; Never `agy --dangerously-skip-permissions`;
+  never the deprecated `gemini --approval-mode plan`. Never relax the
+  injected strict `REVIEW ONLY, do not modify any file, do not run commands`
+  ban. **降级旗：** `本轮缺 gemini` means the agy/Gemini leg is unavailable
+  this round — all reachable model rungs quota-exhausted, or an auth-race /
+  not-installed outage; the reason comes from the agy exit/output,
+  auth-race retry result, and `--log-file` quota/429 evidence. Do not retry
+  by hand. **Step-down ≠ 降级：** agy 降到非 Google 模型仍算成功腿，但
+  backend 会在 stderr 标 `NO Google voice this round`；该轮第三读是
+  agy-served Claude（同 Anthropic 家族），合并判定不得计为 Google-family
+  diversity，round report 必须带旗。
+  **⚠ RECORDED divergence（新建）— agy warm+retry：** 相对 wiki“agy 1.0.8 无需 warm+retry”的结论，本 skill 仍保留每次预热 + 共 4 次尝试；sync 时不得删除。
+  **⚠ RECORDED divergence（新建）— strict REVIEW-ONLY：** 相对 wiki 2026-07-06 放宽的 exercise carve-out，本 skill 仍禁止 reviewer 修改文件或运行命令；sync 时不得放宽。
+- **Claude reviewer** — **入口：** only via the main session's `Agent`
+  tool with the full-diff prompt and explicit model = **`opus` (Claude
+  Opus 4.8)**; it never inherits the session model. **硬禁令：** Never use
+  headless `claude -p` for this leg. **降级旗：** `本轮缺 claude` means the
+  orchestrator could not dispatch or obtain a result from the Agent leg;
+  report the flag rather than silently shrinking the squad.
+  **⚠ RECORDED RULE（存续）— Fable 禁用：** cmr 不在任何腿使用 Fable；Claude 腿显式固定为 `opus`（Claude Opus 4.8）。这有意不同于 wiki 的最强可用 Claude 规则；sync 时不得重新加入 Fable。
+
+### 待补守护（暂不得删）
+
+以下行为叙事当前无可执行守护，不得删；本轮 `backends/` 冻结，先集中在此：
+
+- agy 的 `--sandbox` 不能硬阻止 workspace 写入或命令执行；strict
+  REVIEW-ONLY prompt 是纪律层而非 sandbox-hard 保证。
+- 大 diff 的 agy timeout 需为 15m（默认 5m 可能不足）。
+- Claude reviewer 必须由有 `Agent` 能力的 main session 派发；subagent
+  不能再嵌套派发该 Agent 腿。
 
 Findings channel: reviewers return their review as **prose** (the wiki
 model — §「.result 是 review 文本」: a reviewer returns review text and
@@ -488,35 +411,6 @@ v3 requires all 3 vendors. If one is unavailable, run with the rest and
 > safeguards auto-routing to Opus; the `fable` alias needing client
 > v2.1.170+) no longer apply — there is no Fable leg to fall back FROM.
 > Opus 4.8 is simply the Claude leg, not a degradation.
-
-**If the main session is Codex** (not the wiki's primary scenario, but
-symmetric — wiki §降级链 "主 session = Codex"):
-
-| Down (main = Codex) | Continue with | Flag |
-|---|---|---|
-| Claude (verify by live-smoke first, below) | Codex + Gemini | `本轮缺 claude` |
-| Gemini | Codex + Claude | `本轮缺 gemini` |
-| Claude + Gemini both | Codex only (fallback, no outside voice) | `本轮无 outside voice` |
-
-When main = Codex, **never** check Claude auth via file/env (false
-negatives on keychain / GUI logins) — use a live smoke:
-`printf 'Return exactly: CLAUDE_OK\n' | claude -p --output-format json
---disable-slash-commands --tools ""` (`.result == "CLAUDE_OK"` → up,
-priority 1; failure / timeout → degrade). After the smoke passes, the
-actual Claude **review** call (the main=Codex completeness one-pass, spine Step 5) is
-`cat "$PROMPT_FILE" | claude -p --model claude-opus-4-8 --output-format
-json --disable-slash-commands` — note three things: **(a)** pin
-`--model claude-opus-4-8` (the Claude leg; cmr does not use Fable — Step 2
-recorded rule) so a default-model drift can't
-quietly downgrade the reviewer; **(b) NO `--effort max`** — it was
-retracted (it gives ≈5× depth but `claude -p` billing on isolated/capped
-credit burns too fast); **(c) NO `--tools ""`** — the tool-kill is ONLY
-for the auth smoke; a reviewer must keep Read/Grep/Glob for grounded
-review (one agy over-step in hundreds of reviews doesn't justify gutting
-the grounding axis for all three — wiki §调用规范). The outside-voice
-reviewer always stays the strongest in range (main = Claude → codex
-`gpt-5.6-sol`; main = Codex → current strongest Claude or Gemini), never
-dev-tier spark / 5.3-codex / sonnet. See wiki §降级链.
 
 ## Step 4 — merge + grade (agent judgment, not a deterministic engine)
 
@@ -594,23 +488,21 @@ requires by squad shape:
 > ledger non-zero → the round is **NOT clear**, even under a majority-complete
 > vote; the dissent cannot be swallowed. Both forms still need the two
 > consecutive clear rounds above (doc mode's per-round form is defined in
-> §Doc mode discipline ②(c)); the two forms are stated so they do not
+> DOC-MODE.md ②(c)); the two forms are stated so they do not
 > contradict.
 
 - ship-pre / main=Claude default: **3/3 concur** (all reviewers approve).
 - Upgraded 1+N+1, 3 vendors present: **(N+2)/(N+2) concur**.
 - One vendor degraded (1+1+1 → 2 reviewers): **2/2 concur + flag**.
-- **By-design 2-vendor (no Claude)**: **per-slice (both hosts)** and the
-  **main=Codex correctness (spine Step 6)** are fixed `codex + agy` (Claude dropped for credit,
-  Step 1 / wiki §谁跑 cmr) → **(N+1)/(N+1) concur + flag `不用 Claude
+- **By-design 2-vendor (no Claude)**: **per-slice** is fixed `codex + agy`
+  (Claude dropped for credit, Step 1 / wiki §谁跑 cmr) → **(N+1)/(N+1) concur + flag `不用 Claude
   (credit)`**, scored the same as a "missing 1 vendor" round. (ship-pre
   completeness (Step 5) and main=Claude correctness (Step 6) are still 1+1+1, not this row.)
 - Upgraded-state single-vendor loss (1+N+1):
   - Claude **or** Gemini missing → N+1 reviewers: **(N+1)/(N+1) concur + flag**.
   - **All codex missing** → falls back to 1+0+1 = 2 reviewers (Claude + Gemini): **2/2 concur + flag `升级态缺 codex，已退化`**.
   - codex partial-instance loss (N→N′): **(N′+2)/(N′+2) concur + flag `codex 实例数 N→N′`**.
-- Only 1 vendor ran (no outside voice — e.g. codex+gemini both down → Claude only; or claude+gemini both down → codex only): **NOT positive** — no cross-family check; needs human review or wait for vendor recovery.
-  - > **Explicit exception: main=Codex per-slice / correctness (Step 6) + agy down → codex solo is POSITIVE, don't block.** Those scenarios are already Claude-less (`codex + agy`), and agy's small quota frequently 429s; when agy is the only one left and it drops, run **codex solo**, count it as positive termination, and flag `单腿 codex (agy down)，无 cross-vendor，质量降级` (optionally re-run when agy recovers, but do not stall the dev loop — waiting on agy isn't worth it). **This relaxation is ONLY here** — not for main=Claude / completeness (Step 5) / or when another cross-family vendor is still available.
+- Only 1 vendor ran (no outside voice — e.g. codex+gemini both down → Claude only): **NOT positive** — no cross-family check; needs human review or wait for vendor recovery.
 
 **Hard stop (do not continue):** bug count not converging → the
 implementation method or architecture needs rework, not another patch.
@@ -821,13 +713,10 @@ critical/high→medium).
 
 ## Doc mode discipline (design-text reviews — the additive-runaway defense)
 
-> **⚠ RECORDED RULE — upstreamed to the wiki 2026-07-06 (user decision
-> same day; vault `b5495e8` / `da04ff5` / `e06bcfe`).** Do
+> **⚠ RECORDED RULE ① — upstreamed to the wiki 2026-07-06 (user
+> decision same day; vault `b5495e8` / `da04ff5` / `e06bcfe`).** Do
 > NOT drop this section on a wiki re-sync (a re-sync from a stale wiki
-> checkout would erase it; the golden-hash test enforces this). The
-> round-gate value **10** restores cmr's original founding setting (it
-> had been silently forgotten by later versions — which is exactly why
-> these tests-pinned rules exist).
+> checkout would erase it; the golden-hash test enforces this).
 
 Applies **ONLY when the thing under review is a design text** (ADR /
 spec / contract / plan — the Step 0 doc-mode bullet, completeness lens)
@@ -838,20 +727,7 @@ closure machines entered a code-diff review exactly through the
 unguarded suggestion channel and killed live family runs on
 2026-07-12).** Code-diff mode keeps every OTHER rule unchanged.
 
-**Why doc mode needs its own defense (evidence: #440).** A review of a
-DESIGN TEXT is structurally **additive** — every finding suggests adding
-text, every fix grows the reviewable surface. #440 ran 34 rounds: of 121
-fixes, 7% fixed the original design, **58% fixed the review's own
-earlier fixes**, 23% were mechanisms the review itself invented; the
-text bloated 2.4×; at round 3, 3/4 legs had already judged `complete`
-and the loop still ran ~30 more full rounds. **The Step 6 drift triple
-never fired once in 34 rounds** — quantity drift watches "findings count
-not decreasing", and a runaway doc review *resolves* findings every
-round (count keeps falling) while the text grows and fixes fix fixes.
-The triple is structurally blind to additive-text runaway, so doc mode
-adds the defenses below. 标 vs 本: ①③ + the ledger are the **root**
-fixes (they stop the runaway from being generated); the bloat line and
-the round gate are **backstops** for when the roots fail.
+完整 rationale（#440 证据 + 标 vs 本）→ `DOC-MODE.md`.
 
 ### ① Constitution packet + kill-axis (root fix — ALL modes, not just doc)
 
@@ -870,86 +746,6 @@ exist at all** and recommend **DELETE**. A DELETE finding **outranks a
 patch finding** on the same mechanism. Rationale: a completeness lens is
 structurally add-only; subtraction must be explicitly licensed or the
 review can only ever make the text longer.
-
-### ② Fix-classification ledger + stop signals
-
-- **(a) Ledger — the measuring instrument, lands first.** Every round
-  intro MUST carry the previous round's fix classification:
-  **original-defect / fix-fix / invention** (原始缺陷 / fix修fix / 加戏).
-  Without the ledger none of the signals below is measurable.
-- **(b) Bloat line = audit trigger, NOT a death line.** Reviewed text
-  grows past **1.5×** its round-1 size → audit the ledger. Growth driven
-  by original-defect fixes → legitimate: note it in the round report and
-  continue (a genuinely complex design may lawfully grow). Growth driven
-  by fix-fix / invention → STOP, escalate to the user with the ledger.
-- **(c) Early stop via a FULL confirmation round (no #14 exception).**
-  A round where the **majority of legs judge `complete`** AND the ledger —
-  **aggregating ALL legs' findings, including any leg dissenting from the
-  majority-complete vote** — shows **zero blocking (P0/P1/P2/P3) findings
-  regardless of classification** (any classification — original-defect,
-  fix-fix, or invention all count toward blocking; the
-  original-defect/fix-fix/invention split is for ②(b)'s
-  bloat-line/ledger-audit trigger only, never for filtering the
-  clear/convergence gate) (only P4 exempt; P4 clarity
-  reported-but-Deferred, doesn't block the confirmation round) → the next
-  round is a **confirmation round that is still a FULL re-review**
-  (anti-pattern #14 stays fully intact — the spot-check variant was
-  considered and rejected: one full round costs nothing against the ~30
-  wasted ones it prevents, and it keeps the fresh-full-read guarantee).
-  Confirmation round again majority-complete **AND the ledger (again
-  spanning ALL legs, dissenters included) again showing zero blocking
-  (P0/P1/P2/P3) findings regardless of classification** (any
-  classification — original-defect, fix-fix, or invention all count toward
-  blocking; the split is ②(b)'s bloat-line/ledger-audit trigger only, never
-  the clear/convergence gate) (only P4 exempt; P4 clarity
-  reported-but-Deferred, doesn't block the confirmation round) →
-  **converged, stop** (a confirmation round that itself makes any edit is
-  not terminal — see the Step-7 loop's carve-out; its edit is new diff
-  needing its own full re-review). Because the zero-blocking check spans every leg AND
-  counts blocking findings of every classification, a single dissenting
-  leg's blocking finding (original-defect, fix-fix, or invention — all
-  count) keeps the ledger non-zero → NOT converged **regardless of the
-  majority-complete vote**:
-  fix it and the loop continues (the early-stop arm must re-qualify from
-  scratch — bare majority-complete never converges on its own, or the
-  dissenting leg's real finding gets swallowed).
-- **(d) Round gate at 10 — an escalation checkpoint, NOT a hard cap.**
-  Doc mode reaching **round 10** without convergence → stop dispatching
-  and **escalate to the user with the ledger + current state**; the user
-  rules "genuinely complex — continue" (the loop resumes, next window)
-  or "runaway — close". Never a silent stop, never auto-terminate. A
-  #440-style ledger (58% fix-fix) indicts itself; a genuinely complex
-  design is not framed by the number. Code/correctness mode keeps the
-  no-cap rule (`3 rounds is not a hard cap`, Step 6) unchanged — there
-  the drift triple CAN see runaway; here it demonstrably cannot.
-
-### ③ Anti-minutes-ification (fix output discipline)
-
-A design-text fix **changes the conclusion** — it does not append
-per-round argumentation to the doc/issue body. Argumentation and history
-go to comments or the review ledger. Body length defaults to
-**decrease-only**; an increase requires a stated justification in the
-round report. (#440's bloat engine was exactly per-fix mechanism prose
-appended to the body — every append enlarged the attackable surface.)
-
-### ④ Dead-leg standing degrade
-
-A leg returning empty / 429 / an error pattern is DEGRADED for the round
-(Step 3 flag + out of the concur denominator — already the rule). Doc
-mode adds: **2 consecutive dead rounds → stop re-dispatching that leg**;
-mark **`standing-DEGRADED`** in every subsequent round report (never
-counted as a zero-finding approve); re-probe it once at the ②(d)
-escalation checkpoint — recovered → rejoin. (Evidence: #440's gemini leg
-429'd empty for six late rounds and was re-dispatched and awaited every
-single time.)
-
-### ⑤ Fix self-check becomes 三连
-
-Doc mode extends Step 7's mandatory self-check 二连 with a third check
-before commit: **does the fix's mechanism itself actually hold, and does
-it introduce no new contradiction with sibling issues / other fixes?**
-(#440 round 33: 3 of 4 findings were bugs in previous rounds' fixes —
-the cheapest whole-round saver in the set.)
 
 ## Anti-patterns (wiki §反模式 — refuse these)
 

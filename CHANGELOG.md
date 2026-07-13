@@ -4,6 +4,256 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.19.13 — 2026-07-13
+
+- **Ship-pre correctness round-1 fixes (1 high + 1 medium + 1 low).**
+  The cross-slice lens caught what three per-slice rounds structurally
+  could not: S2's mainline cleanup dropped the `main=Claude` qualifier
+  from Step 5's by-design parenthetical, leaving mainline claiming ALL
+  Step-6 correctness is 1+1+1 while the host table's 固定双腿 row says
+  main=Codex Step 6 = codex+agy (grok high; qualifier restored
+  verbatim, matching pre-S2 main). The 固定双腿 cell now binds to the
+  by-design scoring (`(N+1)/(N+1) concur + flag`). New red-first
+  coherence pin: `main=Claude correctness (Step 6)` asserted in the
+  Step-5 slice (grok medium — the missing semantic pin was why the
+  seam survived per-slice review). ADR authority-map: four `无` pointer
+  cells corrected to name the real pointer locations (Opus low).
+  Orchestrator adjudication recorded: grok's Only-1-vendor join-marker
+  suggestion rejected — the host table's 只在下列点替换 preamble IS the
+  join; mainline stays host-clean per S2's red line. The coherence pin
+  is an assertion inside the existing host-inset test; suite stays at
+  140.
+
+## 0.3.19.12 — 2026-07-13
+
+- **Ship-pre completeness round-1 fixes (PR #33).** Both legs (Opus +
+  grok-4.5; agy quota-dead) returned `gaps` — the delivered mechanisms
+  all fired under injected defects, but two 缺钉 and three unposted
+  process artifacts blocked: (a) `UPSTREAM-CHECKLIST.md` — the sole
+  surviving copy of the deleted agy-ladder archaeology — had zero test
+  coverage; now pinned by
+  `test_upstream_checklist_keeps_agy_archaeology_until_sync`
+  (key sentences, no golden hash — the file is designed to be consumed
+  and deleted by the next sync PR); (b) the Step-2 four-element
+  structure labels (入口/硬禁令/降级旗 ×3 legs) were content-pinned but
+  not structure-pinned; now asserted. Process artifacts posted:
+  S2 pre-refactor inset inventory → issue #27 comment; S3
+  deleted-narrative guardian ledger + wiki-collation evidence → issue
+  #30 comment; S1 test-split 分流清单 → PR #33 comment. 138 → 140
+  tests, all green.
+
+## 0.3.19.11 — 2026-07-13
+
+- **S5 round-1 review fixes (1 medium + 3 low + 2 P4).** CLAUDE.md's
+  intro no longer contradicts its own §Wiki sync mapping — the entry
+  sentence now reads "SKILL.md … with DOC-MODE.md, together a faithful
+  transcription of the wiki" (a top-of-file-only reader previously got
+  the pre-split sync surface; grok medium). ADR mapping-table
+  corrections: the Fable row's pointer column no longer names a
+  non-existent host-table row (→ 无); row 1's "absence guard" pointer
+  reworded to its negative-space meaning. Freeze-boundary sentence
+  scoped to the split itself (the completeness-addendum hash is
+  pre-existing, not split-produced). Thin tests deepened one notch
+  (still no golden hash): ADR red-line phrase + CONTEXT load-bearing
+  pointer sentence pinned red-first. "15-term" → 16-term.
+
+## 0.3.19.10 — 2026-07-13
+
+- **S5 (#31, PRD #25): paper sedimentation — ADR 0001 + CONTEXT.md +
+  CLAUDE.md sync map.** `docs/adr/0001-progressive-disclosure.md`
+  records the split's red lines as they actually landed (host
+  differences stay in-file as the substitution table; ① kill-axis stays
+  mainline; archaeology upstreams via UPSTREAM-CHECKLIST.md, no
+  BACKENDS.md middle layer; descriptions = identity + triggers; SKILL.md
+  header zero additions), the two-freeze-boundary atomic-migration rule,
+  the 规则→唯一权威位置 mapping table (9 rules — the baseline for the
+  future dedup round), and the wiki-side layout-note TODO. `CONTEXT.md`
+  defines the 16-term domain vocabulary, each term pointing at its
+  authority. Repo `CLAUDE.md` gains the sync map: 转写 = SKILL.md +
+  DOC-MODE.md 的并集, linked to the ADR. Thin red-first
+  existence/key-sentence assertions (no golden hash on these files).
+  Orchestrator pre-commit check caught two Step-number mis-pointers in
+  CONTEXT.md (clear round / qualifying-confirmation cited Step 6; the
+  positive-termination authority is Step 5, loop mechanics Step 7) —
+  corrected before this commit.
+
+## 0.3.19.9 — 2026-07-13
+
+- **S4 round-1 review fixes (2 medium + 2 low).** The absence guard now
+  bans the tokens actually dieted out — `gpt-5.6`, `codex`, `agy`, plus
+  the ASCII `P0-P4` variant (round 1's list only named Claude/Gemini,
+  under-delivering the advertised "model names" class); the correctness
+  trigger test locks the gate-order phrase "after completeness passes"
+  (symmetry with completeness's "before the correctness gate"); the
+  completeness description regains the ship-pre spine keyword (22/28
+  words) with its own trigger assert. Full enforced tuple (superset of
+  the highlights below): `N+1+1`, `N+1`, `two-phase`, `no-peek`,
+  `Claude`, `Gemini`, `gpt-5.6`, `codex`, `agy`, `DONE/PARTIAL`,
+  `NOT-DONE`, `CONFORMS/VIOLATES`, `UNVERIFIED-GAP`, `P0–P4`, `P0-P4`.
+
+## 0.3.19.8 — 2026-07-13
+
+- **S4 (#28, PRD #25): frontmatter description diet — identity +
+  triggers only.** The three descriptions (main skill + two gate
+  wrappers) shed every mechanism/rubric detail that now has an
+  authoritative home in the body or prompts: 124→30, 98→22, 79→23
+  words (total 301→75, −75% of always-resident context). Trigger
+  semantics preserved (per-slice after a baseline commit / ship-pre
+  before a PR / design docs / gate ordering). Main gate:
+  red-first **absence assertions** in test_skill_frontmatter.py —
+  the length caps (36/28/30 words) are only the auxiliary net, since a
+  short-but-mechanism-laden description would pass a cap. Wrapper
+  bodies untouched. 132 → 135 tests, all green.
+
+## 0.3.19.7 — 2026-07-13
+
+- **S3 round-1 review fixes (1 high + 1 medium + 2 low + 1 P4).** The
+  compression had dropped the **step-down / no-Google-voice operator
+  rule** from the runtime surface (it survived only in
+  UPSTREAM-CHECKLIST.md staging and gemini.sh's stderr note) — restored
+  as a contract clause in the Gemini bullet: an agy ladder step-down is
+  a successful leg but the round's third read is agy-served Claude
+  (same Anthropic family), never counted as Google-family diversity,
+  flagged in the round report (grok F1, high). The
+  "keeps_all_invocation_hard_bans" test was missing two bans — `agy -p
+  --sandbox` and the >10K one-segment rule — both now pinned (grok F2,
+  medium). Shared all-legs discipline line restored (always `2>&1`;
+  hang = idle >15min, not wall-clock; scoped pid-tree kill only) (grok
+  F3). 0.3.19.6's wording corrected: three legs share 入口/硬禁令/降级旗,
+  RECORDED markers only where a standing divergence exists (grok F4).
+  Gemini 降级旗 lead no longer claims every flag path exhausts the
+  ladder (auth-race / not-installed short-circuit) (Opus P4). Squad:
+  Opus converged; grok-4.5 high caught F1/F2 — the substitute leg again
+  out-hunting the primary.
+
+## 0.3.19.6 — 2026-07-13
+
+- **S3 (#30, PRD #25): Step-2 invocation forms compressed to contract
+  level + wiki upstreaming checklist.** All three invocation bullets now
+  share 唯一入口 backend / 硬禁令 / 降级旗语义: codex (via
+  codex-review.sh; never `"$(...)"`, `-C`, global pkill…), gemini (via
+  gemini.sh; never `-p --sandbox`, `--dangerously-skip-permissions`…),
+  Claude (via Agent tool, model=opus; never headless `claude -p`).
+  One-line ⚠ RECORDED markers appear only on legs with a standing divergence.
+  Three sync-recognizable RECORDED markers, correctly classified: Fable
+  禁用 = 存续; **agy warm+retry = 新建** (vs wiki "1.0.8 无需
+  warm+retry"); **strict REVIEW-ONLY = 新建** (vs wiki's 2026-07-06
+  exercise carve-out) — behavior guards ≠ sync markers, so the two new
+  ones now exist as markers, closing the sync-erasure vacuum. Unguarded
+  behavior narratives (agy `--sandbox` not write-hard) moved to a
+  `### 待补守护（暂不得删）` section, not deleted (backends/ frozen this
+  round). Archaeology narratives deleted only after wiki collation;
+  the one un-collated piece (agy model-degradation ladder → Sonnet rung)
+  is preserved verbatim in `UPSTREAM-CHECKLIST.md` for the next sync PR.
+  The reasoning-effort contract callout (TESTING.md's single source of
+  truth) survives intact. SKILL.md 842 → 758 lines (net −84). 128 → 131
+  tests (three new red-first contract assertions), all green; selftest
+  green; doc-mode residual hash unchanged.
+
+## 0.3.19.5 — 2026-07-13
+
+- **S2 round-2 nits + convergence.** Pin the last unpinned table flag
+  string `不用 Claude (credit)` (tests/test_codex_host_substitution.py);
+  note the 5th test (127 → 128) in the 0.3.19.4 entry. S2 converged at
+  round 3 (rounds 2+3 both clear; Opus + grok-4.5 high). This heading
+  backfills the missing 0.3.19.5 entry (grok round-3 low — the
+  one-heading-per-micro convention, same class as PR #32 round-8 F5).
+
+## 0.3.19.4 — 2026-07-13
+
+- **S2 per-slice review round-1 fixes (2 medium + 2 low + 1 clarity).**
+  The consolidation had dropped two load-bearing nuances that existed
+  nowhere else in the tree (both restored into the Claude-leg table
+  row): the **file/env auth-check ban** (keychain/GUI false negatives —
+  live-smoke is the only accepted probe) and the **concrete review
+  invocation** (`cat "$PROMPT_FILE" | claude -p --model claude-opus-4-8
+  --output-format json --disable-slash-commands`), preserving the
+  smoke-has-`--tools ""` / review-does-not asymmetry. The codex-leg row
+  regains its (wiki hypothesis，未在本 skill 实测) hedge — the native-
+  subagent path was never field-verified. Test suite hardened: Row 6's
+  unique tokens, the three degrade flag strings, the codex-solo flag,
+  and the two restored phrases are all pinned (9 new assertions); a
+  5th test was added to the suite, taking the total from 127 → 128.
+  Squad note: Opus cleared the dropped invocation as non-load-bearing;
+  the grok-4.5 leg flagged both drops as medium — orchestrator
+  adjudicated with grok after source verification (HEAD~1 had them,
+  tree had zero occurrences, no other home in repo).
+
+## 0.3.19.3 — 2026-07-13
+
+- **S2 (#27, PRD #25): main=Codex host substitution table.** All
+  main=Codex point-differences, previously scattered as parenthetical
+  insets across Step 2/3/5, consolidate into one `## main=Codex
+  宿主替换表` section (placed before Step 2 — a Codex-host agent reads
+  it once on entry, then walks the same main=Claude mainline): codex leg
+  → native subagent (ship-pre top level only; per-slice stays `codex
+  exec`), Claude leg → live-smoke probe then `claude -p` (pin
+  `--model claude-opus-4-8`, no `--effort max`, reviewer without
+  `--tools ""`), the three Codex-host degrade rows, the fixed-2-vendor
+  scenarios, and the codex-solo positive-termination exception —
+  verbatim carrying its "不适用于 Step 5 completeness" exclusion.
+  Mainline Step 2/3/5 now read clean as main=Claude; old inset signature
+  phrases asserted absent. The Fable RECORDED RULE block stays mainline
+  (host-independent, not a substitution point). New red-first suite
+  `tests/test_codex_host_substitution.py` (4 tests: table existence,
+  codex-solo scope + exclusion, degrade rows, inset absence). SKILL.md
+  876 → 842 lines (net −34: 能删大于能加); doc-mode residual hash
+  unchanged (`f0c27d0e…`). 123 → 127 tests, all green; selftest green.
+
+## 0.3.19.2 — 2026-07-13
+
+- **Owner directive: 「能删大于能加」 reviewer principle added to both
+  lens prompts (`prompts/cmr-reviewer.md` L14, `prompts/cmr-completeness.md`
+  L18).** Deletion outranks addition: for the same functionality, code
+  count going down vastly outranks going up; reviewers flag additions a
+  deletion could have achieved. Counterweight to the review loop's
+  structural additive bias (completeness lens is add-only by
+  construction; the nail-token incident cost 8 rounds of patching an
+  unimplementable mechanism). Duplicated in both prompts intentionally
+  (standing repo policy, no DRY extraction); placed outside
+  cmr-completeness.md's golden-hashed addendum (hash unchanged). New
+  red-first pin `test_both_lenses_prioritize_deletion_over_addition`
+  (tests/test_prompts.py). 122 → 123 tests.
+
+## 0.3.19.1 — 2026-07-13
+
+- **S1 per-slice review finding (grok-4.5 leg, low) — README inventory
+  registers `DOC-MODE.md` (README.md L128).** The "What ships in this
+  repo" tree still presented the engine as a single file after S1
+  externalized doc-mode ②–⑤; an operator reading only README would miss
+  the sibling that Step 0 requires reading before doc-mode dispatch.
+  Review squad note: agy quota-dead again → per owner order the third
+  voice ran as xai grok-4.5 (`grok` CLI, reasoning-effort xhigh, non-fast)
+  — its first outing; both legs (Opus + grok) returned converged on S1.
+
+## 0.3.19.0 — 2026-07-13
+
+- **S1 (#26, PRD #25): doc-mode ②–⑤ split out of SKILL.md into
+  `DOC-MODE.md` (progressive disclosure, atomic golden-hash migration).**
+  SKILL.md 970 → 876 lines; DOC-MODE.md = 105 lines (②–⑤ verbatim + the
+  shared "Why doc mode needs its own defense (#440)" rationale + its own
+  ⚠ RECORDED ②–⑤ banner + new golden hash
+  `5bfd8483…`). SKILL.md keeps ① (constitution packet + kill-axis, ALL
+  modes) with its own independent ⚠ RECORDED ① marker (do-not-drop
+  semantics preserved), a one-line residual pointer to DOC-MODE.md, and a
+  recomputed residual-section hash `f0c27d0e…`. Step 0's doc-mode bullet
+  now carries the hard read-before-dispatch pointer (review 对象是
+  ADR/spec/plan → 先 Read DOC-MODE.md 再派单); the completeness-lens
+  bullet's discipline enumeration and Step 5's ②(c) reference (L599)
+  rewritten to cross-file form — no stale in-file pointers to migrated
+  content remain. All internal references inside the migrated text
+  (anti-pattern #14, Step 3, Step 6, Step 7 ×2) rewritten to `SKILL.md
+  …` cross-file form. Tests: `test_doc_mode.py` assertions split
+  per-object (① + Step-0 pointer stay on SKILL.md; ②–⑤ + hash follow to
+  DOC-MODE.md; golden freeze now three boundaries), `test_convergence.py`
+  ②(c) assertions redirected to DOC-MODE.md, two new red-first guards
+  (`test_doc_mode_sections_have_one_owner_each` bidirectional
+  anti-dual-source; `test_shared_doc_mode_rationale_survives_once_in_external_file`
+  keyed on "58% fix-fix"). completeness-addendum hash untouched
+  (`48bd9e6d…`). 120 → 122 tests, all green; selftest green (zero script
+  changes). Implemented by codex worker (gpt-5.6-sol); baseline
+  reconciliation addenda from issue #26's 2026-07-13 comment applied.
+
 ## 0.3.18.27 — 2026-07-13
 
 - **Ship-pre correctness-gate round 9 (qualifying clear round) — two P4

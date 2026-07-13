@@ -443,3 +443,78 @@ def test_selftest_validates_effort_form_not_value():
                 f"the FORM (model_reasoning_effort=${{CMR_CODEX_EFFORT}}), not "
                 f"that value — this is the round-4/5/6/7 recurrence:\n…{window}…"
             )
+
+
+# --- Step 2 invocation-form contract (issue #30)
+
+FABLE_MARKER = (
+    "**⚠ RECORDED RULE（存续）— Fable 禁用：** cmr 不在任何腿使用 Fable；"
+    "Claude 腿显式固定为 `opus`（Claude Opus 4.8）。这有意不同于 wiki 的"
+    "最强可用 Claude 规则；sync 时不得重新加入 Fable。"
+)
+AGY_WARM_RETRY_MARKER = (
+    "**⚠ RECORDED divergence（新建）— agy warm+retry：** 相对 wiki“agy "
+    "1.0.8 无需 warm+retry”的结论，本 skill 仍保留每次预热 + 共 4 次尝试；"
+    "sync 时不得删除。"
+)
+STRICT_REVIEW_ONLY_MARKER = (
+    "**⚠ RECORDED divergence（新建）— strict REVIEW-ONLY：** 相对 wiki "
+    "2026-07-06 放宽的 exercise carve-out，本 skill 仍禁止 reviewer 修改文件或"
+    "运行命令；sync 时不得放宽。"
+)
+
+
+def _step2_raw():
+    raw = SKILL_MD.read_text(encoding="utf-8")
+    return raw[raw.index("## Step 2") : raw.index("## Step 3")]
+
+
+def test_step2_has_three_sync_recognizable_recorded_markers_on_one_line():
+    lines = [line.strip() for line in _step2_raw().splitlines()]
+    for marker in (
+        FABLE_MARKER,
+        AGY_WARM_RETRY_MARKER,
+        STRICT_REVIEW_ONLY_MARKER,
+    ):
+        assert marker in lines, f"RECORDED marker must be one physical line: {marker}"
+
+
+def test_step2_contract_keeps_all_invocation_hard_bans():
+    txt = " ".join(_step2_raw().split())
+    for hard_ban in (
+        "Never omit `--ephemeral`",
+        "Never `codex exec \"$(...)\"`",
+        "never `-C <dir>`",
+        "never `codex review --base B \"PROMPT\"`",
+        "never send a >10K-line prompt as one segment",
+        "never a global `pkill -f codex`",
+        "Never call `agy -p --sandbox`",
+        "Never `agy --dangerously-skip-permissions`",
+        "never the deprecated `gemini --approval-mode plan`",
+        'Never relax the injected strict `REVIEW ONLY, do not modify any file, do not run commands` ban',
+        "Never use headless `claude -p` for this leg",
+    ):
+        assert hard_ban in txt, f"missing Step 2 hard ban: {hard_ban}"
+
+
+def test_step2_keeps_four_element_structure_labels_for_all_three_legs():
+    txt = _step2_raw()
+    for label in ("**入口：**", "**硬禁令：**", "**降级旗：**"):
+        assert txt.count(label) >= 3, (
+            f"Step 2 must keep one {label} label per reviewer leg"
+        )
+
+
+def test_step2_gemini_step_down_is_not_google_family_diversity():
+    txt = " ".join(_step2_raw().split())
+    assert "NO Google voice this round" in txt
+    assert "Google-family" in txt, "missing Step 2 Google-family diversity exclusion"
+    assert "round report 必须带旗" in txt, "missing Step 2 round report flag requirement"
+
+
+def test_step2_has_single_pending_guard_section_for_unguarded_behavior():
+    raw = _step2_raw()
+    assert raw.count("### 待补守护（暂不得删）") == 1
+    pending = raw[raw.index("### 待补守护（暂不得删）") :]
+    assert "无可执行守护" in pending
+    assert "不得删" in pending

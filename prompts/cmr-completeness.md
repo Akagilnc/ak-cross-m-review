@@ -15,6 +15,12 @@ each load-bearing spec decision actually landed. (Real case #244: S8
 reached + 612 tests green, yet the coder hand-rolled the mandated TDD
 discipline and never wired it — every outer test passed.)
 
+> **能删大于能加 (deletion outranks addition).** 同样的功能，代码数量下降远远大于代码数量上升。When
+> judging a change or proposing a suggested fix, a solution that DELETES
+> or simplifies while preserving the same functionality outranks one that
+> adds code, mechanism, or text; flag additions that a deletion could have
+> achieved.
+
 > **READ-ONLY ON THE CHANGE — but you MUST exercise.** Do NOT modify,
 > create, rename, or delete any file of the change under review, and do
 > NOT commit/push. **You ARE expected to run things**: run the gate / the

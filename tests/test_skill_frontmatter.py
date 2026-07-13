@@ -12,7 +12,30 @@ of a full YAML parse we pin the exact failure class: a top-level plain
 
 from pathlib import Path
 
-SKILL = Path(__file__).resolve().parents[1] / "SKILL.md"
+ROOT = Path(__file__).resolve().parents[1]
+SKILL = ROOT / "SKILL.md"
+DESCRIPTION_SKILLS = {
+    "main": (SKILL, 36),
+    "completeness": (ROOT / "skills/ak-cmr-completeness/SKILL.md", 28),
+    "correctness": (ROOT / "skills/ak-cmr-correctness/SKILL.md", 30),
+}
+FORBIDDEN_DESCRIPTION_PHRASES = (
+    "N+1+1",
+    "N+1",
+    "two-phase",
+    "no-peek",
+    "Claude",
+    "Gemini",
+    "gpt-5.6",
+    "codex",
+    "agy",
+    "DONE/PARTIAL",
+    "NOT-DONE",
+    "CONFORMS/VIOLATES",
+    "UNVERIFIED-GAP",
+    "P0–P4",
+    "P0-P4",
+)
 
 
 def _frontmatter_lines():
@@ -22,6 +45,16 @@ def _frontmatter_lines():
     end = body.find("\n---")
     assert end != -1, "SKILL.md frontmatter must be closed by a second `---`"
     return body[:end].splitlines()
+
+
+def _description(path):
+    text = path.read_text(encoding="utf-8")
+    frontmatter = text.split("\n---", 1)[0].splitlines()
+    return next(
+        line.partition(":")[2].strip()
+        for line in frontmatter
+        if line.startswith("description:")
+    )
 
 
 def _top_level_key_lines():
@@ -58,3 +91,35 @@ def test_top_level_plain_scalar_values_have_no_bare_colon_space():
             f"scalar value — this breaks the YAML frontmatter (quote it or "
             f"use ' — ' instead). Value: {value!r}"
         )
+
+
+def test_descriptions_exclude_mechanism_and_rubric_details():
+    for name, (path, _) in DESCRIPTION_SKILLS.items():
+        description = _description(path)
+        for phrase in FORBIDDEN_DESCRIPTION_PHRASES:
+            assert phrase.lower() not in description.lower(), (
+                f"{name} description must leave mechanism/rubric detail "
+                f"{phrase!r} in the body or prompts"
+            )
+
+
+def test_descriptions_stay_compact():
+    for name, (path, max_words) in DESCRIPTION_SKILLS.items():
+        word_count = len(_description(path).split())
+        assert word_count <= max_words, (
+            f"{name} description has {word_count} words; expected at most "
+            f"{max_words}"
+        )
+
+
+def test_descriptions_preserve_gate_triggers():
+    descriptions = {
+        name: _description(path).lower()
+        for name, (path, _) in DESCRIPTION_SKILLS.items()
+    }
+    for phrase in ("per-slice", "baseline commit", "ship-pre", "before a pr", "design document"):
+        assert phrase in descriptions["main"]
+    for phrase in ("before the correctness gate", "finished change", "ship-pre", "design document"):
+        assert phrase in descriptions["completeness"]
+    for phrase in ("per-slice", "baseline commit", "ship-pre", "before a pr", "after completeness passes"):
+        assert phrase in descriptions["correctness"]
