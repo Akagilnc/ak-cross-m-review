@@ -486,13 +486,20 @@ def test_step2_contract_keeps_all_invocation_hard_bans():
         "Never `codex exec \"$(...)\"`",
         "never `-C <dir>`",
         "never `codex review --base B \"PROMPT\"`",
+        "never send a >10K-line prompt as one segment",
         "never a global `pkill -f codex`",
+        "Never call `agy -p --sandbox`",
         "Never `agy --dangerously-skip-permissions`",
         "never the deprecated `gemini --approval-mode plan`",
         'Never relax the injected strict `REVIEW ONLY, do not modify any file, do not run commands` ban',
         "Never use headless `claude -p` for this leg",
     ):
         assert hard_ban in txt, f"missing Step 2 hard ban: {hard_ban}"
+
+
+def test_step2_gemini_step_down_is_not_google_family_diversity():
+    txt = " ".join(_step2_raw().split())
+    assert "NO Google voice this round" in txt
 
 
 def test_step2_has_single_pending_guard_section_for_unguarded_behavior():

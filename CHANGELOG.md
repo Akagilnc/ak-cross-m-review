@@ -4,15 +4,36 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.19.7 — 2026-07-13
+
+- **S3 round-1 review fixes (1 high + 1 medium + 2 low + 1 P4).** The
+  compression had dropped the **step-down / no-Google-voice operator
+  rule** from the runtime surface (it survived only in
+  UPSTREAM-CHECKLIST.md staging and gemini.sh's stderr note) — restored
+  as a contract clause in the Gemini bullet: an agy ladder step-down is
+  a successful leg but the round's third read is agy-served Claude
+  (same Anthropic family), never counted as Google-family diversity,
+  flagged in the round report (grok F1, high). The
+  "keeps_all_invocation_hard_bans" test was missing two bans — `agy -p
+  --sandbox` and the >10K one-segment rule — both now pinned (grok F2,
+  medium). Shared all-legs discipline line restored (always `2>&1`;
+  hang = idle >15min, not wall-clock; scoped pid-tree kill only) (grok
+  F3). 0.3.19.6's wording corrected: three legs share 入口/硬禁令/降级旗,
+  RECORDED markers only where a standing divergence exists (grok F4).
+  Gemini 降级旗 lead no longer claims every flag path exhausts the
+  ladder (auth-race / not-installed short-circuit) (Opus P4). Squad:
+  Opus converged; grok-4.5 high caught F1/F2 — the substitute leg again
+  out-hunting the primary.
+
 ## 0.3.19.6 — 2026-07-13
 
 - **S3 (#30, PRD #25): Step-2 invocation forms compressed to contract
-  level + wiki upstreaming checklist.** Each leg's invocation bullet now
-  carries exactly the four contract elements — 唯一入口 backend / 硬禁令
-  / 降级旗语义 / one-line ⚠ RECORDED marker: codex (via
+  level + wiki upstreaming checklist.** All three invocation bullets now
+  share 唯一入口 backend / 硬禁令 / 降级旗语义: codex (via
   codex-review.sh; never `"$(...)"`, `-C`, global pkill…), gemini (via
   gemini.sh; never `-p --sandbox`, `--dangerously-skip-permissions`…),
   Claude (via Agent tool, model=opus; never headless `claude -p`).
+  One-line ⚠ RECORDED markers appear only on legs with a standing divergence.
   Three sync-recognizable RECORDED markers, correctly classified: Fable
   禁用 = 存续; **agy warm+retry = 新建** (vs wiki "1.0.8 无需
   warm+retry"); **strict REVIEW-ONLY = 新建** (vs wiki's 2026-07-06

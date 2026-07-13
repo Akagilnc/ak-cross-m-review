@@ -303,9 +303,13 @@ is explicitly set via `-c` so codex cannot silently inherit the machine's
 backend passes any value (`low`/`high`/`xhigh`/…) through verbatim, with no
 whitelist.
 
+All legs: always `2>&1`; hang = idle >15min (backends self-time-out,
+`CMR_CODEX_TIMEOUT`=900s default — wall-clock is not a hang); kill only
+the hung instance's own pid tree, never global pkill.
+
 - **Codex** — **入口：** only via `backends/codex-review.sh`. **硬禁令：**
-  Never omit `--ephemeral`; always `2>&1` from the repo root. Never
-  `codex exec "$(...)"`, never `-C <dir>`, never
+  Never omit `--ephemeral`; run from the repo root. Never `codex exec
+  "$(...)"`, never `-C <dir>`, never
   `codex review --base B "PROMPT"`, never send a >10K-line prompt as one
   segment, and never a global `pkill -f codex` (kill only the hung
   instance's pid tree). **降级旗：** `本轮缺 codex` means the backend
@@ -315,10 +319,14 @@ whitelist.
   call `agy -p --sandbox`; Never `agy --dangerously-skip-permissions`;
   never the deprecated `gemini --approval-mode plan`. Never relax the
   injected strict `REVIEW ONLY, do not modify any file, do not run commands`
-  ban. **降级旗：** `本轮缺 gemini` means every backend model rung is
-  unavailable after the backend's own checks; the reason comes from the
-  agy exit/output, auth-race retry result, and `--log-file` quota/429
-  evidence. Do not retry by hand.
+  ban. **降级旗：** `本轮缺 gemini` means the agy/Gemini leg is unavailable
+  this round — all reachable model rungs quota-exhausted, or an auth-race /
+  not-installed outage; the reason comes from the agy exit/output,
+  auth-race retry result, and `--log-file` quota/429 evidence. Do not retry
+  by hand. **Step-down ≠ 降级：** agy 降到非 Google 模型仍算成功腿，但
+  backend 会在 stderr 标 `NO Google voice this round`；该轮第三读是
+  agy-served Claude（同 Anthropic 家族），合并判定不得计为 Google-family
+  diversity，round report 必须带旗。
   **⚠ RECORDED divergence（新建）— agy warm+retry：** 相对 wiki“agy 1.0.8 无需 warm+retry”的结论，本 skill 仍保留每次预热 + 共 4 次尝试；sync 时不得删除。
   **⚠ RECORDED divergence（新建）— strict REVIEW-ONLY：** 相对 wiki 2026-07-06 放宽的 exercise carve-out，本 skill 仍禁止 reviewer 修改文件或运行命令；sync 时不得放宽。
 - **Claude reviewer** — **入口：** only via the main session's `Agent`
