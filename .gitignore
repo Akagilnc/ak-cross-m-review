@@ -19,8 +19,6 @@ venv/
 *.swp
 .vscode/
 .idea/
-.cmr-gate/
-.review-unconverged.log
 
 # Local agent / tool state (per-machine, never committed)
 .claude/
