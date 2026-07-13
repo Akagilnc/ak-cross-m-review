@@ -48,6 +48,10 @@ def test_degrades_when_codex_exits_nonzero_with_salvageable_body(tmp_path):
         f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     )
     assert r.stdout == ""
+    assert "本轮缺 codex" in r.stderr, (
+        f"degrade must keep the visible flag — the stderr flag and the "
+        f"nonzero exit are the ONLY two signals since #39\nstderr={r.stderr!r}"
+    )
 
 
 def _codex_stub(stub_dir, body):
