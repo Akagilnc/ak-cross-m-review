@@ -75,6 +75,27 @@ def test_degrades_when_agy_exits_nonzero_with_salvageable_body(tmp_path):
     assert "本轮缺 gemini" in r.stderr
 
 
+def test_invalid_mode_degrades_with_safe_json(tmp_path):
+    _stub_agy(tmp_path / "bin", '#!/bin/sh\necho "should not run"\nexit 0\n')
+    r = subprocess.run(
+        ["bash", str(SCRIPT), 'bad"\nmode'],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True,
+        text=True,
+        env=_env_with_stub(tmp_path / "bin"),
+        timeout=60,
+    )
+    assert r.returncode == 1
+    assert json.loads(r.stdout) == {
+        "reviewer": "gemini",
+        "mode": "doc",
+        "findings": [],
+    }
+    assert "invalid MODE" in r.stderr
+    assert "本轮缺 gemini" in r.stderr
+    assert "should not run" not in r.stdout
+
+
 def test_retries_on_auth_race_then_degrades_after_4_attempts(tmp_path):
     # Every attempt prints the auth-race signature → script retries the
     # max 3 times (after the initial attempt), warns each retry, then
@@ -99,6 +120,36 @@ def test_retries_on_auth_race_then_degrades_after_4_attempts(tmp_path):
     # degrade on attempt 4 — confirms the loop actually iterated, did
     # not short-circuit.
     assert r.stderr.count("agy auth-race on attempt") == 3
+
+
+def test_large_auth_race_output_still_retries_without_sigpipe(tmp_path):
+    counter = tmp_path / "attempt_n"
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'n=$(cat "$AGY_ATTEMPT_COUNTER" 2>/dev/null || echo 0)\n'
+        'n=$((n + 1)); echo "$n" > "$AGY_ATTEMPT_COUNTER"\n'
+        'if [ "$n" = 1 ]; then\n'
+        '  printf "Authentication required\\n"\n'
+        '  yes x | head -c 1600000\n'
+        '  printf "\\n"\n'
+        '  exit 1\n'
+        'fi\n'
+        'echo "review after auth retry"\n'
+        'exit 0\n'
+    ))
+    env = _env_with_stub(tmp_path / "bin")
+    env["AGY_ATTEMPT_COUNTER"] = str(counter)
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+    )
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert counter.read_text().strip() == "2"
+    assert "review after auth retry" in r.stdout
 
 
 def test_does_not_false_degrade_when_model_output_contains_auth_string(tmp_path):
@@ -153,19 +204,20 @@ def test_degrades_with_clear_flag_when_agy_not_installed(tmp_path):
     assert "本轮缺 gemini" in r.stderr
 
 
-def test_injects_read_only_instruction_into_agy_prompt(tmp_path):
-    # First-run finding: agy (agentic CLI) edited tracked files + ran
-    # pytest during a review because nothing told it to stay read-only;
-    # `--sandbox` alone does not block workspace writes. gemini.sh must
-    # prepend an explicit "REVIEW ONLY / do not modify" instruction to
-    # the prompt it sends agy. We can't force the real agy to obey, but
-    # we CAN pin that the backend actually gives the instruction: the
-    # stub echoes back, inside sentinels, whether the marker reached it.
+def test_injects_no_modify_no_fix_but_commands_allowed_instruction(tmp_path):
+    # Reviewers may run inspection/verification commands, including tests and
+    # behavioral exercises. The injected discipline forbids modifying the
+    # reviewed repo or fixing findings, without reinstating the withdrawn
+    # blanket command ban.
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
         'prompt="$(cat)"\n'
         'echo "===CMR-FINDINGS-BEGIN==="\n'
-        'if echo "$prompt" | grep -qi "REVIEW ONLY"; then\n'
+        'if echo "$prompt" | grep -q "REVIEW ONLY" '
+        '&& echo "$prompt" | grep -q "Do NOT modify, create, rename, or delete any file" '
+        '&& echo "$prompt" | grep -q "do NOT fix findings yourself" '
+        '&& echo "$prompt" | grep -q "MAY run read-only inspection and verification commands" '
+        '&& ! echo "$prompt" | grep -q "Do NOT run any shell command"; then\n'
         '  echo \'{"reviewer":"gemini","mode":"code","findings":['
         '{"id":"RO_MARKER_PRESENT"}]}\'\n'
         'else\n'
@@ -187,7 +239,7 @@ def test_injects_read_only_instruction_into_agy_prompt(tmp_path):
         f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     )
     assert "RO_MARKER_PRESENT" in r.stdout, (
-        "gemini.sh did not prepend the read-only instruction to the agy "
+        "gemini.sh did not prepend the no-modify/no-fix, commands-allowed instruction to the agy "
         f"prompt. stdout={r.stdout!r}"
     )
     assert "RO_MARKER_ABSENT" not in r.stdout
@@ -637,6 +689,27 @@ def test_agy_explicit_override_note_when_non_google_model_used(tmp_path):
     assert "explicit AGY_MODEL override" in r.stderr
     assert "stepped down" not in r.stderr  # not the quota-step-down note
     assert "stepping down to next agy model" not in r.stderr
+
+
+def test_gpt_oss_override_is_flagged_as_non_google_voice(tmp_path):
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'echo "review from GPT-OSS"\n'
+        'exit 0\n'
+    ))
+    env = _env_with_stub(tmp_path / "bin")
+    env["AGY_MODEL"] = "GPT-OSS 120B"
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+    )
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "NO Google voice this round" in r.stderr
+    assert "GPT-OSS 120B" in r.stderr
 
 
 def _run_gemini_in_cwd(cwd_dir: Path, tmp_path):

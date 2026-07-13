@@ -14,11 +14,14 @@ Two pinned behaviors around the degrade gate:
    文本」: reviewers return prose, the orchestrator reads it) that lost the
    strongest reviewer to a format technicality across many rounds."""
 
+import json
 import os
 import re
 import stat
 import subprocess
 from pathlib import Path
+
+import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "backends" / "codex-review.sh"
 
@@ -66,16 +69,49 @@ def _codex_stub(stub_dir, body):
     return codex
 
 
-def _run_codex(stub_dir, **env_extra):
+def _run_codex(stub_dir, mode="code", **env_extra):
     env = dict(os.environ)
     env["PATH"] = f"{stub_dir}{os.pathsep}{env['PATH']}"
     env["CMR_CODEX_TIMEOUT"] = "15"
+    env.pop("CMR_DRY_RUN", None)
     env.update(env_extra)
     return subprocess.run(
-        ["bash", str(SCRIPT), "code"],
+        ["bash", str(SCRIPT), mode],
         input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
         capture_output=True, text=True, env=env, timeout=60,
     )
+
+
+def test_dry_run_is_unmistakably_non_review_and_nonzero(tmp_path):
+    r = _run_codex(tmp_path / "bin", CMR_DRY_RUN="1")
+    assert r.returncode == 2
+    payload = json.loads(r.stdout)
+    assert payload["dry_run"] is True
+    assert payload["findings"] == []
+    assert "NON-REVIEW" in r.stderr
+    assert "本轮缺 codex (NON-REVIEW DRY_RUN)" in r.stderr
+
+
+@pytest.mark.parametrize("field", ["CMR_CODEX_TIMEOUT", "CMR_CODEX_IDLE_POLL"])
+def test_invalid_watchdog_env_degrades_visibly(tmp_path, field):
+    _codex_stub(tmp_path / "bin", "exit 1\n")
+    watchdog_env = {"CMR_CODEX_TIMEOUT": "2", "CMR_CODEX_IDLE_POLL": "1"}
+    watchdog_env[field] = "bogus"
+    r = _run_codex(tmp_path / "bin", **watchdog_env)
+    assert r.returncode == 1
+    assert json.loads(r.stdout)["findings"] == []
+    assert f"invalid {field}" in r.stderr
+    assert "本轮缺 codex" in r.stderr
+
+
+def test_invalid_mode_degrades_with_safe_json(tmp_path):
+    _codex_stub(tmp_path / "bin", "exit 1\n")
+    r = _run_codex(tmp_path / "bin", mode='bad"\nmode')
+    assert r.returncode == 1
+    payload = json.loads(r.stdout)
+    assert payload == {"reviewer": "codex", "mode": "code", "findings": []}
+    assert "invalid MODE" in r.stderr
+    assert "本轮缺 codex" in r.stderr
 
 
 def test_emits_last_message_not_stdout_echo(tmp_path):
@@ -192,6 +228,17 @@ def test_selftest_passes_with_default_medium_effort():
     assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     assert "model_reasoning_effort=medium" in r.stdout
     assert "--model gpt-5.6-sol" in r.stdout
+
+
+def test_selftest_ignores_invalid_watchdog_env():
+    env = dict(os.environ)
+    env["CMR_CODEX_TIMEOUT"] = "bogus"
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "--selftest"],
+        capture_output=True, text=True, env=env, timeout=30,
+    )
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "invocation is on-convention" in r.stdout
 
 
 def test_selftest_passes_with_explicit_medium_effort():
@@ -457,26 +504,18 @@ AGY_WARM_RETRY_MARKER = (
     "1.0.8 无需 warm+retry”的结论，本 skill 仍保留每次预热 + 共 4 次尝试；"
     "sync 时不得删除。"
 )
-STRICT_REVIEW_ONLY_MARKER = (
-    "**⚠ RECORDED divergence（新建）— strict REVIEW-ONLY：** 相对 wiki "
-    "2026-07-06 放宽的 exercise carve-out，本 skill 仍禁止 reviewer 修改文件或"
-    "运行命令；sync 时不得放宽。"
-)
-
-
 def _step2_raw():
     raw = SKILL_MD.read_text(encoding="utf-8")
     return raw[raw.index("## Step 2") : raw.index("## Step 3")]
 
 
-def test_step2_has_three_sync_recognizable_recorded_markers_on_one_line():
+def test_step2_has_two_sync_recognizable_recorded_markers_on_one_line():
     lines = [line.strip() for line in _step2_raw().splitlines()]
-    for marker in (
-        FABLE_MARKER,
-        AGY_WARM_RETRY_MARKER,
-        STRICT_REVIEW_ONLY_MARKER,
-    ):
+    markers = [line for line in lines if line.startswith("**⚠ RECORDED")]
+    assert len(markers) == 2
+    for marker in (FABLE_MARKER, AGY_WARM_RETRY_MARKER):
         assert marker in lines, f"RECORDED marker must be one physical line: {marker}"
+    assert not any("strict REVIEW-ONLY" in line for line in lines)
 
 
 def test_step2_contract_keeps_all_invocation_hard_bans():
@@ -491,7 +530,7 @@ def test_step2_contract_keeps_all_invocation_hard_bans():
         "Never call `agy -p --sandbox`",
         "Never `agy --dangerously-skip-permissions`",
         "never the deprecated `gemini --approval-mode plan`",
-        'Never relax the injected strict `REVIEW ONLY, do not modify any file, do not run commands` ban',
+        "Never relax the injected no-modify/no-fix discipline; reviewer inspection and verification commands are allowed",
         "Never use headless `claude -p` for this leg",
     ):
         assert hard_ban in txt, f"missing Step 2 hard ban: {hard_ban}"

@@ -318,8 +318,8 @@ the hung instance's own pid tree, never global pkill.
 - **Gemini** — **入口：** only via `backends/gemini.sh`. **硬禁令：** Never
   call `agy -p --sandbox`; Never `agy --dangerously-skip-permissions`;
   never the deprecated `gemini --approval-mode plan`. Never relax the
-  injected strict `REVIEW ONLY, do not modify any file, do not run commands`
-  ban. **降级旗：** `本轮缺 gemini` means the agy/Gemini leg is unavailable
+  injected no-modify/no-fix discipline; reviewer inspection and verification
+  commands are allowed. **降级旗：** `本轮缺 gemini` means the agy/Gemini leg is unavailable
   this round — all reachable model rungs quota-exhausted, or an auth-race /
   not-installed outage; the reason comes from the agy exit/output,
   auth-race retry result, and `--log-file` quota/429 evidence. Do not retry
@@ -328,7 +328,6 @@ the hung instance's own pid tree, never global pkill.
   agy-served Claude（同 Anthropic 家族），合并判定不得计为 Google-family
   diversity，round report 必须带旗。
   **⚠ RECORDED divergence（新建）— agy warm+retry：** 相对 wiki“agy 1.0.8 无需 warm+retry”的结论，本 skill 仍保留每次预热 + 共 4 次尝试；sync 时不得删除。
-  **⚠ RECORDED divergence（新建）— strict REVIEW-ONLY：** 相对 wiki 2026-07-06 放宽的 exercise carve-out，本 skill 仍禁止 reviewer 修改文件或运行命令；sync 时不得放宽。
 - **Claude reviewer** — **入口：** only via the main session's `Agent`
   tool with the full-diff prompt and explicit model = **`opus` (Claude
   Opus 4.8)**; it never inherits the session model. **硬禁令：** Never use
@@ -339,10 +338,10 @@ the hung instance's own pid tree, never global pkill.
 
 ### 待补守护（暂不得删）
 
-以下行为叙事当前无可执行守护，不得删；本轮 `backends/` 冻结，先集中在此：
+以下行为叙事当前无可执行守护，不得删：
 
-- agy 的 `--sandbox` 不能硬阻止 workspace 写入或命令执行；strict
-  REVIEW-ONLY prompt 是纪律层而非 sandbox-hard 保证。
+- agy 的 `--sandbox` 不能硬阻止 workspace 写入；no-modify/no-fix prompt
+  是纪律层而非 sandbox-hard 保证，reviewer 仍可运行检查/验证命令。
 - 大 diff 的 agy timeout 需为 15m（默认 5m 可能不足）。
 - Claude reviewer 必须由有 `Agent` 能力的 main session 派发；subagent
   不能再嵌套派发该 Agent 腿。
@@ -674,7 +673,7 @@ neighbors, skips repro / the regression test." So the fix step is gated.
 >    a condition, control flow, an arg, a regex, a path, a number, a
 >    config value → NOT mechanical, even one line, even if "obvious."
 > 2. **Single site, no propagation.** Cannot affect any other file or
->    call site.
+>    call site. (唯一例外:逐字相同且可证明 inert 的同修多点传播,见 cmr-fixer.md)
 > 3. **Provably inert.** You could stake that it cannot change any test
 >    outcome or runtime behavior — and ideally a test or `--selftest`
 >    proves it.
@@ -760,7 +759,7 @@ review can only ever make the text longer.
 9. v2 N × Claude (opus) split sections — violates current quota allocation.
 10. Treating N/N concur as ship-ready — category error (Step 5).
 11. `gemini -p` headless (CLI stopped serving 2026-06-18) or `agy --dangerously-skip-permissions` (re-consents high scope, breaks headless auth) — use `backends/gemini.sh`, which pins `agy --sandbox --print ''` + the warm-retry recipe. Also dead: `agy -p --sandbox` (1.0.7 flag-parse made `-p` swallow `--sandbox` as the prompt value → sandbox never engaged).
-12. **A reviewer that writes** — relying on `--sandbox` alone to keep an agentic CLI (agy) read-only. It edits files / runs commands anyway (first-run: rewrote tracked files + ran pytest mid-review). The prompt MUST forbid writes ("REVIEW ONLY, do not modify any file, do not run commands"); a review that mutates the repo under review is the defect, even when the mutation is correct.
+12. **A reviewer that writes or fixes findings** — relying on `--sandbox` alone to enforce the reviewer discipline. The prompt MUST forbid modifying the reviewed repo and fixing findings; inspection/verification commands (including tests/builds and behavioral exercises in a throwaway copy/fixture) remain allowed. A review that mutates the repo under review is the defect, even when the mutation is correct.
 13. **Over-claiming "mechanical" to skip /diagnosing-bugs** — waving a fix through as mechanical on "it's simple / one line / obvious / I'm confident." Default is non-trivial; mechanical is a closed high-bar allowlist that touches zero executing code (Step 7). A changed flag / guard / condition / quoting fix is non-trivial no matter how small. Skipping classification = non-trivial = `/diagnosing-bugs` required.
 14. **Narrowing a later round into a "did last round's P1 close?" spot-check** — every round must full-re-review the current full diff; prior-finding acceptance is only a tail item. Narrowing drops the regression the fix introduced + the surface last round missed, and fakes a low finding count that breaks the Step 5/6 convergence read. See Step 7 "Every round = full re-review."
 15. **Static-reading a behavioral gate counts as reviewing it** (wiki §反模式 #11, 2026-06-23) — for a load-bearing **gate / fix-loop / guard / state-machine**, "looks right / matches spec / tests pass" CANNOT tell a real gate from a **hollowed-out** one (same-looking code, both return `converged`). Such mechanisms MUST be **exercised**: run it, inject a known defect, and assert the mechanism actually fires (a cmr gate: a planted cross-slice bug must drive **catch → fix → re-cmr → concur**; if it still returns `converged` with the poison in, the gate is fake). The author's green tests are NOT evidence (coding-author blind spot). Worst case — 2-3 reviewers sharing one "review the diff" prompt all do static reads and all miss the behavioral defect (input-bias; cross-model can't fix it — change the prompt to "run the gate / verify behavior", not "read the diff"). Evidence: #330 (an orchestrator's integration cmr hollowed to a single no-loop pass slipped past a 2-3-model Step 5). Wiki [[verification-scope-vacuum]] + [[reviewer-as-system-under-test]].
