@@ -7,7 +7,7 @@ rules are tracked in prose and git history, not pinned by pytest.
 
 - **pytest** 9.x (+ `pytest-cov`), Python 3.12+.
 - Config: `pyproject.toml` → `[tool.pytest.ini_options]`
-  (`pythonpath = ["lib"]`, `testpaths = ["tests"]`).
+  (`testpaths = ["tests"]`).
 - Local dev uses a project venv (`.venv/`, gitignored).
 
 ## How to run

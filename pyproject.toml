@@ -1,6 +1,3 @@
 [tool.pytest.ini_options]
-# lib/ holds the one deterministic helper (extract_json.py). pythonpath
-# lets tests `import extract_json` without packaging this prototype repo.
-pythonpath = ["lib"]
 testpaths = ["tests"]
 addopts = "-q"
