@@ -4,6 +4,24 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.19.13 — 2026-07-13
+
+- **Ship-pre correctness round-1 fixes (1 high + 1 medium + 1 low).**
+  The cross-slice lens caught what three per-slice rounds structurally
+  could not: S2's mainline cleanup dropped the `main=Claude` qualifier
+  from Step 5's by-design parenthetical, leaving mainline claiming ALL
+  Step-6 correctness is 1+1+1 while the host table's 固定双腿 row says
+  main=Codex Step 6 = codex+agy (grok high; qualifier restored
+  verbatim, matching pre-S2 main). The 固定双腿 cell now binds to the
+  by-design scoring (`(N+1)/(N+1) concur + flag`). New red-first
+  coherence pin: `main=Claude correctness (Step 6)` asserted in the
+  Step-5 slice (grok medium — the missing semantic pin was why the
+  seam survived per-slice review). ADR authority-map: four `无` pointer
+  cells corrected to name the real pointer locations (Opus low).
+  Orchestrator adjudication recorded: grok's Only-1-vendor join-marker
+  suggestion rejected — the host table's 只在下列点替换 preamble IS the
+  join; mainline stays host-clean per S2's red line. 140 → 141 tests.
+
 ## 0.3.19.12 — 2026-07-13
 
 - **Ship-pre completeness round-1 fixes (PR #33).** Both legs (Opus +

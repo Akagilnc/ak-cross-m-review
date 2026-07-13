@@ -69,3 +69,4 @@ def test_old_codex_host_insets_are_absent_from_mainline_steps():
     assert "If the main session is Codex" not in step3
     assert "main=Codex correctness" not in step5
     assert "Explicit exception: main=Codex" not in step5
+    assert "main=Claude correctness (Step 6)" in step5
