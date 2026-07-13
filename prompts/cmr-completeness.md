@@ -181,7 +181,8 @@ mission**:
 
 - **Constitution check + kill-axis.** Page one of your dispatch packet is
   the **constitution list**: the project's already-decided ADRs + the
-  user's explicitly stated principles. Hunt for mechanisms in the doc
+  user's explicitly stated principles. Hunt for mechanisms in the change
+  under review (the doc, or the code diff)
   that **violate the constitution or should not exist at all**, and
   recommend **DELETE** — a subtraction finding, with the violated
   constitution entry named as evidence. A DELETE finding **outranks a

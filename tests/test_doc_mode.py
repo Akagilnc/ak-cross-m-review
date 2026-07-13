@@ -409,7 +409,7 @@ def test_golden_freeze_of_doc_mode_texts():
     txt = _norm(COMPLETENESS.read_text(encoding="utf-8"))
     add = txt[txt.index("## Doc mode addendum") : txt.index("## The gate")]
     assert hashlib.sha256(add.encode()).hexdigest() == (
-        "2168c7fc954c2d6e16a2b7b9d12e7f1339ab9c93cf52c64bb301d0b176698835"
+        "a4ae3926a81152c859fa6178ead818721099756d8bf9bd865555720c56f72e79"
     ), (
         "cmr-completeness.md doc-mode addendum changed — if intentional, "
         "update this hash in the same commit; if not, investigate"
