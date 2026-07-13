@@ -4,6 +4,32 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.19.2 — 2026-07-13
+
+- **Owner directive: 「能删大于能加」 reviewer principle added to both
+  lens prompts (`prompts/cmr-reviewer.md` L14, `prompts/cmr-completeness.md`
+  L18).** Deletion outranks addition: for the same functionality, code
+  count going down vastly outranks going up; reviewers flag additions a
+  deletion could have achieved. Counterweight to the review loop's
+  structural additive bias (completeness lens is add-only by
+  construction; the nail-token incident cost 8 rounds of patching an
+  unimplementable mechanism). Duplicated in both prompts intentionally
+  (standing repo policy, no DRY extraction); placed outside
+  cmr-completeness.md's golden-hashed addendum (hash unchanged). New
+  red-first pin `test_both_lenses_prioritize_deletion_over_addition`
+  (tests/test_prompts.py). 122 → 123 tests.
+
+## 0.3.19.1 — 2026-07-13
+
+- **S1 per-slice review finding (grok-4.5 leg, low) — README inventory
+  registers `DOC-MODE.md` (README.md L128).** The "What ships in this
+  repo" tree still presented the engine as a single file after S1
+  externalized doc-mode ②–⑤; an operator reading only README would miss
+  the sibling that Step 0 requires reading before doc-mode dispatch.
+  Review squad note: agy quota-dead again → per owner order the third
+  voice ran as xai grok-4.5 (`grok` CLI, reasoning-effort xhigh, non-fast)
+  — its first outing; both legs (Opus + grok) returned converged on S1.
+
 ## 0.3.19.0 — 2026-07-13
 
 - **S1 (#26, PRD #25): doc-mode ②–⑤ split out of SKILL.md into

@@ -24,6 +24,13 @@ def test_both_lens_prompts_exist():
     )
 
 
+def test_both_lenses_prioritize_deletion_over_addition():
+    for prompt in (CORRECTNESS, COMPLETENESS):
+        assert "能删大于能加" in prompt.read_text(encoding="utf-8"), (
+            f"{prompt.name} missing the deletion-over-addition principle"
+        )
+
+
 def test_correctness_prompt_is_the_defect_lens():
     txt = CORRECTNESS.read_text(encoding="utf-8")
     assert "correctness defect" in txt or "correctness defects" in txt
