@@ -7,9 +7,9 @@ All notable changes to this project are documented here. Format follows
 ## 0.3.21.0 — 2026-07-13
 
 Architecture deletion campaign W1 (umbrella #35; slices #37 / #38 / #40).
-Net −2880 lines (67+ / 2947−): the review engine's prose rules are now
-guarded by git history and RECORDED markers alone — pytest guards executable
-behavior only.
+Net −2871 lines: the review engine's prose rules are now guarded by git
+history and RECORDED markers alone — pytest guards executable behavior
+only.
 
 ### Removed
 
