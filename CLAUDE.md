@@ -33,3 +33,8 @@ Test expectations:
 - Assert real computed values, never existence/smoke checks.
 - Never commit code that makes existing tests or the selftest battery
   fail.
+
+## Wiki sync mapping
+
+转写 = `SKILL.md` + `DOC-MODE.md` 的并集；wiki sync 对照面必须同时覆盖两文件。
+边界与去重基准见 [ADR 0001](docs/adr/0001-progressive-disclosure.md)。

@@ -4,6 +4,26 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.19.10 — 2026-07-13
+
+- **S5 (#31, PRD #25): paper sedimentation — ADR 0001 + CONTEXT.md +
+  CLAUDE.md sync map.** `docs/adr/0001-progressive-disclosure.md`
+  records the split's red lines as they actually landed (host
+  differences stay in-file as the substitution table; ① kill-axis stays
+  mainline; archaeology upstreams via UPSTREAM-CHECKLIST.md, no
+  BACKENDS.md middle layer; descriptions = identity + triggers; SKILL.md
+  header zero additions), the two-freeze-boundary atomic-migration rule,
+  the 规则→唯一权威位置 mapping table (9 rules — the baseline for the
+  future dedup round), and the wiki-side layout-note TODO. `CONTEXT.md`
+  defines the 15-term domain vocabulary, each term pointing at its
+  authority. Repo `CLAUDE.md` gains the sync map: 转写 = SKILL.md +
+  DOC-MODE.md 的并集, linked to the ADR. Thin red-first
+  existence/key-sentence assertions (no golden hash on these files).
+  Orchestrator pre-commit check caught two Step-number mis-pointers in
+  CONTEXT.md (clear round / qualifying-confirmation cited Step 6; the
+  positive-termination authority is Step 5, loop mechanics Step 7) —
+  corrected before this commit.
+
 ## 0.3.19.9 — 2026-07-13
 
 - **S4 round-1 review fixes (2 medium + 2 low).** The absence guard now

@@ -21,6 +21,9 @@ ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "SKILL.md"
 DOC_MODE = ROOT / "DOC-MODE.md"
 COMPLETENESS = ROOT / "prompts" / "cmr-completeness.md"
+ADR_0001 = ROOT / "docs" / "adr" / "0001-progressive-disclosure.md"
+CONTEXT = ROOT / "CONTEXT.md"
+CLAUDE = ROOT / "CLAUDE.md"
 
 
 def _norm(txt):
@@ -35,6 +38,22 @@ def _skill_text():
 
 def _doc_mode_text():
     return _norm(DOC_MODE.read_text(encoding="utf-8"))
+
+
+def test_progressive_disclosure_adr_has_authority_map():
+    assert ADR_0001.exists()
+    assert "规则 → 唯一权威位置映射" in ADR_0001.read_text(encoding="utf-8")
+
+
+def test_context_glossary_exists():
+    assert CONTEXT.exists()
+    assert "## 域词表" in CONTEXT.read_text(encoding="utf-8")
+
+
+def test_claude_sync_mapping_covers_disclosed_union():
+    claude = _norm(CLAUDE.read_text(encoding="utf-8"))
+    assert "转写 = `SKILL.md` + `DOC-MODE.md` 的并集" in claude
+    assert "docs/adr/0001-progressive-disclosure.md" in claude
 
 
 def _doc_mode_section():
