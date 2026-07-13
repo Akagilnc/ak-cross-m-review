@@ -53,10 +53,14 @@ def test_doc_mode_section_exists_and_is_recorded_rule():
     )
 
 
-def test_doc_mode_scoped_to_design_text_only():
+def test_doc_mode_scoped_to_design_text_except_constitution():
     sec = _doc_mode_section()
-    # doc-mode-only: code-diff mode's existing rules stay untouched
-    assert "Code-diff mode keeps every existing rule unchanged" in sec
+    # 2026-07-12 owner decision: ② -⑤ stay doc-mode-only, but ① (constitution
+    # packet + kill-axis) applies to EVERY review mode, code-diff included.
+    assert "Code-diff mode keeps every OTHER rule unchanged" in sec
+    assert "applies to" in sec and "EVERY review mode" in sec
+    assert "ALL modes, not just doc" in sec
+    assert "Before round 1 of ANY review" in sec
 
 
 def test_constitution_kill_axis_and_delete_outranks_patch():
@@ -111,10 +115,31 @@ def test_early_stop_keeps_full_rereview_no_ap14_exception():
     )
     # the trigger condition and the terminal state, not just the mechanism
     assert "majority of legs judge `complete`" in sec
-    assert "zero original-defect findings" in sec, (
-        "the early-stop predicate must use the LEDGER's key "
-        "(original-defect) — a second name for the same category makes "
-        "the measuring instrument ambiguous"
+    # 0.3.18.0 severity-aware convergence + 0.3.18.9 classification-blind
+    # clear gate: the early-stop predicate is "zero BLOCKING findings
+    # REGARDLESS of classification" — blocking in doc mode = P0/P1/P2/P3,
+    # only P4 exempt. The original-defect/fix-fix/invention split is the
+    # ②(b) bloat-audit trigger ONLY; it must NOT filter what counts toward
+    # the clear/convergence gate (a dissenting leg's fix-fix/invention
+    # blocking finding must still block).
+    assert "zero blocking (P0/P1/P2/P3) findings regardless of classification" in sec, (
+        "the early-stop predicate must count ALL blocking findings by "
+        "severity (P0/P1/P2/P3), not filter to the original-defect "
+        "classification"
+    )
+    # negative: the classification-FILTERED clear check must be gone — a
+    # fix-fix/invention blocking finding was silently excluded before
+    assert "zero blocking (P0/P1/P2/P3) original-defect findings" not in sec, (
+        "the clear/convergence gate must NOT filter blocking findings to "
+        "the original-defect classification — all classifications count"
+    )
+    # the split survives, but only as ②(b)'s bloat-audit trigger, never the gate
+    assert "never for filtering the clear/convergence gate" in sec, (
+        "the ledger explicitly says classification does not filter the gate"
+    )
+    assert "only P4 exempt" in sec, (
+        "doc mode blocks P0-P3; only P4 (clarity) is exempt and "
+        "reported-but-Deferred — the exemption must be pinned"
     )
     assert "original-design" not in sec, (
         "unified vocabulary: the taxonomy key is original-defect; no "
@@ -129,9 +154,12 @@ def test_early_stop_keeps_full_rereview_no_ap14_exception():
         sec.index("Confirmation round again majority-complete")
         : sec.index("converged, stop")
     ]
-    assert "zero original-defect findings" in terminal, (
-        "the confirmation round's convergence must require zero "
-        "original-defect findings again, not bare majority-complete"
+    assert "zero blocking (P0/P1/P2/P3) findings regardless of classification" in terminal, (
+        "the confirmation round's convergence must require zero blocking "
+        "findings (any classification) again, not bare majority-complete"
+    )
+    assert "zero blocking (P0/P1/P2/P3) original-defect findings" not in terminal, (
+        "the confirmation-round clear gate must not filter by classification"
     )
 
 
@@ -280,7 +308,7 @@ def test_golden_freeze_of_doc_mode_texts():
 
     sec = _doc_mode_section()
     assert hashlib.sha256(sec.encode()).hexdigest() == (
-        "eccdd4d72aa770c5ef4551419f56c3ba91050720fdfda0801be8bb6048b5e732"
+        "d77be156c56c08f9c743219594aff7032e05e2eda36733921efbc70d5b56729f"
     ), (
         "SKILL.md doc-mode section text changed — if intentional, update "
         "this hash in the same commit (see docstring); if you did not "

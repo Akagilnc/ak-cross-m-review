@@ -34,9 +34,14 @@ Two complementary layers, both run in CI (`.github/workflows/test.yml`):
    to test — it was removed in 0.3.9.0; reviewers return prose the
    orchestrator reads, not sentinel-JSON.)
 2. **codex-review.sh selftest** — `bash backends/codex-review.sh
-   --selftest` validates the pinned invocation form (no `-C`, stdin
-   pipe, `--model gpt-5.5`, `2>&1`); it is the regression guard for the
-   codex footguns the wiki lists as hard rules. Never calls codex.
+   --selftest` validates the pinned invocation **form** (no `-C`, stdin
+   pipe, `--model gpt-5.6-sol`, a `-c model_reasoning_effort=…` pin
+   interpolated from `${CMR_CODEX_EFFORT}` — the form using whatever effort
+   is in effect, NOT a fixed value, `2>&1`); it is the regression guard for
+   the codex footguns the wiki lists as hard rules. The effort default and
+   override contract live in the SKILL.md §调用规范 callout, the single
+   source of truth — the selftest checks the form, not the value. Never
+   calls codex.
 
 Merge / grade / drift / termination are **agent judgment** per the wiki
 (`cross-model-review.md`), not deterministic code — there is no

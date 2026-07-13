@@ -4,6 +4,983 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.27 — 2026-07-13
+
+- **Ship-pre correctness-gate round 9 (qualifying clear round) — two P4
+  clarity fixes (`prompts/cmr-fixer.md`).** Round 9 was the gate's first
+  clear round (codex + Claude both `converged`; gemini degraded, 本轮缺):
+  no blocking finding, two `clarity` observations from the Claude leg,
+  both verified and fixed per SHOULD-fix-by-default. (a) The
+  `fixes_skipped` schema example used the free-form reason "reviewers
+  disagreed on the value" instead of Terminal-outcomes' canonical
+  `blocking-but-unfixable → main-session /diagnosing-bugs (no safe
+  suggested_fix)` string — example aligned, disagreement detail moved to
+  `details`. (b) Branch 2's `claim_quote not found` route was silent on
+  adjudication, so a literal-minded fixer could stamp `verdict: REAL` on
+  a finding routed precisely because it could not be verified — added the
+  one-line no-verdict mirror of branch 3's rule (routed-for-verification,
+  not a confirmed verdict).
+
+## 0.3.18.26 — 2026-07-13
+
+- **Ship-pre correctness-gate round 8 — 4 findings fixed, 1 rejected FALSE.**
+  The rejected finding (codex, high) claimed the 交卷契约's
+  `incidental_fixes`/`reported_defects`/`summary` envelope violates "ADR
+  0062's three-signal envelope" and demanded DELETE; verified FALSE — ADR
+  0062 appears in this repo only as an illustrative example inside the
+  kill-axis ① description (SKILL.md ~L854) and a cross-reference in
+  `prompts/cmr-reviewer.md`, not as a ratified constraint of this repo (no
+  `docs/adr/` exists), so there is nothing for the fixer-output contract to
+  violate.
+- **Round 8, F2 — a "clear" confirmation round that itself edits is not
+  terminal (`SKILL.md` Step 7 + Step 5 + doc-mode ②(c)).** Step 7's loop let
+  STOP fire straight after a confirmation round even if that round had just
+  fixed a non-blocking P3/P4 (per SHOULD-fix-by-default) — leaving that fix,
+  which is new diff, forever un-re-reviewed, contradicting the file's own
+  "the fix is itself new diff and must be reviewed" principle. Step 7 now
+  carries the authoritative carve-out; the Step-5 positive-termination
+  paragraph and doc-mode ②(c) early-stop arm each gained a one-line pointer
+  to it (coverage-drift doctrine: one authority, pointers elsewhere). The
+  doc-mode golden hash in `tests/test_doc_mode.py` was recomputed per that
+  test's own intentional-edit procedure.
+- **Round 8, F3 — First-duty and Terminal-outcomes acknowledge the
+  no-verdict third state (`prompts/cmr-fixer.md`).** Round 7 created the
+  "genuinely-unverifiable non-blocking → deferred with NO adjudications
+  entry" path, but First-duty still promised "an empirical verdict on every
+  finding" and Terminal-outcomes still claimed exhaustive (FALSE/REAL)
+  coverage. Both summary lines now name the third state; the branch logic
+  itself is unchanged.
+- **Round 8, F4 — the doc-guard test's comment no longer overclaims
+  (`tests/test_codex_review.py`).** Comment-only edit: part (A) is genuinely
+  tied to the real backend invariant, part (B) is honestly scoped as a
+  narrow textual net against the one recurring value-token phrasing — not an
+  exhaustive guard against every semantically-equivalent rewording (docs are
+  free text; residual risk accepted, per don't-over-defend). Assertions
+  untouched.
+- **Round 8, F5 — backfilled the missing `0.3.18.25` CHANGELOG entry.**
+  `VERSION` and HEAD were at 0.3.18.25 but the changelog's latest entry was
+  still 0.3.18.24; the round-7 commit had skipped its entry.
+
+## 0.3.18.25 — 2026-07-13
+
+- **Ship-pre correctness-gate finding (round 7, F1) — scope-clarification
+  that incidental defects are a separate track from the Terminal-outcomes
+  branches (`prompts/cmr-fixer.md`).** The Terminal-outcomes opening line now
+  states it governs only **supplied/adjudicated** findings (the ones you were
+  handed); an **incidental** defect spotted in passing is First-duty's
+  separate, parallel track and does **not** flow through these branches. An
+  incidental defect follows its own **severity-independent** rule — a clean
+  mechanical one goes to `incidental_fixes`, a **non-trivial** one is reported
+  in `reported_defects` for the main session regardless of its own severity —
+  so a non-blocking incidental defect is still routed, never subject to this
+  section's blocking/non-blocking split. No behavior change; closes a
+  readability contradiction.
+- **Round 7, F2 — unverifiable non-blocking findings route straight to
+  `deferred[]` with no forced REAL/FALSE adjudication (`prompts/cmr-fixer.md`).**
+  Round 4's own fix had said an unverifiable non-blocking finding "stays
+  **REAL**" and is deferred, which asserted absence-of-evidence as
+  proof-of-real — the same epistemic error as the FALSE-default it replaced.
+  It now goes straight to `deferred[]` with **no** `adjudications` entry
+  (neither REAL nor FALSE is confirmed), framed as a safety/visibility
+  default: inability to verify is neither evidence-of-false (never laundered
+  into a FALSE adjudication) nor evidence-of-true (not stamped REAL). Applied
+  at both the Terminal-outcomes non-blocking branch and the Diff-requirements
+  `claim_quote` sibling bullet; test expectations updated in
+  `tests/test_defer_severity.py`. No new schema verdict value.
+- **Round 7, F3 (4th recurrence — root fix) — the codex-effort doc-guard test
+  now ties to the real backend selftest code invariant, not a wording pattern
+  (`tests/test_codex_review.py`, `TESTING.md`, `SKILL.md`).** `TESTING.md`
+  described `--selftest` as checking a fixed `model_reasoning_effort=medium`;
+  the selftest actually validates `model_reasoning_effort=${CMR_CODEX_EFFORT}`
+  (form, not value), and the round-6 backtick-`` `medium` `` regex guard was
+  structurally blind to the compound `model_reasoning_effort=medium` token.
+  Reworded `TESTING.md` to form-not-value with a pointer to the canonical
+  `SKILL.md` §调用规范 site (the single source of truth), and trimmed the two
+  Step-1 bullets to point at that source instead of restating the contract.
+  Replaced the value-token regex guard with
+  `test_selftest_validates_effort_form_not_value`, tied to the REAL invariant:
+  part (A) extracts the actual selftest block from the backend and asserts it
+  interpolates `${CMR_CODEX_EFFORT}` and hard-codes no
+  `model_reasoning_effort=medium`; part (B) is a narrower textual net that no
+  doc describes the selftest as checking that fixed value.
+
+## 0.3.18.24 — 2026-07-13
+
+- **Ship-pre correctness-gate finding (round 6) — a THIRD leftover site of
+  the same "codex effort stated as absolute" class, and a definitive fix.**
+  `SKILL.md` Step 1 (which a reader meets BEFORE Step 2's already-fixed
+  callout) had two more sites: `codex effort = `medium`
+  (`CMR_CODEX_EFFORT=medium`)` and `codex effort = `medium`, the same as
+  per-slice`. Both stated the value flat with no override acknowledgment,
+  and — crucially — neither contained the word "uniform", so round 5's
+  regression guard (which only scanned `uniform`-bearing windows) was
+  structurally blind to them. Reworded both to state `medium` as the
+  **default** used when `CMR_CODEX_EFFORT` is unset, **overridable** (passed
+  through verbatim, no whitelist), matching the L266/L289 sites' spirit.
+  Only `SKILL.md` touched (no backend/dispatch/prompt changes).
+- **Replaced the narrow guard with THE comprehensive one
+  (`tests/test_codex_review.py`).** Rounds 4/5/6 each patched a
+  progressively different but still-incomplete pattern (exact phrase →
+  `uniform*` family → this). New guard
+  `test_every_codex_effort_value_claim_carries_override_caveat` stops
+  keying on any phrase/adjective and keys on the **value token itself**:
+  every standalone backticked `` `medium` `` in an effort/reasoning context,
+  across `SKILL.md` / `README.md` / `TESTING.md`, must carry an override
+  token (`overrid`) within a 320-char window. The lone-backtick form cleanly
+  selects genuine prose claims and excludes the `model_reasoning_effort=medium`
+  code/config form and the `critical|high|medium|low` severity vocabulary
+  with no carve-out list. Mutation-tested: reintroducing each of the three
+  historical buggy phrasings (round-4 "mandatory and uniform", round-5
+  "`medium` uniformly", round-6 "codex effort = `medium`") one at a time,
+  in real SKILL.md context, makes the new guard fire — the one test that
+  would have caught all three incidents from the start. Repo-wide
+  scope-check (same pattern, all 11 operative `.md` files, CHANGELOG
+  exempt): zero uncaveated instances remain.
+
+## 0.3.18.23 — 2026-07-13
+
+- **Ship-pre correctness-gate finding (PR #32, round 5) — one leftover
+  site of round-4's F3 class.** The Step-2 "Reasoning-effort reality, per
+  leg" summary table in `SKILL.md` still read `codex = medium uniformly …
+  CMR_CODEX_EFFORT, pinned via -c so host config cannot drift` — mentioning
+  `CMR_CODEX_EFFORT` only as the drift-guard, never as a genuine override.
+  As the FIRST place a reader meets codex's effort behavior (before the
+  L287 §调用规范 callout that round 4 fixed), it read as the same absolute
+  "always medium, no exceptions" claim. Reworded to `medium **uniform
+  default** for both ship-pre … and per-slice … overridable via
+  `CMR_CODEX_EFFORT`, which is pinned via `-c` so unset host config cannot
+  silently drift the value — see §调用规范 below`, matching the already-fixed
+  callout's spirit (default + genuine override) without reintroducing a new
+  inconsistency. Only `SKILL.md` touched (no backend/dispatch changes).
+- **Widened the regression guard (`tests/test_codex_review.py`).** The old
+  negative pin only asserted one retired exact phrase was absent — which is
+  exactly why this leftover site slipped through round 4 undetected. Added:
+  (1) a broader class guard that requires every `uniform…`+`medium` effort
+  claim anywhere in `SKILL.md` to carry an override token
+  (`CMR_CODEX_EFFORT` / `overridable`) within the same window; (2) a pin on
+  the retired absolute `` `medium` uniformly `` shape; (3) a positive pin
+  that the summary bullet itself states the override, so both known sites
+  (summary + callout) are individually guarded.
+
+## 0.3.18.22 — 2026-07-13
+
+- **Three ship-pre correctness-gate findings (PR #32, round 4).**
+  - *Finding 1 [P1] — `prompts/cmr-fixer.md` scope-banner header.* The
+    opening banner's primary verb "is NOT yours — **route it** to the main
+    session" was severity-unqualified, contradicting `## Terminal outcomes`
+    (where a non-blocking finding is "never routed"). Reworded so the header
+    states the finding is not yours to patch here and its actual disposition
+    (fixed elsewhere / routed / deferred) depends on **severity** per
+    Terminal outcomes — routing is the blocking-only exit, non-blocking is
+    never routed. Mechanical bar and "do not guess" left intact. (The five
+    other sites codex flagged were re-verified as genuine pointers, not
+    restatements — not touched; no re-consolidation.)
+  - *Finding 2 [P2, introduced by 0.3.18.21] — "cannot verify → FALSE" is
+    an epistemic error.* Two sites (`## Terminal outcomes` non-blocking
+    branch, and the Diff-requirements `claim_quote` bullet) told the fixer
+    to adjudicate an unverifiable non-blocking finding **FALSE**. Inability
+    to verify is the *absence* of evidence, not refuting evidence (FALSE
+    requires concrete refuting evidence per First duty), so a real but
+    hard-to-locate finding could vanish via a laundered FALSE. Both sites now
+    keep it **REAL** and **deferred**, with the verification gap stated in the
+    deferral's rationale.
+  - *Finding 3 [P2] — stale "mandatory and uniform" effort docs.* The hard
+    `exit 64` effort whitelist was removed in 0.3.18.15; the backend now
+    passes any `CMR_CODEX_EFFORT` override verbatim with `medium` only as the
+    unset-default. `SKILL.md` ("mandatory and uniform") and `README.md`
+    ("uniformly medium") still implied a non-overridable pin. Both reworded to
+    describe `medium` as the DEFAULT operational convention with a genuine
+    verbatim override (no whitelist), keeping the pinning-prevents-config.toml-
+    drift rationale. (`TESTING.md` line 38 describes the default selftest form
+    check accurately — not touched.)
+  - Tests: `tests/test_defer_severity.py` gains header + FALSE-on-unverifiable
+    pins (positive + negative) and updates the two prior pins that asserted the
+    now-corrected text; `tests/test_codex_review.py` gains doc pins grounding
+    SKILL.md/README.md effort claims against the real backend contract.
+
+## 0.3.18.21 — 2026-07-13
+
+- **Root-cause consolidation of the "terminal outcomes" concept in
+  `prompts/cmr-fixer.md` (ship-pre correctness gate, PR #32 Step 6, round 3
+  — coverage-drift fix, not another point patch).** Versions 0.3.18.16
+  through .20 each patched ONE site that stated an incomplete version of
+  "what are the valid terminal outcomes for a supplied finding" (the
+  First-duty overview, the Scope-rules routing tail, the Defer-protocol
+  closing paragraph, the JSON `claim_quote` instruction). Round 3 found
+  the SAME rule-class recurring on two more sites, so per the wiki Step-6
+  "coverage drift ≠ architectural drift" doctrine (same rule-class on new
+  sites each round → centralize the rule) this consolidates the concept
+  into ONE authoritative **`## Terminal outcomes`** section instead of
+  patching the Nth sentence.
+  - **New `## Terminal outcomes` section** exhaustively enumerates every
+    valid exit for a supplied finding, resolving all
+    (FALSE/REAL) × (blocking/non-blocking) × (locatable/not) combinations
+    to exactly one path: **FALSE (any severity)** → `adjudications` entry,
+    resolved before any severity branch; **REAL, blocking** (P0/P1/P2; doc
+    mode also P3) → fixed OR routed via `fixes_skipped`, never deferred,
+    with the three named routed reasons; **REAL, non-blocking**
+    (`low`/`clarity`; doc mode `clarity` only) → fixed OR
+    deferred-with-all-three-parts, never routed. The violation clause is a
+    REAL finding reaching NONE of these (a silent drop).
+  - **Round-3 Finding 1 (non-blocking/clarity, Claude + codex) — the
+    First-duty overview and intro summary line were not severity-qualified**,
+    reading as if ALL non-trivial REAL findings route regardless of
+    severity. Both now point at Terminal outcomes rather than asserting the
+    fix-vs-route split inline; only blocking findings route, non-blocking
+    findings fix-or-defer.
+  - **Round-3 Finding 2 (medium/blocking, codex; also flagged by Claude) —
+    the `claim_quote`-not-found instruction created an unblessed 4th
+    outcome** (bare `fixes_skipped` reason, outside the terminal-outcome
+    framework, tripping the terminal rule's own violation clause). Folded
+    in as a NAMED blocking-route reason
+    (`claim_quote not found → main-session /diagnosing-bugs (needs
+    verification)`); on a non-blocking finding an unlocatable claim now
+    routes to a FALSE adjudication, not a silent park.
+  - **Every other site is now a pointer, not an independent restatement**:
+    the Scope rules keep the classification (WHICH findings are fixable:
+    medium is blocking, doc-mode low, MUST-NOT-fix conditions, the
+    anti-down-rank ban) and point at Terminal outcomes for the route; the
+    Defer protocol keeps the three-part deferral mechanics and points at
+    the section; First-duty, the header, the intro, and the JSON
+    `claim_quote` bullet all cross-reference it.
+- `tests/test_defer_severity.py` consolidated to match: a `_section()`
+  helper asserts the enumeration lives IN the single `## Terminal outcomes`
+  section and is absent (as an independent restatement) from Scope rules
+  and Defer protocol; the six input traces each pin to their one exit;
+  negative pins confirm the old scattered restatements (bare
+  `claim_quote not found` reason, tier-blind "neither fixed nor deferred",
+  un-REAL-qualified drop set, low-only SHOULD-fix body, intro summary line)
+  are gone.
+
+## 0.3.18.20 — 2026-07-12
+
+- **Two correctness fixes in `prompts/cmr-fixer.md` (ship-pre correctness
+  gate, PR #32 Step 6, round 2).**
+  - **Finding 1 (P1/high, codex) — the Defer-protocol terminal rule now
+    recognizes a FALSE adjudication as a valid resolution.** The First-duty
+    § establishes THREE per-finding actions (REAL → resolve, FALSE → reject
+    with evidence in `adjudications`, incidental → separate patch), but the
+    0.3.18.19 terminal rule enumerated only the two REAL-outcome branches
+    (blocking → fixed-or-routed; non-blocking → fixed-or-deferred). A
+    finding correctly adjudicated FALSE is neither fixed, routed, nor
+    deferred, so under the literal "reaches none of these = violation"
+    clause it would trip the violation flag — the same class of gap
+    0.3.18.19 closed, for a third outcome category. Reworded so a FALSE
+    adjudication (evidence in `adjudications`) is itself a complete valid
+    resolution at ANY severity, resolved BEFORE the tier branch; only a
+    finding adjudicated REAL proceeds to the blocking/non-blocking branch,
+    and the silent-drop violation set is scoped to REAL findings.
+  - **Finding 2 (P2/medium, codex) — the `deferred[]` schema severity is
+    now a pipe-delimited enum.** The strict JSON `deferred[]` example
+    hardcoded `"severity": "low"` (a single literal), but the defer-protocol
+    prose allows a doc-mode `clarity` deferral and the sibling severity
+    fields (incidental_fixes, reported_defects) use a pipe-delimited enum
+    showing the valid set. Changed to `"severity": "low|clarity"` — the
+    actual legal set for this field, consistent with the other enum fields.
+- Regression pins in `tests/test_defer_severity.py` (positive + negative,
+  repo phrase-pin style) for both: the terminal rule recognizes a FALSE
+  adjudication as a valid resolution at any severity, resolved before the
+  tier branch; `deferred[].severity` is the `low|clarity` enum, not a
+  single `low` literal.
+- Same-file sweep for the two bug classes (missing-category enumeration /
+  under-built schema enum) across First-duty, Scope rules, Defer protocol,
+  Concept sweep, and the full JSON schema found no further instances: the
+  other severity enums (incidental_fixes, reported_defects) are already the
+  full 5-value set, `verdict` is `REAL|FALSE`, `fixer_mode` is `doc|code`,
+  and the First-duty three-action enumeration is complete.
+
+## 0.3.18.19 — 2026-07-12
+
+- **Two correctness fixes in `prompts/cmr-fixer.md` (ship-pre correctness
+  gate, PR #32 Step 6).**
+  - **Finding 1 (P1/high, codex) — the Defer-protocol terminal rule now
+    recognizes valid routing as a resolution.** The section's closing
+    sentence read "A finding that is neither fixed nor
+    deferred-with-all-three-parts is a protocol violation." Its
+    substantive rules are all scoped to `low`/`clarity`, so it
+    contextually meant that tier — but 0.3.18.18 added a THIRD valid
+    outcome for **blocking** findings: route via `fixes_skipped` to the
+    main session's `/diagnosing-bugs` when they cannot be mechanically
+    resolved. A fixer reading the sentence literally, in isolation, could
+    flag a blocking finding it just validly routed (technically "not
+    fixed" and "not deferred") as its own protocol violation. Reworded to
+    enumerate the terminal outcomes per tier: a blocking finding must be
+    fixed OR validly routed (routing is a resolution, not a violation); a
+    non-blocking (`low`/`clarity`) finding must be fixed OR
+    deferred-with-all-three-parts; only a finding reaching NONE of its
+    tier's outcomes (a silent drop) is the violation.
+  - **Finding 2 (P2 codex / P3 Claude, both independent) — the
+    SHOULD-fix-by-default bullet now names `clarity` for code mode.** It
+    enumerated only `low` in its body, but the immediately-following
+    MUST-NOT-fix section back-references this exact rule to make a fixable
+    `clarity` finding fix-eligible ("under the SHOULD-fix-by-default rule
+    above"), and `SKILL.md`'s "cheap/low-risk P3/P4 should still be FIXED
+    now" (P4 = clarity) says the same. Reworded to name the full code-mode
+    non-blocking tier (`low`/`clarity`; doc mode: only `clarity`, since
+    `low`/P3 is blocking there) and to make the drift stop-condition cover
+    the whole tier ("If fixing these non-blocking findings keeps surfacing
+    new findings") instead of only "the lows".
+- Regression pins in `tests/test_defer_severity.py` (positive + negative,
+  repo phrase-pin style) for both: the terminal rule recognizes valid
+  routing as non-violating for blocking findings; the SHOULD-fix bullet
+  names `clarity` for code mode.
+
+## 0.3.18.18 — 2026-07-12
+
+- **Close a three-way routing trap in `prompts/cmr-fixer.md`'s Scope rules
+  (ship-pre completeness-gate P2, round 5).** A specific-but-realistic
+  input had no valid exit: a **blocking** (`medium`/P2) finding classified
+  **mechanical** by the header allowlist (typo/dead-anchor/stale-label/
+  date/whitespace + zero-executing-code + single-site + provably-inert)
+  whose `suggested_fix` is `n/a`/empty. MUST-fix said fix it (mechanical +
+  medium); MUST-NOT-fix said never patch it (empty `suggested_fix`) —
+  contradiction; the non-trivial→`/diagnosing-bugs` route's literal
+  precondition ("non-trivial") did not apply, because the header makes
+  mechanical and non-trivial **disjoint**; and the defer protocol covers
+  only `low`/`clarity`, never P2. Net: not fixable, not deferrable, and the
+  route didn't cover it → the fixer's own "neither fixed nor deferred =
+  protocol violation" trap. **Fix:** reword the route trigger from "a
+  blocking finding that is **non-trivial**" to "a blocking finding you
+  **cannot mechanically resolve**", explicitly covering **both**
+  non-trivial-by-nature **and** mechanical-by-classification-but-blocked-by-
+  a-MUST-NOT-fix-condition (empty `suggested_fix` / reviewer disagreement /
+  needs new content). Uses the **existing** `fixes_skipped` field and
+  **existing** main-session hand-back — no new field, tier, or defer
+  category. A distinct reason string `blocking-but-unfixable →
+  main-session /diagnosing-bugs (no safe suggested_fix)` marks the
+  MUST-NOT-fix-blocked case vs the behavioral-complexity `non-trivial →
+  main-session /diagnosing-bugs`. Post-fix the trap example has exactly one
+  route; routing is not patching, so no contradiction with MUST-NOT-fix
+  remains. Scope check: the reword scopes to all three MUST-NOT-fix
+  conditions, so reviewer-disagreement and needs-new-content blocking
+  findings are covered too, not just empty-`suggested_fix`. Wording pins
+  (positive + negative, with an embedded concrete-example trace) added in
+  `tests/test_defer_severity.py`.
+
+## 0.3.18.17 — 2026-07-12
+
+- **Close a loose-coupling gap in `test_completeness_grades_gaps_and_gate_is_no_blocking`
+  (ship-pre completeness-gate P1, PR #32).** The two mode-threshold
+  assertions checked the mode label and its severity set as two
+  *independent* substrings (`"code / ship-pre" in txt and "blocking = P0 /
+  P1 / P2" in txt`). Presence anywhere in the normalized file satisfied
+  each half separately, so the assertion did not verify the severity set
+  is actually *coupled to* that mode's clause — its stated intent
+  ("mode-dependent blocking thresholds spelled out"). Codex proved the gap
+  with a poison copy: the real code/ship-pre clause was broken to
+  "blocking = P0 / P1" (missing P2) while an unrelated "blocking = P0 / P1
+  / P2" substring survived elsewhere, and the test still passed. Both
+  asserts (code/ship-pre and doc mode) are now single **coupled-clause**
+  substring checks (`"**code / ship-pre completeness gate** → **blocking =
+  P0 / P1 / P2**"` and the doc-mode equivalent), matching the exact source
+  wording in `prompts/cmr-completeness.md`. Verified by reproducing the
+  poison: the old asserts pass on it (bug), the new coupled asserts
+  correctly fail (gap closed). Test-assertion-quality fix only — the source
+  protocol text was already correct and is untouched. Scope check: the
+  other `A in txt and B in txt` sites in the PR's tests are prose-fragment
+  smoke checks, not severity-value-to-mode coupling, so none share the
+  identical bug class.
+
+## 0.3.18.16 — 2026-07-12
+
+- **Fix an internal contradiction in `prompts/cmr-fixer.md`'s Scope rules
+  (ship-pre completeness-gate P2, PR #32).** The MUST-NOT-fix list carried
+  a standalone unconditional ban — "`clarity` findings (author judgment)"
+  — that directly contradicted the SHOULD-fix-by-default bullet
+  immediately above it (and `SKILL.md`'s "cheap/low-risk P3/P4 should
+  still be FIXED now ... NOT banked as backlog debt", where P4 = clarity).
+  A fixer handed a cheap, obviously-correct clarity finding (a comment
+  typo, a clear rename with an explicit `suggested_fix`) was told to fix it
+  by one rule and forbidden to fix it by the next. The blanket
+  severity-based clarity ban is removed; the list is now **severity-blind**
+  and the three remaining conditions (no concrete `suggested_fix`,
+  reviewer disagreement, requires inventing new behavior/content) already
+  gate out the genuinely un-fixable clarity subset on their own merits. A
+  clarity finding with a concrete fix, no disagreement, and no new-content
+  invention is now fix-eligible like any other cheap/low-risk non-blocking
+  finding. Scope check confirmed `SKILL.md` has no second instance — its
+  clarity mentions are all about blocking/convergence status (correct,
+  untouched). Wording pins added in `tests/test_defer_severity.py`
+  (positive: severity-blind + clarity fix-eligible; negative: the old
+  standalone `clarity` findings (author judgment) bullet is gone).
+
+## 0.3.18.15 — 2026-07-12
+
+- **Merge `codex/cmr-gpt56-sol-medium` into this branch** — the codex leg's
+  default model moves `gpt-5.5` → **`gpt-5.6-sol`**, reasoning effort
+  uniform **`medium`** for both per-slice and ship-pre (`backends/codex-review.sh`
+  default; `CMR_CODEX_MODEL` / `CMR_CODEX_EFFORT` still override). The prior
+  hard `CMR_CODEX_EFFORT != medium → exit 64` whitelist is removed —
+  `codex-review.sh`'s sole job is avoiding codex invocation footguns
+  (`--ephemeral` / `-o` / stdin pipe / no `-C` / scoped idle-kill /
+  degrade), never restricting which model or effort the caller picks
+  (owner ruling 2026-07-12): unset → default `gpt-5.6-sol` + `medium`; any
+  explicit override (`luna`, `low`, `high`, …) passes through verbatim.
+  `SKILL.md`, `README.md`, `TESTING.md` updated off the stale `gpt-5.5`
+  references left over from before this merge.
+
+## 0.3.18.14 — 2026-07-12
+
+- **REVERSAL — the 钉子令牌 (nail-token) jurisdiction-handoff apparatus is
+  removed** (`prompts/cmr-completeness.md`, `SKILL.md` Step 5, tests; owner
+  authorization 2026-07-12). The nail-token mechanism introduced in 0.3.17.0
+  and patched across eight subsequent commits (0.3.18.3, .4, .5, .8, .9, .10,
+  .11, .12) is reverted, keeping **only** its original sound piece — the
+  same-round 缺钉 (missing-nail) precondition. Two reasons, both verified
+  against the repo:
+  1. **It required cross-round persistence the skill has no way to
+     implement.** `ak-cross-m-review` is a SKILL invoked by an external
+     session; it holds no cross-round memory of its own, and a repo-wide grep
+     confirms NO script or file anywhere (`backends/`, `scripts/`) implements
+     the "orchestrator persists a `DONE-and-nailed surfaces` list across
+     rounds and injects it into every round's dispatch packet" mechanism.
+     Eight rounds of review-fixes were polishing the WORDING of a protocol
+     describing a nonexistent implementation.
+  2. **Even if implemented, the tamper logic was wrong.** "Any diff that
+     modifies a nailed surface beyond its baseline ref = nail-tamper =
+     blocking" had NO carve-out for a legitimate multi-commit fix addressing a
+     currently-reported finding on that surface — it would unconditionally
+     flag good engineering (e.g. a fixer's clean 3-commit refactor fixing a
+     real bug) as a blocking violation.
+- **What survives (the one sound piece):** judging any spec-surface DONE has
+  a precondition — that surface's contract test is already in the repo; a
+  missing nail is itself a blocking finding (category 缺钉/missing-nail) with
+  a named suggested nail point. This is a **same-round, diff-and-repo-only**
+  check — no persistence needed, so the stateless skill can actually run it.
+  Renamed the completeness-lens section header `## 钉子令牌` → `## 缺钉闸
+  (missing-nail gate)`.
+- **Deleted:** the "nailed-surface" jurisdiction handoff, round-wide
+  merged-ledger nail-authorization, qualifying/confirmation two-step nailing,
+  baseline-ref / baseline-refresh, nail-tamper scoping, 钉上刻字 (engraving),
+  and orchestrator-persistence paragraphs from `prompts/cmr-completeness.md`;
+  the entire "Cross-round jurisdiction hand-off" note from `SKILL.md` Step 5.
+  Reduced `tests/test_nail_token.py` (renamed → `tests/test_missing_nail_gate.py`)
+  to the surviving 缺钉-precondition pins plus a reversal guard that fails if
+  any deleted jurisdiction-handoff phrase re-appears in either file; removed
+  the matching `test_step5_handoff_note_*` from `tests/test_doc_mode.py`.
+- **Untouched (separate, unrelated mechanisms):** the severity-aware
+  convergence machinery (P0–P4 blocking thresholds, two-round
+  qualifying+confirmation convergence, 交卷契约 submission contract) and the
+  doc-mode ②(c) majority-complete + zero-blocking-ledger check — including
+  their golden-hashed ranges, which are not touched and need no recompute.
+
+## 0.3.18.13 — 2026-07-12
+
+- **[P2] Step-7 flow line presented deferral as the default action for
+  P3/P4** (`SKILL.md` Step 7 — the loop; codex round-13). The flow arm read
+  `P3/P4 only → reported-but-Deferred (交卷契约); they do NOT block...`. That
+  conflated two orthogonal facts: (a) a P3/P4-only round does not block
+  convergence and does not force another full-review round (TRUE — kept), and
+  (b) the leading `→ reported-but-Deferred` reads as "the ACTION/outcome for
+  P3/P4 is: defer them". (b) contradicts `prompts/cmr-fixer.md`'s
+  SHOULD-fix-by-default rule (non-blocking tier should be FIXED now, then
+  self-check二连; Defer is ONLY for the genuinely out-of-scope / needs-design
+  / high-risk subset). An orchestrator reading only the Step-7 diagram would
+  defer every non-blocking finding by default, banking work that should be
+  fixed immediately. **Fix:** reworded the flow line so CLEAR-status
+  (doesn't block, doesn't force a round — unconditional) is stated as
+  ORTHOGONAL to whether the finding is FIXED; cheap/low-risk P3/P4 should
+  still be fixed now (cross-referencing the fixer's rule), and Deferred is
+  the narrow exception (the 交卷契约 still requires every P3/P4 stay reported
+  either way). Scope-check confirmed the concur-vote frame (`SKILL.md`
+  "those go to Deferred and do **not** cost its concur vote", pinned by
+  `tests/test_convergence.py`) and the completeness-reviewer frame
+  (`prompts/cmr-completeness.md` "does not block means goes to Deferred")
+  are the correct vote/gate-accounting statements — "Deferred" there names
+  the non-blocking bucket, not a fix-vs-defer default — and were left
+  unchanged. Regression pin + negative pin in
+  `tests/test_convergence.py::test_skill_step7_loop_two_round_severity`.
+
+## 0.3.18.12 — 2026-07-12
+
+- **[P2] Same-file stale phrase contradicts the 0.3.18.11 baseline-refresh
+  rule** (`prompts/cmr-completeness.md` §钉子令牌 + `SKILL.md` Step-5
+  "Cross-round jurisdiction hand-off" note; codex round-12). 0.3.18.11 added
+  the refresh rule — a PERMANENTLY nailed surface's `DONE-and-nailed` entry
+  records the **confirmation-round** state as its baseline ref, not the
+  original qualifying-round baseline. But the SAME files still described the
+  baseline ref generically in older prose that predated the refresh rule and
+  contradicted it: the entry-list definition said the ref was **"captured at
+  nail-authorization time"**, and the tamper-scoping paragraph keyed tamper to
+  change **"beyond the nail-authorization baseline"** / **"relative to the
+  state at which its nail was authorized"** (all = the qualifying-round
+  state). A reviewer reading those lines in isolation — e.g. checking a LATER
+  round's tamper — would revert to comparing against the stale qualifying-round
+  baseline and reproduce the exact false-positive nail-tamper flag 0.3.18.11
+  was meant to eliminate. Fix: ONE authoritative definition of the baseline
+  ref (= the commit/tree ref **currently recorded on the entry**, which per the
+  refresh rule is the confirmation-round state, refreshed exactly once at
+  permanent hand-off); every other mention now just says "the baseline ref"
+  without re-describing its capture time. Applied to BOTH files (two-file sync
+  discipline, rounds 10-11). New `test_no_stale_nail_authorization_time_baseline_phrasing_whole_file`
+  is a WHOLE-FILE guard so a future re-introduction of the stale phrasing
+  ANYWHERE in either file is caught. No hashed range touched, no recompute.
+
+## 0.3.18.11 — 2026-07-12
+
+- **[P2] Stale baseline ref after a legitimate qualifying→confirmation
+  change** (`prompts/cmr-completeness.md` §钉子令牌 + `SKILL.md` Step-5
+  "Cross-round jurisdiction hand-off" note; codex round-11). The
+  `DONE-and-nailed surfaces` entry's **baseline ref** is captured at
+  QUALIFYING-round nail-eligibility time (0.3.18.5 beyond-baseline tamper
+  scoping). But if the surface is legitimately modified BETWEEN the qualifying
+  round and the confirmation round — e.g. a non-blocking P3 fix the
+  confirmation round re-audits and approves on the UPDATED surface — the
+  confirmation round hands the surface off permanently while the stored
+  baseline still points at the ORIGINAL qualifying-round commit. Subsequent
+  rounds comparing the cumulative diff against that stale baseline would then
+  misclassify the confirmation-round-approved update as post-nail tampering (a
+  false-positive nail-tamper flag on already-reviewed work). Fix: when the
+  confirmation round permanently hands off a surface (independently reconfirms
+  DONE-and-nailed, round-wide ledger clean again — 0.3.18.9/0.3.18.10), the
+  **baseline ref is REFRESHED to the confirmation round's state** before the
+  surface goes on the permanent list, capturing any legitimate
+  qualifying→confirmation change; nail-tamper going forward is scoped beyond
+  THIS refreshed baseline, refreshed exactly once at hand-off. Stated in BOTH
+  files (two-file sync discipline from round 10). Everything else about
+  nail-tamper (beyond-baseline scoping 0.3.18.5, qualifying/confirmation
+  two-step 0.3.18.9/10) intact — narrow addition of WHICH commit the baseline
+  points to. Both edits outside the doc-mode golden-hash ranges, no recompute.
+
+## 0.3.18.10 — 2026-07-12
+
+- **[P1] SKILL.md Step-5 hand-off note missed the confirmation-round gate**
+  (`SKILL.md` Step-5 "Cross-round jurisdiction hand-off" note, ~L575-596;
+  codex round-10). The 0.3.18.9 fix — a qualifying-round nail is NOT yet
+  permanent; the next confirmation round must re-audit and independently
+  reconfirm it before it leaves jurisdiction — landed **only** in
+  `prompts/cmr-completeness.md` §钉子令牌. SKILL.md's mode-general Step-5
+  note still carried only the 0.3.18.8 round-wide-merged-ledger precondition
+  and equated a clean qualifying-round ledger with permanent nail
+  authorization, so an orchestrator following SKILL.md literally would add a
+  surface to the permanent `DONE-and-nailed surfaces` list immediately on a
+  clean qualifying-round ledger — skipping the confirmation round's
+  substantive re-audit, the exact hole 0.3.18.9 was meant to close. Fix:
+  restate BOTH preconditions in the Step-5 note so the two files agree — (1)
+  round-wide-merged-ledger clean earns **qualifying-round nail-eligibility
+  only** (0.3.18.8), and (2) the surface stays in-jurisdiction until the
+  **confirmation round independently reconfirms DONE-and-nailed** (0.3.18.9),
+  with a qualifying-round nail not yet confirmed explicitly NOT on the
+  permanent list. Cross-references `prompts/cmr-completeness.md` §钉子令牌 as
+  the detailed source. cmr-completeness.md unchanged (already correct); Step-5
+  note is outside the doc-mode golden-hash range, no recompute.
+
+## 0.3.18.9 — 2026-07-12
+
+- **[P1] Nailed surfaces skipped the confirmation round entirely**
+  (`prompts/cmr-completeness.md` §钉子令牌, ~L158-172; codex round-9). As
+  worded, a surface nailed in the qualifying round **permanently left
+  completeness's jurisdiction immediately** — so the confirmation round
+  (which is supposed to substantively re-verify convergence) could have
+  nothing left to review if everything got nailed in round 1, and would
+  trivially pass as the second "clear" round, defeating the two-round
+  guarantee. Fix: nailing takes effect for jurisdiction purposes **only
+  after it survives the confirmation round**. A surface nailed in a
+  qualifying round is **not yet permanently out of jurisdiction** — the
+  very next confirmation round still audits it (this is what makes the
+  confirmation round substantive: it re-verifies the qualifying round's
+  DONE-and-nail judgments). Only after the confirmation round
+  independently confirms DONE-and-nailed does the surface permanently
+  leave jurisdiction for ALL subsequent rounds. A qualifying-round nail
+  not yet confirmed is **NOT on the `DONE-and-nailed surfaces`
+  (out-of-jurisdiction) list**, so it stays auditable. Composes with the
+  round-wide-merged-ledger precondition (0.3.18.8): nail-eligible this
+  (qualifying) round → still audited next (confirmation) round → permanent
+  only after that.
+- **[P1] Doc-mode clear check filtered blocking findings by
+  classification** (`SKILL.md` doc-mode ②(c), ~L886-904, and the Step-5
+  mode-general note ~L601-606; codex round-9). The zero-blocking-ledger
+  check (used for both the majority-complete-qualifying and the
+  confirmation-round-clear gates) counted only blocking findings
+  classified **original-defect** in the ②(a) ledger. A dissenting leg's
+  blocking finding classified **fix-fix** or **invention** was silently
+  excluded from the clear check — so a round with a real, unaddressed
+  blocking finding could pass as "clear" if it landed in the wrong ledger
+  category. Fix: the clear/convergence gate now counts **ALL blocking
+  findings from any leg, regardless of classification** (original-defect,
+  fix-fix, and invention all count toward blocking). The
+  original-defect/fix-fix/invention split stays exactly as-is for its own
+  purposes — the ②(b) bloat-line audit trigger and drift analysis — but
+  never filters the clear/convergence gate.
+- Golden hash: `SKILL.md`'s ②(c) edit is inside the doc-mode golden-hashed
+  range (`## Doc mode discipline` → `## Anti-patterns`), so the hash was
+  recomputed in this same commit
+  (`616860ab…` → `d4557e19…`). The `prompts/cmr-completeness.md` edit is in
+  §钉子令牌 (before `## Doc mode addendum`), outside the completeness
+  addendum hash — that hash is unchanged. Phrase-pin regressions added in
+  `tests/test_nail_token.py` (confirmation round re-audits a
+  qualifying-round nail; permanent only after confirmation; negative that
+  the immediate-on-qualifying wording is gone), `tests/test_doc_mode.py`
+  and `tests/test_convergence.py` (all blocking findings count regardless
+  of classification; negative that the classification-filtered clear check
+  is gone).
+
+## 0.3.18.8 — 2026-07-12
+
+- **[P1] Nail authorization ignored a dissenting leg's blocking gap**
+  (`prompts/cmr-completeness.md` §钉子令牌, ~L141-146; codex round-8). As
+  worded, a single reviewer leg judging a surface DONE (with its nail)
+  could add that surface to the persistent `DONE-and-nailed surfaces` list
+  and take it out of completeness jurisdiction — **even when another leg in
+  the same round reported a BLOCKING gap on that same surface**. Once
+  nailed, later rounds skip the surface entirely, so neither the other
+  leg's gap nor the DONE judgment ever gets the two-round confirmation the
+  convergence mechanism requires — a single dissenting leg's finding was
+  silently swallowed. Fix: a surface may be nailed **only when the
+  round-wide MERGED LEDGER** — aggregating every leg's findings for that
+  surface, the same aggregation the doc-mode zero-blocking-ledger check
+  uses — **shows zero blocking finding on that specific surface that
+  round**. One leg's DONE is necessary but not sufficient; if another leg
+  flags a blocking gap on the same surface the same round, the surface is
+  NOT nailed that round (fix, re-audit, nail once the merged ledger is
+  clean for it). Same principle already applied to majority-complete in
+  doc-mode ②(c). A single-reviewer dispatch (per-slice) degrades
+  gracefully — the round-wide ledger trivially holds just that one leg's
+  findings, no special case. `SKILL.md` Step 5's mode-general orchestrator
+  note got the matching precondition so the orchestrator does not add to
+  the list on one leg's DONE. Both edits are outside the doc-mode
+  golden-hashed ranges (`prompts` `## Doc mode addendum` → `## The gate`;
+  `SKILL.md` `## Doc mode discipline` → `## Anti-patterns`); no hash
+  recompute. Phrase-pin regressions added in `tests/test_nail_token.py`
+  (positive: round-wide merged-ledger precondition + graceful
+  single-reviewer degrade + Step-5 mirror; negative: old "single leg DONE +
+  nail = leaves jurisdiction" wording gone).
+
+## 0.3.18.7 — 2026-07-12
+
+- **[P2] Mode-blind wording in the Step-5 concur definition** (`SKILL.md`
+  Step 5, ~L552-562; codex round-7). The paragraph's first half correctly
+  defines doc-mode blocking as P0/P1/P2/P3 (only P4 exempt), but the next
+  sentence said "P3/P4 findings … do **not** cost its concur vote" with no
+  mode qualifier — contradicting the first half for doc mode, where P3 IS
+  blocking and SHOULD cost the concur vote. An implementer following the
+  unqualified sentence literally would defer a doc-mode P3 that should be
+  fixed/routed and could prematurely enter the confirmation round. Reworded
+  to mode-qualify the disposition: non-blocking = **P3/P4 in
+  correctness/code mode, P4 only in doc mode**; and added an explicit "in
+  doc mode P3 **is** blocking and **does** cost the concur vote" clause.
+  Scope-check of every other "P3/P4" / "low/clarity" non-blocking mention
+  in `SKILL.md` + `prompts/*.md` found no other mode-blind instance — the
+  defer-severity protocol (`SKILL.md` L802-809) and the completeness
+  prompt's blocking table were already correctly mode-qualified. Edit is
+  outside the doc-mode golden-hashed range (`## Doc mode discipline` →
+  `## Anti-patterns`); no hash recompute. Wording-pin regression added in
+  `tests/test_convergence.py` (positive: mode-split disposition + doc-mode
+  P3-blocking clause; negative: old unqualified sentence gone).
+
+## 0.3.18.6 — 2026-07-12
+
+- **[P2×2] Fixer output schema systematically under-built vs the prose it
+  serves** (`prompts/cmr-fixer.md`; codex round-6, two findings that are
+  one class — the same class as the round-3 FALSE-adjudication-field fix).
+  A holistic audit enumerated every output the fixer PROSE requires and
+  checked each has a representable strict-JSON field with a complete
+  severity enum:
+  - supplied-finding fix → `diff` (was already representable).
+  - per-finding REAL/FALSE adjudication + evidence → `adjudications[]`
+    (finding_id/verdict/evidence; verdict enum REAL|FALSE) — complete,
+    the FALSE-reject-with-evidence duty is representable.
+  - incidental mechanical fixes → `incidental_fixes[]`: its `severity`
+    enum was the 4-value `critical|high|medium|low`, so a typo/comment/
+    pure-formatting incidental (which is `clarity`/P4) was
+    **unrepresentable**. Added `clarity` → full 5-value set.
+  - non-trivial incidental defects routed to the main session →
+    `reported_defects[]`: same 4-value gap, now the same 5-value set for
+    consistency (a clarity-level non-trivial defect is representable).
+  - the "report loudly / 大报" narrative required a **summary**, but the
+    strict schema had no such field (only a vague optional `notes`), and
+    output forbids text outside the schema → the loud-report duty was
+    **unrepresentable**. Added a top-level `summary` field and pointed
+    both report-loudly instructions (incidental_fixes and reported_defects)
+    at it; the `summary` explicitly notes a FALSE verdict's refuting
+    evidence still lands in `adjudications`, never here (round-3 rule
+    preserved).
+  - skipped/deferred → `fixes_skipped[]` and `deferred[]`: unchanged; the
+    defer protocol (P3/P4 code, P4 doc; deferred severity is low/clarity
+    by design — the one field with a documented reason to exclude the
+    blocking severities) is correctly represented.
+  No fix-loop behavior changed — 交卷契约 first duty, EXAM/concept sweep,
+  钉子/convergence references, mechanical-vs-nontrivial routing, and
+  P2-blocking defer-severity all preserved; the change ADDS schema fields,
+  completes two enums, and points prose at concrete fields. cmr-fixer.md is
+  outside every golden-hash range (no hash test references it). Tests:
+  `tests/test_submission_contract.py` gains 4 pins (both severity enums
+  include `clarity`; the top-level `summary` field exists and the
+  report-loudly instructions reference it; negatives that the clarity-less
+  enum and the fieldless "in your summary" are gone, and that FALSE
+  evidence still routes to `adjudications`).
+
+## 0.3.18.5 — 2026-07-12
+
+- **[P1] Nail-tamper × cumulative-diff full-re-review × two-round
+  convergence — a 3-way interaction bug** (`prompts/cmr-completeness.md`,
+  `SKILL.md` Step 5; codex round-5 P1). The 钉子令牌 rule said "any diff
+  touching a nailed surface → nail-tamper → blocking", but SKILL.md makes
+  every round full-re-review the **cumulative** diff (vs main). A surface
+  judged DONE-and-nailed in an early round STILL appears in the cumulative
+  diff of later/confirmation rounds — its authorized change is part of the
+  PR. "Any diff touching a nailed surface = tamper" therefore mis-flagged
+  that already-authorized-and-nailed change as tampering → the confirmation
+  round always yielded a blocking finding → the new two-round convergence
+  could **never** complete. Fix: nail-tamper is scoped to change **beyond
+  the nail-authorization baseline** — a NEW change layered on top of the
+  nailed baseline, checked against a **baseline ref** the DONE-and-nailed
+  entry now carries (the commit/tree ref, or the nail test's state, at
+  nail-authorization time). The original nailed change remaining unchanged
+  in the cumulative diff is out-of-jurisdiction (skip), explicitly NOT
+  re-flagged; only a post-nail modification is nail-tamper → blocking.
+  Updated BOTH the completeness-lens 钉子令牌 entry+rule and SKILL.md Step 5's
+  orchestrator-persistence note (each `DONE-and-nailed surfaces` entry now
+  carries the nail's baseline ref alongside its authorization token). No
+  golden hash changed — the 钉子令牌 section is before the doc-mode addendum
+  hash, and the Step 5 edit is outside the doc-mode ②–⑤ hash range. Tests:
+  the "any touch" pin replaced with baseline-scoped positive pins + a
+  negative pin that the mis-flagging wording is gone + baseline-ref entry
+  pins on both files.
+
+## 0.3.18.4 — 2026-07-12
+
+- **[P1] DONE-and-nailed jurisdiction hand-off was placed doc-mode-only**
+  (`SKILL.md`, codex round-4 P1 — a placement error from 0.3.18.3). The
+  钉子令牌 hand-off ("later rounds do NOT re-litigate an
+  already-DONE-and-nailed surface") applies to **all** completeness modes,
+  but 0.3.18.3 put the **orchestrator** persistence+injection instruction
+  ("persists a `DONE-and-nailed surfaces` list across rounds and injects it
+  into every round's dispatch packet") *only* inside §Doc mode discipline
+  ②(a). So a plain code/ship-pre completeness multi-round loop never built
+  that state → a fresh reviewer re-audited already-handed-off surfaces, and
+  nail-tamper detection was unenforceable in code mode. Fix: **hoisted** the
+  orchestrator persistence+injection to a **mode-general** location (Step 5
+  termination), stated for **EVERY completeness round — the ship-pre code
+  gate AND doc mode**; removed the doc-mode-scoped copy from ②(a).
+  `prompts/cmr-completeness.md`'s stale ②(a) back-reference re-pointed to
+  §Step 5 and generalized to every completeness mode. Doc-mode golden hash
+  recomputed (the ②(a) removal is inside the hashed range). Tests: the
+  ②(a) pin became a mode-general Step 5 pin with a regression assertion
+  that the instruction is NOT confined to the doc-mode section.
+
+## 0.3.18.3 — 2026-07-12
+
+- **Four self-contradictions in the recently-landed protocol additions
+  resolved.** Caught by codex's round-3 outside-voice review of the
+  submission-contract branch (one P1, three P2). Each was a case where a
+  new rule was stated in one place but silently contradicted by an
+  older/neighboring rule.
+  - **#1 [P1] Doc-mode termination vs the all-concur rule** (`SKILL.md`
+    Step 5 + doc-mode ②(c)). Step 5's "two consecutive clear rounds = every
+    non-degraded leg concurs" contradicted doc mode's still-standing
+    **majority**-complete convergence. Fix: Step 5 now names doc mode as an
+    **explicit exception** to all-legs-concur — doc mode converges on
+    *majority-complete AND a zero-blocking-(P0–P3)-original-defect ledger
+    that aggregates ALL legs' findings, dissenters included*. Because the
+    ledger clause spans every leg, a minority leg's blocking finding keeps
+    the ledger non-zero → NOT converged regardless of the majority vote:
+    the dissent cannot be swallowed. ②(c) reworded to make the
+    all-legs span of the ledger check explicit (both the qualifying and
+    confirmation rounds). Correctness/code modes stay all-legs-concur.
+  - **#2 [P2] FALSE adjudication had no schema field** (`prompts/cmr-fixer.md`).
+    The first-duty told the fixer to reject a FALSE finding "with evidence
+    written into your summary", but the strict JSON schema had no such
+    field. Fix: a structured `adjudications` array
+    (`finding_id` / `verdict` REAL|FALSE / `evidence`); the FALSE-rejection
+    instruction now points at that field, not a vague summary.
+  - **#3 [P2] `incidental_fixes` vs the "nothing more" scope ban**
+    (`prompts/cmr-fixer.md`). The new incidental-fix clause conflicted with
+    the intro "fix exactly what the findings identify, nothing more" and
+    Safety rule #2's scope-expansion ban. Fix: both old rules now carve out
+    `incidental_fixes` as the **single** sanctioned scope exception and
+    cross-reference each other — the supplied-finding diff still fixes
+    exactly the findings (no gold-plating); a real mechanical defect seen
+    in passing goes to its own separate patch, and that is the only
+    exception, not a licence for general gold-plating.
+  - **#4 [P2] DONE-and-nailed cross-round state was not persisted**
+    (`prompts/cmr-completeness.md` 钉子令牌 + `SKILL.md` ②(a)). "Later
+    rounds do NOT re-litigate an already-DONE-and-nailed surface" was
+    unenforceable — a fresh reviewer had no field naming the nailed
+    surfaces. Fix: the orchestrator persists a **`DONE-and-nailed
+    surfaces`** list (each with its nail's authorization token) across
+    rounds and injects it into every round's dispatch packet; the
+    completeness reviewer treats listed surfaces as out-of-jurisdiction and
+    audits only the remaining clauses plus any diff that touches a nailed
+    surface (a nail-tamper → blocking, per 钉上刻字).
+  - `SKILL.md` doc-mode section edits (②(a), ②(c)) land inside the
+    golden-hashed range, so `tests/test_doc_mode.py`'s SKILL.md hash was
+    recomputed in this commit (the RECORDED-RULE conscious-edit act); the
+    `cmr-completeness.md` addendum hash is unchanged (the 钉子令牌 edit is
+    outside the hashed addendum range).
+  - Tests: new wording pins (positive + negative) for the Step-5 doc-mode
+    exception + all-legs ledger, the `adjudications` schema field, the
+    incidental-vs-scope carve-out, and the packet `DONE-and-nailed
+    surfaces` injection; existing FALSE-adjudication pins updated to the new
+    wording.
+
+## 0.3.18.2 — 2026-07-12
+
+- **Fixer output contract extended so incidental fixes are representable
+  as separate patches.** The 交卷契约 first-duty section told the fixer
+  subagent that other real defects seen in passing should be "small-fix
+  them, committed independently" — but the same prompt defines the
+  subagent's only output as ONE strict-JSON response carrying a SINGLE
+  unified diff, with no commit mechanism. The subagent literally could not
+  "independently commit" an incidental fix: it would have to pollute the
+  supplied-finding patch or silently drop the required action. Level
+  mismatch — "独立提交 (independent commit)" is a fix-LOOP / main-session
+  action wrongly assigned to a subagent whose interface can't do it.
+  Caught by codex's round-2 outside-voice review of the
+  submission-contract branch (P2).
+  - `prompts/cmr-fixer.md`: the fixer output schema gains a dedicated
+    `incidental_fixes` array — each entry is a target, its **OWN separate**
+    unified diff (never merged into the supplied-finding `diff`), a 1–2
+    sentence rationale, and a severity — plus a `reported_defects` array
+    for non-trivial incidental defects the subagent only reports (routed to
+    the main session's `/diagnosing-bugs`, never risk-patched).
+  - The first-duty incidental-defect clause is reworded: the subagent
+    **surfaces** each incidental defect as its own `incidental_fixes` entry
+    (separate patch) and **reports it loudly** — the **main session** is
+    what lands each entry as an independent commit. "大报 / never look away"
+    is preserved; "committed independently" (a subagent-level instruction it
+    could not satisfy) is gone.
+  - The 交卷约定 semantic (小修 / 独立提交 / 大报) is now representable
+    end-to-end: the subagent produces separable patches, the main session
+    commits each independently. No wiki change needed — §额外硬规则 #8's
+    "独立提交" is an orchestration-level end-state, not a subagent action.
+
+## 0.3.18.1 — 2026-07-12
+
+- **Fixer / defer protocol aligned to severity-aware convergence — P2 is
+  blocking, not deferrable.** 0.3.18.0 made **medium/P2 a blocking
+  severity** (a round is CLEAR only with no P0/P1/P2; doc mode no
+  P0/P1/P2/P3), but the fixer/defer protocol still treated medium/P2 as
+  "SHOULD fix … may defer." A fixer could therefore legitimately defer a
+  P2 that still blocks convergence → the next full review re-finds it →
+  the loop never terminates. Caught by the codex outside-voice review of
+  the submission-contract branch; wiki tdd-autonomous-dev §切片内纪律 sync
+  (P2 into the 必修/阻塞级 row with P0/P1, deferrable row = P3/P4 only) was
+  done by the main session and this aligns the skill to it.
+  - `SKILL.md` defer protocol: deferral is now **ONLY for the non-blocking
+    tier — P3/P4 in correctness/code mode, P4 only in doc mode** (P3/low
+    blocks in doc mode). A blocking finding (P0/P1/P2; doc mode also P3)
+    is **must-fix-or-route, NEVER deferred**; trying to defer one = not
+    converged → escalate to the user, do not silently stage it as
+    converged. (P2→P3 down-ranking to escape = same anti-pattern as
+    critical/high→medium.) The staging example tag went `[P2]` → `[P3]`.
+  - `prompts/cmr-fixer.md`: **medium/P2 moved from the deferrable set into
+    MUST-fix (blocking)** — same obligation as critical/high (mechanical
+    fix now, or route non-trivial to the main session's
+    `/diagnosing-bugs`). Deferrable set is now **low/clarity (P3/P4) in
+    correctness/code mode, clarity only (P4) in doc mode** (low/P3 blocks
+    in doc mode). Structured-deferral obligation re-keyed to low/clarity;
+    the "never down-rank critical/high→medium" ban mirrored to "never
+    down-rank medium→low." EXAM-818 sweep, critical/high routing, the
+    交卷契约 first-duty section, and the JSON schema untouched.
+  - `tests/test_defer_severity.py`: positive+negative phrase pins that the
+    deferrable tier is P3/P4 (P2 gone) and medium = blocking/must-fix, so
+    a re-sync cannot silently revert. The doc-mode golden-hash range is
+    untouched (the defer protocol sits outside it).
+
+## 0.3.18.0 — 2026-07-12
+
+- **Severity-aware convergence + two-round confirmation for ALL modes
+  (user ratification 2026-07-12; wiki §终止信号 sync done by the main
+  session).** A review round is now **CLEAR** when it has **no blocking
+  finding**, where blocking is mode-dependent: **correctness / per-slice
+  and the ship-pre completeness gate on code → P0/P1/P2** (P3/P4 defer);
+  **doc mode → P0/P1/P2/P3** (only P4 defers). **P4 never blocks in any
+  mode.** Every finding is still graded and REPORTED (交卷契约,
+  0.3.17.0) — P3/P4 go to Deferred, never silently dropped.
+  - **Two-round confirmation extended from doc-only to every mode.**
+    Positive termination = **two consecutive clear rounds** (a qualifying
+    round + a full-re-review confirmation round, both clear). A single
+    clear round no longer converges on its own; a blocking finding in the
+    confirmation round re-qualifies the early-stop arm from scratch. The
+    relaxed predicate "clear = no blocking" is what makes two-round
+    non-endless (the old "zero-finding = approve" × two-round never
+    would).
+  - `prompts/cmr-reviewer.md`: `converged` verdict redefined — you raised
+    **no critical/high/medium** defect this round (you MAY have raised
+    low/clarity, still reported, they don't cost the approve vote);
+    `findings` = at least one critical/high/medium. (Was "found no
+    defects".)
+  - `prompts/cmr-completeness.md`: each gap now **graded P0–P4**; the gate
+    is **no BLOCKING gap** (mode-dependent threshold) instead of the old
+    zero-any-verdict binary; `complete` = no blocking gap (deferred P3/P4
+    — P4 in doc mode — allowed), `gaps` = at least one blocking gap.
+  - `SKILL.md`: Step 5 §终止信号 (concur = no blocking finding; positive
+    termination = two consecutive clear rounds, all modes), Step 7 loop
+    (blocking → FIX; clear → confirmation round; two consecutive clear →
+    STOP), and doc-mode ②(c) (early-stop predicate now "zero **blocking
+    (P0/P1/P2/P3)** original-defect findings — only P4 exempt"). The ②(c)
+    edit is inside the golden-hashed doc-mode section → golden hash
+    recomputed in `tests/test_doc_mode.py` in the same commit.
+  - `tests/test_convergence.py`: new phrase pins (positive + negative
+    counterpart) for the severity-aware verdict/gate/loop wording;
+    `tests/test_doc_mode.py`: early-stop assertions updated to the new
+    blocking predicate + recomputed SKILL.md doc-mode golden hash (the
+    completeness addendum hash is unchanged — the severity layer lands
+    outside that hashed range).
+
+## 0.3.17.0 — 2026-07-12
+
+- **Review submission contract (交卷契约) landed in the prompts (ADR 0130;
+  user ratification 2026-07-12).** The wiki sync was already done by the
+  main session (§额外硬规则 #8); this is the skill→wiki alignment that puts
+  the executing shaping language into the prompt files.
+  - `prompts/cmr-reviewer.md` + `prompts/cmr-completeness.md`: each gains a
+    **Submission contract** section — report EVERY finding/gap you see this
+    round; severity/verdict is a label you attach, not a threshold a
+    finding must clear to be worth reporting; delivery is complete only
+    once every one is written down. Applies to every review mode; "report
+    all" means the *findings* you see, never a licence to pad the design
+    with suggested text; doc-mode ②–⑤ anti-runaway discipline is untouched;
+    progressive exposure (a hole visible only after an earlier fix) is not
+    a contract breach.
+  - `prompts/cmr-fixer.md`: gains a **First duty** section — adjudicate
+    each supplied finding empirically against the source (REAL → resolve +
+    same-class Concept-sweep, unchanged; FALSE → reject WITH EVIDENCE in
+    the summary for next round's fresh reviewer; other real defects seen in
+    passing → small-fix, committed independently, + report loudly).
+  - `tests/test_submission_contract.py`: phrase pins (positive + negative
+    counterpart each) for all three files, so a re-sync that softens the
+    contract back to "report a couple" fails the suite. Root cause: #860
+    (21+ serial rounds from the missing shaping language).
+- **钉子令牌 (nail token) + 刻字惯例 landed in the completeness lens (ADR
+  0130; wiki §额外硬规则 #9 sync done by the main session; user ratification
+  2026-07-12).** The second half of 0.3.17.0.
+  - `prompts/cmr-completeness.md`: gains a **钉子令牌** section — judging any
+    spec-surface DONE has a precondition (that surface's contract test is
+    already in the repo); a missing nail is itself a **blocking** finding
+    (category 缺钉 / missing-nail) with a named suggested nail point. Once
+    DONE-and-nailed, the surface **permanently leaves completeness's
+    jurisdiction** (later rounds do not re-litigate it; its guard is the
+    red test at the write-point + the correctness channel — the split is
+    temporal, the token is the test). **刻字 (engraving):** a contract-nail
+    test's name / first-line comment carries an authorization token (e.g.
+    `契约钉 #491·永不喂全知`); suggested nails follow the convention, and an
+    engraved nail in the diff with no authorization provenance (issue AC /
+    ADR / prior-round ruling) is blocking — same family as the existing
+    `preexistingAssertionTouched` assertion-hunting and the #732
+    silent-nail-flip prohibition.
+  - `tests/test_nail_token.py`: phrase pins (positive + negative
+    counterpart each) for both semantics, so a re-sync that downgrades a
+    missing nail below blocking or re-pulls a DONE-and-nailed surface back
+    into the completeness lens fails the suite.
+## 0.3.16.1 — 2026-07-12
+
+- Constitution-check example in `prompts/cmr-reviewer.md` names ADR 0062's
+  own carve-outs (typed claimed-fix coverage / suppression-governance) so
+  the kill-axis targets free-text fate-forking, not the preserved typed
+  checks (PR #862 coderabbit r1).
+
+## 0.3.16.0 — 2026-07-12
+
+- **① Constitution packet + kill-axis de-scoped from doc-mode-only to EVERY
+  review mode (owner decision 2026-07-12).** The doc-ONLY narrowing was an
+  unratified editorial choice; the #604 closure machines entered a
+  code-diff review through the unguarded suggestion channel and killed
+  live family runs on 2026-07-12. `prompts/cmr-reviewer.md` (correctness
+  lens) now carries the constitution-check block; golden hash + scope
+  test updated in the same commit per the RECORDED RULE recipe.
+
 ## [0.3.15.1] - 2026-07-06
 
 ### Changed — codex idle-timeout default 480s → 900s (user decision; wiki updated to 15min the same day — in sync)

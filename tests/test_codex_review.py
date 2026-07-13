@@ -15,6 +15,7 @@ Two pinned behaviors around the degrade gate:
    strongest reviewer to a format technicality across many rounds."""
 
 import os
+import re
 import stat
 import subprocess
 from pathlib import Path
@@ -167,42 +168,74 @@ def test_silent_codex_killed_after_idle_window(tmp_path):
     assert '"findings":[]' in r.stdout
 
 
-def _selftest(effort=None):
-    """Run `codex-review.sh --selftest`, optionally pinning CMR_CODEX_EFFORT."""
+def _selftest(effort=None, model=None):
+    """Run `codex-review.sh --selftest`, optionally pinning CMR_CODEX_EFFORT
+    and/or CMR_CODEX_MODEL."""
     env = dict(os.environ)
     if effort is not None:
         env["CMR_CODEX_EFFORT"] = effort
     else:
         env.pop("CMR_CODEX_EFFORT", None)
+    if model is not None:
+        env["CMR_CODEX_MODEL"] = model
+    else:
+        env.pop("CMR_CODEX_MODEL", None)
     return subprocess.run(
         ["bash", str(SCRIPT), "--selftest"],
         capture_output=True, text=True, env=env, timeout=30,
     )
 
 
-def test_selftest_passes_with_default_xhigh_effort():
-    # Default (no env) → ship-pre xhigh; selftest green + names the pin.
+def test_selftest_passes_with_default_medium_effort():
+    # Default (no env) → medium + gpt-5.6-sol; selftest green + names the pin.
     r = _selftest()
     assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert "model_reasoning_effort=xhigh" in r.stdout
+    assert "model_reasoning_effort=medium" in r.stdout
+    assert "--model gpt-5.6-sol" in r.stdout
 
 
-def test_selftest_passes_with_per_slice_high_effort():
-    # CMR_CODEX_EFFORT=high (per-slice) → selftest still green, matching
-    # the LIVE effort (not hardcoded xhigh).
-    r = _selftest("high")
+def test_selftest_passes_with_explicit_medium_effort():
+    # Explicit medium is just the default value passed through.
+    r = _selftest("medium")
     assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert "model_reasoning_effort=high" in r.stdout
+    assert "model_reasoning_effort=medium" in r.stdout
     assert "model_reasoning_effort=xhigh" not in r.stdout
 
 
-def test_invalid_effort_is_rejected():
-    # Only high|xhigh are valid reasoning tiers for review; anything else
-    # (e.g. a typo, or `medium` which would make per-slice a rubber stamp)
-    # must hard-fail, not silently run at the wrong depth.
-    r = _selftest("medium")
-    assert r.returncode == 64, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert "CMR_CODEX_EFFORT must be high|xhigh" in r.stderr
+def test_effort_override_low_passes_through_verbatim():
+    # Owner ruling 2026-07-12: this file's only job is avoiding codex
+    # pitfalls, NOT restricting effort. A caller who wants low gets low —
+    # passed through verbatim to -c model_reasoning_effort=…, selftest still
+    # green (no exit 64), the FORM check adapts to the override.
+    r = _selftest("low")
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "model_reasoning_effort=low" in r.stdout
+    assert "model_reasoning_effort=medium" not in r.stdout
+
+
+def test_effort_override_high_passes_through_verbatim():
+    # Same for a higher tier — no whitelist, no rejection.
+    r = _selftest("high")
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "model_reasoning_effort=high" in r.stdout
+
+
+def test_model_override_luna_passes_through_verbatim():
+    # Model is symmetric with effort: default gpt-5.6-sol, but any override
+    # (e.g. luna) flows through verbatim, selftest still green.
+    r = _selftest(model="luna")
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "--model luna" in r.stdout
+    assert "--model gpt-5.6-sol" not in r.stdout
+
+
+def test_model_and_effort_override_together():
+    # Both overridden at once (luna + high) — both pass through, form check
+    # green.
+    r = _selftest(effort="high", model="luna")
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "model_reasoning_effort=high" in r.stdout
+    assert "--model luna" in r.stdout
 
 
 def test_default_idle_timeout_is_900s():
@@ -216,3 +249,197 @@ def test_default_idle_timeout_is_900s():
         "codex idle-timeout default must be 900s (15min, user decision "
         "2026-07-06) — 480 was false-killing deep-reasoning runs"
     )
+
+
+# --- Doc claims about CMR_CODEX_EFFORT must match the CURRENT backend: a
+# --- DEFAULT of medium with a genuine verbatim override, NOT a "mandatory
+# --- and uniform" pin (0.3.18.22, Finding 3). The exit-64 whitelist was
+# --- removed in 0.3.18.15; the backend now passes any override verbatim,
+# --- with `medium` only as the unset-default (see backend line: "NO
+# --- whitelist" + CMR_CODEX_EFFORT="${CMR_CODEX_EFFORT:-medium}").
+
+ROOT = Path(__file__).resolve().parents[1]
+SKILL_MD = ROOT / "SKILL.md"
+README_MD = ROOT / "README.md"
+
+
+def _norm_doc(path):
+    return " ".join(path.read_text(encoding="utf-8").split())
+
+
+def test_backend_effort_is_default_not_whitelisted():
+    # ground the doc pins against the real backend contract they describe
+    src = SCRIPT.read_text(encoding="utf-8")
+    assert 'CMR_CODEX_EFFORT="${CMR_CODEX_EFFORT:-medium}"' in src, (
+        "backend must treat medium as the UNSET-DEFAULT, not a hard pin"
+    )
+    assert "NO whitelist" in src, (
+        "backend must document the whitelist removal (any override verbatim)"
+    )
+
+
+def test_skill_effort_doc_says_default_with_override_not_mandatory():
+    txt = _norm_doc(SKILL_MD)
+    assert "**The reasoning-effort pin defaults to `medium`**" in txt, (
+        "SKILL.md must describe medium as the DEFAULT, matching the backend "
+        "unset-default — not a mandatory/uniform pin"
+    )
+    assert (
+        "`CMR_CODEX_EFFORT` stays a genuine override: the backend passes any "
+        "value (`low`/`high`/`xhigh`/…) through verbatim, with no whitelist"
+    ) in txt, (
+        "SKILL.md must state the override is passed verbatim with no "
+        "whitelist, matching the current backend"
+    )
+    # the pinning-prevents-drift rationale must survive (still true)
+    assert "cannot silently inherit the machine's `~/.codex/config.toml`" in txt
+
+
+def test_skill_effort_doc_drops_mandatory_and_uniform_negative():
+    txt = _norm_doc(SKILL_MD)
+    assert "reasoning-effort pin is mandatory and uniform" not in txt, (
+        "the stale 'mandatory and uniform' effort claim must be gone — the "
+        "exit-64 whitelist was removed in 0.3.18.15"
+    )
+    # Round-5 leftover: the retired absolute framing wasn't only that one
+    # exact phrase — the Step-2 summary bullet still said "`medium`
+    # uniformly", which reads just as absolute. Pin the retired shape too.
+    assert "`medium` uniformly" not in txt, (
+        "the absolute '`medium` uniformly' framing (no override caveat) must "
+        "be gone — codex effort is a DEFAULT of medium, overridable via "
+        "CMR_CODEX_EFFORT (round-5 Finding, same class as round-4 F3)"
+    )
+
+
+def test_skill_every_uniform_medium_claim_carries_override_caveat():
+    # BROADER guard than the exact-phrase pins above. Round-4 fixed the L287
+    # §调用规范 callout + README but MISSED the Step-2 per-leg summary bullet,
+    # because the only negative pin matched one retired phrase. Catch the
+    # whole class: anywhere SKILL.md pairs a "uniform…"/absolute framing with
+    # "medium", an AFFIRMATIVE override word (overridable/override) must
+    # appear in the same window. Note it deliberately requires "overrid…",
+    # NOT the bare `CMR_CODEX_EFFORT` token: the round-4 leftover bullet DID
+    # name CMR_CODEX_EFFORT — but only as the drift-guard ("pinned via -c so
+    # host config cannot drift"), never as a genuine override. A bare-token
+    # check would have passed the buggy text; requiring the affirmative
+    # override word is what makes this catch the actual class.
+    txt = _norm_doc(SKILL_MD)
+    hits = list(re.finditer(r"\buniform\w*\b", txt))
+    assert hits, "expected at least the per-leg summary bullet's 'uniform' claim"
+    for m in hits:
+        window = txt[max(0, m.start() - 220): m.end() + 220]
+        if "medium" not in window:
+            continue  # a 'uniform' unrelated to codex effort
+        assert re.search(r"overrid", window), (
+            "a 'uniform'+'medium' effort claim in SKILL.md lacks a nearby "
+            "affirmative override word (overridable/override) — naming "
+            "CMR_CODEX_EFFORT only as a drift-guard is NOT enough:\n"
+            f"…{window}…"
+        )
+
+
+def test_skill_summary_bullet_states_effort_override():
+    # The Step-2 "Reasoning-effort reality, per leg" summary table is the
+    # FIRST place a reader meets codex's effort behavior — before the L287
+    # §调用规范 callout. Round-4's fix reached the callout + README but not
+    # this bullet, so a reader stopping here still saw "medium uniformly"
+    # with no override. Pin BOTH the uniform-DEFAULT framing and the explicit
+    # override so THIS bullet, read in isolation, tells the reader
+    # CMR_CODEX_EFFORT is a working override — not a violation of "uniform".
+    txt = _norm_doc(SKILL_MD)
+    assert "**codex** = `medium` **uniform default** for both" in txt, (
+        "the per-leg summary bullet must frame medium as a uniform DEFAULT, "
+        "not an absolute '`medium` uniformly'"
+    )
+    assert "overridable via `CMR_CODEX_EFFORT`" in txt, (
+        "the summary bullet itself must acknowledge CMR_CODEX_EFFORT is a "
+        "working override — round-4's fix reached L287/README but not here"
+    )
+
+
+def test_readme_effort_doc_says_default_with_override():
+    txt = _norm_doc(README_MD)
+    assert (
+        "Reasoning effort defaults to `medium` for ship-pre and per-slice "
+        "(the operational convention); `CMR_CODEX_EFFORT` overrides it and "
+        "the backend passes any value through verbatim (no whitelist)."
+    ) in txt, (
+        "README.md must describe medium as the default with a verbatim "
+        "CMR_CODEX_EFFORT override"
+    )
+
+
+def test_readme_effort_doc_drops_uniform_absolute_negative():
+    txt = _norm_doc(README_MD)
+    assert "Reasoning effort is uniformly `medium` for ship-pre and per-slice." not in txt, (
+        "the stale absolute 'effort is uniformly medium' claim (no override "
+        "caveat) must be gone"
+    )
+
+
+TESTING_MD = ROOT / "TESTING.md"
+
+
+def test_selftest_validates_effort_form_not_value():
+    # ROOT fix for the 4th recurrence (round 7, F3) of "codex effort
+    # documented as an absolute". Rounds 4/5/6 each added a NARROWER regex
+    # chasing a specific PHRASING (retired phrase → "uniform*" family →
+    # standalone `medium` token), and each new round's bug evaded the
+    # previous guard via a new wording — round 7's TESTING.md bug wrote the
+    # compound token `model_reasoning_effort=medium` (medium preceded by "=",
+    # not a backtick), which the round-6 backtick-delimited `medium` guard
+    # structurally could not see.
+    #
+    # Part (A) below ties the test to the REAL invariant (the actual
+    # backend code): the selftest validates the invocation FORM, pinning
+    # `model_reasoning_effort=${CMR_CODEX_EFFORT}` — whatever effort is in
+    # effect — NOT the literal value `medium`. Part (B) is a narrower
+    # textual safety net against the ONE specific value-token phrasing that
+    # has recurred 4 times — it is not, and cannot be, an exhaustive guard
+    # against every possible semantically-equivalent rewording (docs are
+    # free text); that residual risk is accepted, not solved, per this
+    # repo's own "don't over-defend with more mechanism" principle. Two
+    # structural anchors:
+    #
+    #   (A) Backend: extract the selftest block from the ACTUAL script and
+    #       confirm its canonical-form check interpolates ${CMR_CODEX_EFFORT}
+    #       and hard-codes NO `model_reasoning_effort=medium`. The test now
+    #       tracks the real code, not a wording pattern.
+    #   (B) Docs: no .md may describe the selftest (window around every
+    #       "selftest" mention) as checking a fixed
+    #       `model_reasoning_effort=medium` — the value the selftest does
+    #       NOT check. This catches the one recurring value-token phrasing,
+    #       not every equivalent rewording (see the caveat above).
+    src = SCRIPT.read_text(encoding="utf-8")
+
+    # (A) isolate the selftest block: from the `--selftest` guard to EOF.
+    marker = 'if [ "${1:-}" = "--selftest" ]'
+    assert marker in src, "selftest guard block not found in backend"
+    selftest_block = src[src.index(marker):]
+    assert "model_reasoning_effort=${CMR_CODEX_EFFORT}" in selftest_block, (
+        "the selftest's canonical-form check must interpolate "
+        "${CMR_CODEX_EFFORT} — it validates the FORM (whatever effort is in "
+        "effect), not a fixed value"
+    )
+    assert "model_reasoning_effort=medium" not in selftest_block, (
+        "the selftest block must NOT hard-code model_reasoning_effort=medium "
+        "— that would pin the VALUE instead of the form; the invariant is "
+        "form-not-value (round-7 F3, 4th recurrence)"
+    )
+
+    # (B) no doc may present that fixed value as what the selftest validates.
+    WINDOW = 250
+    for label, path in (
+        ("TESTING.md", TESTING_MD),
+        ("SKILL.md", SKILL_MD),
+        ("README.md", README_MD),
+    ):
+        txt = _norm_doc(path)
+        for m in re.finditer(r"selftest", txt):
+            window = txt[max(0, m.start() - WINDOW): m.end() + WINDOW]
+            assert "model_reasoning_effort=medium" not in window, (
+                f"{label}: text describing --selftest states a fixed "
+                f"`model_reasoning_effort=medium`, but the selftest validates "
+                f"the FORM (model_reasoning_effort=${{CMR_CODEX_EFFORT}}), not "
+                f"that value — this is the round-4/5/6/7 recurrence:\n…{window}…"
+            )

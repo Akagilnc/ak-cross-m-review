@@ -118,6 +118,22 @@ independent call, not to pre-guess what others will say.
 
 ---
 
+## Submission contract (交卷契约 — ADR 0130)
+
+Report **every** finding you see this round. Severity is a label you
+attach to a finding (`critical` … `clarity`), not a threshold it must
+clear before it is worth reporting — a `low` you noticed is still owed to
+the fixer. Your review is delivered only once every defect you saw is
+written down. This holds in **every review mode** (per-slice, ship-pre's
+two gates, doc mode). "Report all" means the *findings* you actually see —
+never a licence to pad the review with "you could also add…" suggestions,
+and doc-mode's ②–⑤ anti-runaway discipline is untouched by it. Progressive
+exposure — a defect that becomes visible only after an earlier one is
+fixed — is expected: report it in the round it surfaces, it is not a
+contract breach.
+
+---
+
 ## Output — your review (prose)
 
 Write your review as clear, grounded **prose**. There is **no required
@@ -140,10 +156,13 @@ For **each finding**, give (in whatever prose layout is clearest):
 - if the same wrong value/concept recurs **elsewhere** in the diff, name
   every location — the fixer fixes them all, not just the first.
 
-If you find no defects, **say so plainly**. An explicit "no findings /
-converged" is a valid and expected answer — it is how you vote
-**approve** (the loop terminates positively when every reviewer returns
-no findings). Do NOT invent nitpicks to look thorough.
+If you raised no **critical / high / medium** defect, **say so plainly**.
+An explicit "no blocking findings / converged" is a valid and expected
+answer — it is how you vote **approve** (the loop terminates positively
+when every reviewer raises no blocking defect for two consecutive
+rounds). A `low` / `clarity` you noticed is still owed to the fixer under
+the submission contract — report it — but it does **not** cost you the
+approve vote. Do NOT invent nitpicks to look thorough.
 
 **End your review with a single verdict line** — the last line of your
 output must be **exactly** one of these two strings, with nothing else on
@@ -154,8 +173,15 @@ CMR-VERDICT: converged
 CMR-VERDICT: findings
 ```
 
-- `CMR-VERDICT: converged` — use when you found no defects (your approve vote).
-- `CMR-VERDICT: findings` — use when you raised one or more issues above.
+- `CMR-VERDICT: converged` — use when you raised **no critical / high /
+  medium defect** this round (P0 / P1 / P2 in the wiki's scale; Step 4
+  maps your words to those levels). This is your approve vote. You MAY
+  have raised `low` / `clarity` (P3 / P4) findings — you still report
+  them (submission contract), but they do **not** block and do **not**
+  cost your converged vote.
+- `CMR-VERDICT: findings` — use when you raised **at least one critical /
+  high / medium** (P0 / P1 / P2) defect above. A round with only `low` /
+  `clarity` findings is still `converged`.
 
 That verdict line is the *only* fixed-format ask; everything above it is
 free prose. It lets the orchestrator tell an approve from a
@@ -164,3 +190,16 @@ a verdict) from a missing/crashed reviewer (which produces no output and
 no verdict at all → the round flags "本轮缺 <you>", never a false
 approve). If you forget the line, the orchestrator still reads your prose
 — it just makes your verdict unambiguous.
+
+## Constitution check (kill-axis — every mode, owner decision 2026-07-12)
+
+The review packet's page one lists the project's ratified ADRs and
+stated principles (the constitution). Besides finding defects, check
+whether any mechanism in the diff — or any fix you are about to
+suggest — violates that constitution; if so, recommend **DELETE** over
+patch, and a DELETE finding outranks a patch finding on the same
+mechanism. Example shape: a mechanism that forks on finding FREE TEXT or
+parks rich finding content runner-side violates ADR 0062's three-signal
+envelope; typed shape/governance checks the ADR itself preserves
+(claimed-fix id coverage, suppression-authority validation) are intended
+carve-outs, not violations.

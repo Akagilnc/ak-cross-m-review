@@ -116,6 +116,59 @@ more models do not fix it; **running** the mechanism does).
 
 ---
 
+## Submission contract (交卷契约 — ADR 0130)
+
+Report **every** gap you find this round. The verdict (NOT-DONE / PARTIAL
+/ VIOLATES / UNVERIFIED-GAP) is a label you attach to a gap, not a bar it
+must clear before it is worth reporting. Your audit is delivered only once
+every gap you saw is written down. This holds in **every review mode**
+(per-slice, ship-pre's two gates, doc mode). "Report all" means the *gaps*
+you actually find — never a licence to suggest padding the design with
+extra text, and the doc-mode addendum's ②–⑤ anti-runaway discipline below
+is untouched by it. Progressive exposure — a gap that becomes visible only
+after an earlier one is closed — is expected, not a contract breach.
+
+---
+
+## 缺钉闸 (missing-nail gate — ADR 0130)
+
+Judging any spec-surface **DONE** has a **precondition: that surface's
+contract test is already in the repo.** A missing nail is itself a
+**blocking** finding — category **缺钉 (missing-nail)** — and you name a
+**suggested nail point** (the assertion + where it lands) so the fixer can
+drive it in. You do not sign DONE against a surface no test pins. This is a
+**same-round, diff-and-repo-only** check — judged from the change and
+the current repo, with no cross-round state.
+
+---
+
+## Grade every gap P0–P4 (severity → does it block the gate?)
+
+Every gap you find gets a **severity grade P0–P4**, the same scale the
+correctness lens uses (`critical`=P0 … `clarity`=P4). The verdict word is
+about the *kind* of gap (NOT-DONE / PARTIAL / VIOLATES / UNVERIFIED-GAP /
+缺钉); the severity is about *how load-bearing* the missing piece is:
+
+| P0 | a load-bearing spec decision entirely absent / a mandated mechanism hollowed out / a void exemption that leaves a gate running bare |
+| P1 | a required sub-feature missing under a common path; a constraint violated on routine input |
+| P2 | an edge-case clause unmet; a delegation obeyed only partially |
+| P3 | a minor / cosmetic omission; a clause met but a little thinner than asked |
+| P4 | genuinely ambiguous — could be read as delivered or not; needs author judgment |
+
+**Whether a gap blocks is severity- AND mode-dependent** (the mode is in
+the dispatch header):
+
+- **code / ship-pre completeness gate** → **blocking = P0 / P1 / P2**;
+  P3 / P4 gaps are reported and listed as **Deferred**, they do NOT block.
+- **doc mode** (the thing under review is a design text) → **blocking =
+  P0 / P1 / P2 / P3**; only **P4** defers (reported-but-Deferred).
+- **P4 never blocks in any mode.**
+
+A **missing nail (缺钉)** is blocking regardless — treat it as P0/P1 per
+the surface it guards. Every gap is still **reported** under the
+submission contract; "does not block" means "goes to Deferred", never
+"silently dropped".
+
 ## Doc mode addendum (ONLY when the thing under review is a design text)
 
 When the change under review is itself a **design text** (ADR / spec /
@@ -141,7 +194,13 @@ does not apply — skip it.)
 
 ## The gate
 
-**Pass = zero NOT-DONE, zero PARTIAL, zero VIOLATES, zero UNVERIFIED-GAP.**
+**Pass = no BLOCKING gap** — where "blocking" is the severity- and
+mode-dependent threshold from the section above: **code / ship-pre = any
+gap graded P0 / P1 / P2**; **doc mode = any gap graded P0 / P1 / P2 /
+P3**. A NOT-DONE / PARTIAL / VIOLATES / UNVERIFIED-GAP / 缺钉 at or above
+that threshold fails the gate; the same verdict at a non-blocking
+severity (P3/P4 code, P4 doc) is reported and **Deferred**, it does not
+fail the gate.
 
 - **UNVERIFIABLE does not block** the gate, but each one MUST be recorded
   as a checklist item to verify later (runtime / E2E) — never quietly
@@ -176,10 +235,14 @@ CMR-VERDICT: complete
 CMR-VERDICT: gaps
 ```
 
-- `CMR-VERDICT: complete` — every clause DONE/CONFORMS (or UNVERIFIABLE,
-  logged); the spec was fully delivered. This is your approve.
-- `CMR-VERDICT: gaps` — one or more NOT-DONE / PARTIAL / VIOLATES /
-  UNVERIFIED-GAP above.
+- `CMR-VERDICT: complete` — **no BLOCKING gap** this round: every clause
+  DONE/CONFORMS (or UNVERIFIABLE logged), or the only gaps left are
+  non-blocking by the mode's threshold (P3/P4 in code mode, P4 in doc
+  mode) — reported and Deferred. This is your approve. You MAY still have
+  reported deferred gaps; they do not cost your `complete` vote.
+- `CMR-VERDICT: gaps` — **at least one blocking gap** above (P0/P1/P2, or
+  in doc mode also P3): a NOT-DONE / PARTIAL / VIOLATES / UNVERIFIED-GAP /
+  缺钉 at or above the mode's blocking threshold.
 
 That verdict line is the only fixed-format ask; everything above it is
 free prose. A missing/crashed auditor produces no verdict at all → the

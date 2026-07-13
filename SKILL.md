@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: Local pre-PR cross-model review — the executable form of the wiki's cross-model-review.md (tdd-autonomous-dev spine step 4 per-slice / step 5–6 ship-pre, Layer 1). The squad depends on the trigger point — ship-pre uses N codex gpt-5.5 + 1 Claude Agent + 1 Gemini via agy = N+1+1, dispatched two-phase (msg1 = all CLI Bash run-in-background, msg2 = Claude Agent, no-peek between); per-slice uses N codex + agy = N+1 (no Claude — credit; run by the slice's own subagent, no two-phase). N by effective (core-logic) diff lines. Then merge / grade / drift-check / loop as the agent judgment the wiki prescribes. Use every dev cycle before a PR, so the agent runs the wiki step the same way instead of re-deciding by feel.
+description: Local pre-PR cross-model review — the executable form of the wiki's cross-model-review.md (tdd-autonomous-dev spine step 4 per-slice / step 5–6 ship-pre, Layer 1). The squad depends on the trigger point — ship-pre uses N codex gpt-5.6-sol + 1 Claude Agent + 1 Gemini via agy = N+1+1, dispatched two-phase (msg1 = all CLI Bash run-in-background, msg2 = Claude Agent, no-peek between); per-slice uses N codex + agy = N+1 (no Claude — credit; run by the slice's own subagent, no two-phase). N by effective (core-logic) diff lines. Then merge / grade / drift-check / loop as the agent judgment the wiki prescribes. Use every dev cycle before a PR, so the agent runs the wiki step the same way instead of re-deciding by feel.
 allowed-tools:
   - Bash
   - Read
@@ -114,7 +114,9 @@ Pre-flight gates (wiki §操作规程 / §边界):
   ALSO carries its own loop discipline — **§Doc mode discipline** below
   (constitution kill-axis, fix-classification ledger, bloat audit line,
   full confirmation-round early stop, round-10 escalation gate) — the
-  additive-runaway defense. Code-diff mode is untouched by that section.
+  additive-runaway defense. Code-diff mode is untouched by that section
+  — EXCEPT its ①: the constitution packet + kill-axis applies to EVERY
+  review mode, code-diff included (owner decision 2026-07-12).
 - **The completeness gate (ship-pre Step 5) is its own EXECUTABLE lens —
   `prompts/cmr-completeness.md`** (before 0.3.14.0 it was only prose here,
   so a ship-pre run could dispatch nothing but the correctness prompt and
@@ -146,19 +148,21 @@ tight to run Claude on the high-frequency per-slice gate):
 - **per-slice** (after each slice's baseline commit — within-slice lens):
   **`N codex + agy` = 2-vendor, NO Claude.** Run by the slice's own
   implementing subagent (both legs are Bash CLIs, so no nested-Agent
-  problem). codex effort = **`high`** (cheap high-frequency gate,
-  downshifted to save credit — `CMR_CODEX_EFFORT=high`). Convergence =
+  problem). codex effort defaults to **`medium`**, overridable via
+  `CMR_CODEX_EFFORT` (full contract in the §调用规范 callout below — the
+  single source of truth). Convergence =
   (N+1)/(N+1) + flag `per-slice 不用 Claude (credit)`.
 - **ship-pre** (after all slices done — cross-slice cumulative-diff
   lens): **+Claude → 1+1+1 (N+1+1).** The **main session** orchestrates;
   the Claude leg runs via the **`Agent` subagent** (cheap, never
-  `claude -p`). codex effort = **`xhigh`** (the real gate + cross-slice
-  invariants need max depth — the default). This is the two-phase
-  dispatch (Step 2).
+  `claude -p`). codex effort defaults to **`medium`**, the same as
+  per-slice, overridable via `CMR_CODEX_EFFORT` (full contract in the
+  §调用规范 callout below — the single source of truth). This is the
+  two-phase dispatch (Step 2).
 
 Strongest review model (both scenarios): Claude leg = `opus` (Opus 4.8) —
 cmr does not use Fable (Step 2 recorded rule; ship-pre only); codex
-`gpt-5.5`; Gemini = `agy` locked to
+`gpt-5.6-sol`; Gemini = `agy` locked to
 3.5 Flash (the documented exception). Only codex instantiates by diff
 size (the agy/Claude legs are always ×1 on the full diff).
 
@@ -184,7 +188,7 @@ size (the agy/Claude legs are always ×1 on the full diff).
 | Large (1500+ / 3+ sections) | 3 | 5 (1+3+1) | 3 codex split 1/3 within-section; Claude+Gemini full |
 
 > **Thresholds raised ×2.5–3 on 2026-06-18** (hypothesis, not yet
-> validated): the old 200/500 triggers split too eagerly — one `gpt-5.5`
+> validated): the old 200/500 triggers split too eagerly — one `gpt-5.6-sol`
 > handles 500 lines fine, and premature splitting hits anti-pattern #1
 > (N codex all on the full diff = duplicate coverage, no gain). New:
 > 500 / 1500. Roll back to the old values if findings start slipping.
@@ -193,7 +197,7 @@ size (the agy/Claude legs are always ×1 on the full diff).
 
 **Strongest review model only** — Anthropic = **`claude-opus-4-8`**
 (Opus 4.8; Step 2 is the authority — **cmr does not use Fable**, recorded
-rule there), OpenAI `gpt-5.5`;
+rule there), OpenAI `gpt-5.6-sol`;
 **Gemini is the documented exception** (locked to 3.5 Flash via `agy` —
 wiki trade-off: keep 3-vendor cross-family coverage over dropping the
 Gemini leg entirely after the `gemini` CLI EOL).
@@ -263,10 +267,11 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
 
 > **Reasoning-effort reality, per leg** (wiki §调用规范) — the legs run
 > at very different reasoning depths:
-> - **codex** = `xhigh` for **ship-pre completeness/correctness (spine Step 5/6)** / `high` for **per-slice**
->   (downshifted 2026-06-18 to save credit — but never below `high`, else
->   per-slice becomes a rubber stamp; `CMR_CODEX_EFFORT`, pinned via `-c`
->   so a clone can't inherit a lower config.toml value).
+> - **codex** = `medium` **uniform default** for both **ship-pre
+>   completeness/correctness (spine Step 5/6)** and **per-slice** (user
+>   decision 2026-07-12; overridable via `CMR_CODEX_EFFORT`, which is
+>   pinned via `-c` so unset host config cannot silently drift the value —
+>   see §调用规范 below for the full override contract).
 > - **Claude reviewer Agent** (ship-pre, main=Claude) = Opus 4.8 adaptive
 >   default and **cannot be dialed up** — the `Agent` tool exposes no
 >   effort param, and `ultrathink` in a subagent prompt is inert literal
@@ -277,19 +282,22 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
 >   6/15 policy is paused but may restart) burns 5× tokens too fast.
 > - **agy / Gemini** = 3.5 Flash, no knob.
 >
-> So codex is the only leg at max depth — which is why it tends to
-> surface the most findings each round.
+> Codex is explicitly pinned rather than inheriting host config.
 
 - **Codex** — only via `backends/codex-review.sh` (pins `printf %s
   "$PROMPT" | codex exec --ephemeral -c
-  model_reasoning_effort=<high|xhigh> --model gpt-5.5 - 2>&1`).
+  model_reasoning_effort=medium --model gpt-5.6-sol - 2>&1`).
   **`--ephemeral` is mandatory** — cmr runs N codex in parallel; without
   it concurrent instances collide on `~/.codex/session` → cross-talk
   (prompt A surfaces in instance B's context). Wiki §额外硬规则 #6 /
-  codex#11435. **The reasoning-effort pin is mandatory + scenario-
-  dependent** (`CMR_CODEX_EFFORT`: `xhigh` ship-pre / `high` per-slice) —
-  codex would otherwise inherit the machine's `~/.codex/config.toml`
-  value and silently drift; `--selftest` guards the form. Never
+  codex#11435. **The reasoning-effort pin defaults to `medium`** — the
+  operational convention for both ship-pre and per-slice (`CMR_CODEX_EFFORT`
+  unset → `medium`), pinned via `-c` so codex cannot silently inherit the
+  machine's `~/.codex/config.toml` value and drift. `CMR_CODEX_EFFORT`
+  stays a genuine override: the backend passes any value
+  (`low`/`high`/`xhigh`/…) through verbatim, with no whitelist; the point
+  of pinning is that `-c` sets *something* explicitly, not that the value
+  can never differ from `medium`. `--selftest` guards the form. Never
   `codex exec "$(...)"` (hangs → pkill), never `-C <dir>` (wrong
   workdir), never `codex review --base B "PROMPT"` (can't pass both).
   *(main=Codex host only: the codex leg runs as a Codex **native
@@ -507,7 +515,7 @@ for the auth smoke; a reviewer must keep Read/Grep/Glob for grounded
 review (one agy over-step in hundreds of reviews doesn't justify gutting
 the grounding axis for all three — wiki §调用规范). The outside-voice
 reviewer always stays the strongest in range (main = Claude → codex
-`gpt-5.5`; main = Codex → current strongest Claude or Gemini), never
+`gpt-5.6-sol`; main = Codex → current strongest Claude or Gemini), never
 dev-tier spark / 5.3-codex / sonnet. See wiki §降级链.
 
 ## Step 4 — merge + grade (agent judgment, not a deterministic engine)
@@ -547,7 +555,48 @@ category, reviewer count, first claim quote); count the rest.
 > Team) are different lenses and are not skippable. Reading concur as
 > ship-ready is a category error.
 
-**Positive termination (may proceed to next step):**
+**concur = no blocking finding.** A leg counts as approving
+(`converged` / `complete`) iff it raised **no blocking finding** this
+round — blocking = **P0 / P1 / P2** (correctness/per-slice and the
+ship-pre completeness gate on code), **doc mode also P3** (only P4
+exempt). A leg may still have raised — and MUST still report (交卷契约) —
+**non-blocking** findings (P3/P4 in correctness/code mode; **P4 only** in
+doc mode); those go to Deferred and do **not** cost its concur vote. In
+doc mode P3 **is** blocking and **does** cost the concur vote (see the
+first half of this paragraph — only P4 is exempt there). **P4 never
+blocks in any mode.**
+
+**Positive termination = two consecutive clear rounds** (ALL modes, not
+just doc — 2026-07-12 user ratification). A round is **clear** when it
+has no blocking finding, i.e. every non-degraded leg concurs by the
+fractions below. One clear round no longer converges on its own: it is
+the **qualifying round**, and the next round is a **full re-review
+confirmation round**. Two consecutive clear rounds (qualifying +
+confirmation) → converged, stop (a confirmation round that itself makes
+any edit is not terminal — see the Step-7 loop's carve-out; its edit is
+new diff needing its own full re-review). A blocking finding in the confirmation
+round → NOT converged: fix it and the early-stop arm **re-qualifies from
+scratch** (a single clear round again becomes merely qualifying). The
+fractions below describe what **one fully-concurring (clear) round**
+requires by squad shape:
+
+> **Doc mode is the explicit exception to all-legs-concur.** In
+> correctness / code modes a round is clear only when **every** non-degraded
+> leg concurs — no blocking finding from **any** leg. **Doc mode does NOT
+> require all-legs-concur**: a doc-mode round is clear on **majority of
+> legs judge `complete` AND the ledger — aggregating ALL legs' findings,
+> including any leg that dissented from the majority-complete vote — shows
+> zero blocking (P0/P1/P2/P3) findings of any classification
+> (original-defect / fix-fix / invention all count toward blocking; the
+> split is the bloat-line/ledger-audit trigger only, never the clear
+> gate)**. Because the ledger clause
+> spans **every** leg, a single dissenting leg's blocking finding keeps the
+> ledger non-zero → the round is **NOT clear**, even under a majority-complete
+> vote; the dissent cannot be swallowed. Both forms still need the two
+> consecutive clear rounds above (doc mode's per-round form is defined in
+> §Doc mode discipline ②(c)); the two forms are stated so they do not
+> contradict.
+
 - ship-pre / main=Claude default: **3/3 concur** (all reviewers approve).
 - Upgraded 1+N+1, 3 vendors present: **(N+2)/(N+2) concur**.
 - One vendor degraded (1+1+1 → 2 reviewers): **2/2 concur + flag**.
@@ -591,12 +640,31 @@ a round counter (no-3-cap, see `iterative-adversarial-review`).
 ## Step 7 — the loop
 
 ```
-findings present
-  → P0/P1 exist → FIX → MANDATORY self-check二连 (see below) → commit
-                  (note "自查二连 done") → next round (FULL re-review)
-  → no P0/P1     → STOP (normal convergence)
-  → not converging / drift hit → STOP, architectural/implementation
-                  rework (Step 6), not "one more round"
+blocking finding (P0/P1/P2; doc mode also P3)
+  → FIX → MANDATORY self-check二连 (see below) → commit
+          (note "自查二连 done") → next round (FULL re-review)
+no blocking finding (round is CLEAR)
+  → confirmation round (FULL re-review); two consecutive clear rounds
+    (this one + the confirmation) → STOP (normal convergence).
+    A blocking finding in the confirmation round → re-qualify from
+    scratch (FIX, then a fresh clear round is needed again).
+    A "clear" round that itself makes any edit (e.g. fixing a
+    non-blocking P3/P4 per SHOULD-fix-by-default below) is not a
+    terminal confirming round — that edit is new diff and needs its
+    own full re-review round before two-consecutive-clear can close
+    (same "the fix is itself new diff" principle below applies here
+    too).
+P3/P4 only  → do NOT block, do NOT by themselves trigger another fix
+              round — a round with only P3/P4 (P4 in doc mode) counts as
+              CLEAR regardless. That CLEAR status is ORTHOGONAL to whether
+              they get FIXED: cheap/low-risk P3/P4 should still be FIXED
+              now (fixer's SHOULD-fix-by-default rule, cmr-fixer.md; then
+              self-check二连), NOT banked as backlog debt. Deferred is the
+              narrow exception — the genuinely out-of-scope / needs-design
+              / high-risk subset — and the 交卷契约 requires every P3/P4
+              stay reported either way.
+not converging / drift hit → STOP, architectural/implementation
+              rework (Step 6), not "one more round"
 ```
 
 > **After every fix, before the next round: the mandatory self-check
@@ -737,11 +805,19 @@ misses far more than an independent reviewer; the self-check only adds
 the narrow "did my own fix regress / repeat a pattern" pass on top of
 review, never instead of it.
 
-**Defer protocol** (tdd-autonomous-dev §切片内纪律, three parts, none
-optional): ① explicit P2/P3/P4 (not "minor") ② a specific 1–2 sentence
-reason (not generic) ③ accumulate to deferred staging; `gstack-ship`
-lands it into the PR body `## Deferred Findings`
-(`- [ ] [P2] <summary> — <reason> — <expected timing>`).
+**Defer protocol** (tdd-autonomous-dev §切片内纪律). Deferral is ONLY for
+the **non-blocking tier** — **P3/P4** in correctness/code mode, **P4 only**
+in doc mode (P3/low is blocking there). Three parts, none optional: ①
+explicit **P3/P4** (doc mode: **P4** only) — not "minor" ② a specific 1–2
+sentence reason (not generic) ③ accumulate to deferred staging;
+`gstack-ship` lands it into the PR body `## Deferred Findings`
+(`- [ ] [P3] <summary> — <reason> — <expected timing>`). A **blocking**
+finding (P0/P1/P2; doc mode also P3) is NEVER deferred: it is
+must-fix-or-route — mechanical fixes land now, non-trivial ones route to
+the main session (`/diagnosing-bugs`). Trying to defer a blocking finding
+= **not converged**: escalate to the user, do not silently stage it as
+converged (P2→P3 down-ranking to escape is the same anti-pattern as
+critical/high→medium).
 
 ## Doc mode discipline (design-text reviews — the additive-runaway defense)
 
@@ -754,8 +830,13 @@ lands it into the PR body `## Deferred Findings`
 > these tests-pinned rules exist).
 
 Applies **ONLY when the thing under review is a design text** (ADR /
-spec / contract / plan — the Step 0 doc-mode bullet, completeness lens).
-Code-diff mode keeps every existing rule unchanged.
+spec / contract / plan — the Step 0 doc-mode bullet, completeness lens)
+— **with ONE exception: ① (constitution packet + kill-axis) applies to
+EVERY review mode, code-diff included (owner decision 2026-07-12; the
+doc-ONLY scoping was an unratified editorial narrowing — the #604
+closure machines entered a code-diff review exactly through the
+unguarded suggestion channel and killed live family runs on
+2026-07-12).** Code-diff mode keeps every OTHER rule unchanged.
 
 **Why doc mode needs its own defense (evidence: #440).** A review of a
 DESIGN TEXT is structurally **additive** — every finding suggests adding
@@ -772,11 +853,16 @@ adds the defenses below. 标 vs 本: ①③ + the ledger are the **root**
 fixes (they stop the runaway from being generated); the bloat line and
 the round gate are **backstops** for when the roots fail.
 
-### ① Constitution packet + kill-axis (root fix)
+### ① Constitution packet + kill-axis (root fix — ALL modes, not just doc)
 
-Before doc-mode round 1 the dispatcher MUST collect a **constitution
+Before round 1 of ANY review (doc mode AND code-diff mode — owner
+decision 2026-07-12) the dispatcher MUST collect a **constitution
 list** — the project's already-decided ADRs + the user's explicitly
 stated principles — and put it on **page one of the review packet**.
+For a code diff the check reads as: a finding or suggested fix that adds
+a mechanism violating a ratified ADR (e.g. runner-side parsing /
+validation / auditing of worker output content, against ADR 0062's
+three-signal envelope) gets a **DELETE** recommendation, not a patch.
 Every leg's prompt then carries a **second mission** (the doc-mode
 addendum in `prompts/cmr-completeness.md`): besides finding what is
 missing, find **mechanisms that violate the constitution or should not
@@ -797,18 +883,36 @@ review can only ever make the text longer.
   continue (a genuinely complex design may lawfully grow). Growth driven
   by fix-fix / invention → STOP, escalate to the user with the ledger.
 - **(c) Early stop via a FULL confirmation round (no #14 exception).**
-  A round where the **majority of legs judge `complete`** AND the ledger
-  shows **zero original-defect findings** → the next round is a
-  **confirmation round that is still a FULL re-review** (anti-pattern
-  #14 stays fully intact — the spot-check variant was considered and
-  rejected: one full round costs nothing against the ~30 wasted ones it
-  prevents, and it keeps the fresh-full-read guarantee). Confirmation
-  round again majority-complete **AND the ledger again showing zero
-  original-defect findings** → **converged, stop**. A fresh
-  original-defect finding in the confirmation round → NOT converged:
-  fix it and the loop continues (the early-stop arm must re-qualify
-  from scratch — bare majority-complete never converges on its own,
-  or the dissenting leg's real finding gets swallowed).
+  A round where the **majority of legs judge `complete`** AND the ledger —
+  **aggregating ALL legs' findings, including any leg dissenting from the
+  majority-complete vote** — shows **zero blocking (P0/P1/P2/P3) findings
+  regardless of classification** (any classification — original-defect,
+  fix-fix, or invention all count toward blocking; the
+  original-defect/fix-fix/invention split is for ②(b)'s
+  bloat-line/ledger-audit trigger only, never for filtering the
+  clear/convergence gate) (only P4 exempt; P4 clarity
+  reported-but-Deferred, doesn't block the confirmation round) → the next
+  round is a **confirmation round that is still a FULL re-review**
+  (anti-pattern #14 stays fully intact — the spot-check variant was
+  considered and rejected: one full round costs nothing against the ~30
+  wasted ones it prevents, and it keeps the fresh-full-read guarantee).
+  Confirmation round again majority-complete **AND the ledger (again
+  spanning ALL legs, dissenters included) again showing zero blocking
+  (P0/P1/P2/P3) findings regardless of classification** (any
+  classification — original-defect, fix-fix, or invention all count toward
+  blocking; the split is ②(b)'s bloat-line/ledger-audit trigger only, never
+  the clear/convergence gate) (only P4 exempt; P4 clarity
+  reported-but-Deferred, doesn't block the confirmation round) →
+  **converged, stop** (a confirmation round that itself makes any edit is
+  not terminal — see the Step-7 loop's carve-out; its edit is new diff
+  needing its own full re-review). Because the zero-blocking check spans every leg AND
+  counts blocking findings of every classification, a single dissenting
+  leg's blocking finding (original-defect, fix-fix, or invention — all
+  count) keeps the ledger non-zero → NOT converged **regardless of the
+  majority-complete vote**:
+  fix it and the loop continues (the early-stop arm must re-qualify from
+  scratch — bare majority-complete never converges on its own, or the
+  dissenting leg's real finding gets swallowed).
 - **(d) Round gate at 10 — an escalation checkpoint, NOT a hard cap.**
   Doc mode reaching **round 10** without convergence → stop dispatching
   and **escalate to the user with the ledger + current state**; the user
