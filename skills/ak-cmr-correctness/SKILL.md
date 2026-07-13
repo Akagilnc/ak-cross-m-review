@@ -1,6 +1,6 @@
 ---
 name: ak-cmr-correctness
-description: Run the CORRECTNESS gate of cross-model review (tdd-autonomous-dev per-slice / ship-pre Step 6) — find real defects in the change: wrong logic, broken invariants, spec-vs-implementation contradictions, missing guards, security, P0–P4. This is the defect lens (is what's there correct?), distinct from the completeness lens (was everything required delivered?). Use it per-slice after a baseline commit, or as the SECOND ship-pre gate after completeness passes. A thin named entry point so the lens is explicit and never conflated with completeness.
+description: Correctness gate for cross-model review. Use per-slice after a baseline commit, or as the ship-pre gate after completeness passes and before a PR.
 allowed-tools:
   - Bash
   - Read

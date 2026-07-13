@@ -1,6 +1,6 @@
 ---
 name: ak-cmr-completeness
-description: Run the COMPLETENESS gate of cross-model review (tdd-autonomous-dev ship-pre Step 5) — audit whether the spec/PRD was fully DELIVERED, not whether the code is correct. Clause-by-clause DONE/PARTIAL/NOT-DONE + CONFORMS/VIOLATES/UNVERIFIED-GAP, chase the reference chain (ground against the authority the spec names), and EXERCISE behavioral keys (run a gate/fix-loop/guard with an injected defect — green tests are not completeness evidence). Use this BEFORE the correctness gate on a finished change, or to review a design doc (ADR/spec). A thin named entry point so the completeness lens is explicit and never conflated with — or skipped in favor of — correctness.
+description: Completeness gate for cross-model review. Use before the correctness gate on a finished change, and when reviewing a design document (ADR/spec).
 allowed-tools:
   - Bash
   - Read
