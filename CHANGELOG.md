@@ -4,6 +4,20 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.20.1 — 2026-07-13
+
+- **S6-fixes review round-1 (1 medium + 2 low, both legs exercised the
+  repro paths live under the new reviewer contract).** The F8 watchdog
+  validation ran before the `--selftest` early-exit, so a polluted env
+  (e.g. `CMR_CODEX_TIMEOUT=15m`) aborted the invocation-form regression
+  guard itself with a fake degrade payload — the checks now mirror the
+  MODE guard and skip for `--selftest` (new invariant pinned:
+  polluted-env selftest exits 0). SKILL.md's mechanical bar gains the
+  one-line pointer to the fixer's verbatim-propagation exception (the
+  two layers had diverged). The dry-run stderr now carries `本轮缺
+  codex (NON-REVIEW DRY_RUN)` so it matches Step-4's degrade
+  recognition vocabulary.
+
 ## 0.3.20.0 — 2026-07-13
 
 - **S6 audit findings: 13 fixed in one pass, 1 owner-rejected (issue

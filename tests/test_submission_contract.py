@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REVIEWER = ROOT / "prompts" / "cmr-reviewer.md"
 COMPLETENESS = ROOT / "prompts" / "cmr-completeness.md"
 FIXER = ROOT / "prompts" / "cmr-fixer.md"
+SKILL = ROOT / "SKILL.md"
 
 
 def _norm(path):
@@ -271,6 +272,7 @@ def test_fixer_mechanical_repetition_exception_is_pinned_at_scope_and_sweep():
     concept = txt[txt.index("## Concept sweep") : txt.index("## Safety rules")]
     assert clause in header
     assert clause in concept
+    assert "唯一例外:逐字相同且可证明 inert 的同修多点传播,见 cmr-fixer.md" in _norm(SKILL)
 
 
 # --- 0.3.18.3 finding #2: FALSE adjudication has a structured schema field

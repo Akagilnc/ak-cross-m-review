@@ -89,6 +89,7 @@ def test_dry_run_is_unmistakably_non_review_and_nonzero(tmp_path):
     assert payload["dry_run"] is True
     assert payload["findings"] == []
     assert "NON-REVIEW" in r.stderr
+    assert "本轮缺 codex (NON-REVIEW DRY_RUN)" in r.stderr
 
 
 @pytest.mark.parametrize("field", ["CMR_CODEX_TIMEOUT", "CMR_CODEX_IDLE_POLL"])
@@ -227,6 +228,17 @@ def test_selftest_passes_with_default_medium_effort():
     assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     assert "model_reasoning_effort=medium" in r.stdout
     assert "--model gpt-5.6-sol" in r.stdout
+
+
+def test_selftest_ignores_invalid_watchdog_env():
+    env = dict(os.environ)
+    env["CMR_CODEX_TIMEOUT"] = "bogus"
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "--selftest"],
+        capture_output=True, text=True, env=env, timeout=30,
+    )
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert "invocation is on-convention" in r.stdout
 
 
 def test_selftest_passes_with_explicit_medium_effort():

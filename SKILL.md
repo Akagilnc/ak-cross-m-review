@@ -673,7 +673,7 @@ neighbors, skips repro / the regression test." So the fix step is gated.
 >    a condition, control flow, an arg, a regex, a path, a number, a
 >    config value → NOT mechanical, even one line, even if "obvious."
 > 2. **Single site, no propagation.** Cannot affect any other file or
->    call site.
+>    call site. (唯一例外:逐字相同且可证明 inert 的同修多点传播,见 cmr-fixer.md)
 > 3. **Provably inert.** You could stake that it cannot change any test
 >    outcome or runtime behavior — and ideally a test or `--selftest`
 >    proves it.

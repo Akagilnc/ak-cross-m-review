@@ -115,15 +115,17 @@ IDLE_POLL="${CMR_CODEX_IDLE_POLL:-5}"
 # CMR_CODEX_MODEL above.
 CMR_CODEX_EFFORT="${CMR_CODEX_EFFORT:-medium}"
 
-if ! [[ "$IDLE_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
-  echo "codex-review: invalid CMR_CODEX_TIMEOUT='$IDLE_TIMEOUT' (expected positive integer seconds) — degrade, flag '本轮缺 codex'" >&2
-  printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
-  exit 1
-fi
-if ! [[ "$IDLE_POLL" =~ ^[1-9][0-9]*$ ]]; then
-  echo "codex-review: invalid CMR_CODEX_IDLE_POLL='$IDLE_POLL' (expected positive integer seconds) — degrade, flag '本轮缺 codex'" >&2
-  printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
-  exit 1
+if [ "${1:-}" != "--selftest" ]; then
+  if ! [[ "$IDLE_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
+    echo "codex-review: invalid CMR_CODEX_TIMEOUT='$IDLE_TIMEOUT' (expected positive integer seconds) — degrade, flag '本轮缺 codex'" >&2
+    printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
+    exit 1
+  fi
+  if ! [[ "$IDLE_POLL" =~ ^[1-9][0-9]*$ ]]; then
+    echo "codex-review: invalid CMR_CODEX_IDLE_POLL='$IDLE_POLL' (expected positive integer seconds) — degrade, flag '本轮缺 codex'" >&2
+    printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
+    exit 1
+  fi
 fi
 
 # codex writes ONLY its final message (the review) here via
@@ -223,7 +225,7 @@ if [ -z "$FULL_PROMPT" ]; then
 fi
 
 if [ "${CMR_DRY_RUN:-0}" = "1" ]; then
-  echo "codex-review: NON-REVIEW DRY_RUN — no Codex reviewer ran; command: printf %s \"\$PROMPT\" | ${CODEX_CMD[*]} 2>&1" >&2
+  echo "codex-review: NON-REVIEW DRY_RUN — no Codex reviewer ran; 本轮缺 codex (NON-REVIEW DRY_RUN); command: printf %s \"\$PROMPT\" | ${CODEX_CMD[*]} 2>&1" >&2
   printf '{"reviewer":"codex","mode":"%s","dry_run":true,"findings":[]}\n' "$MODE"
   exit 2
 fi
