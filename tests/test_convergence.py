@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REVIEWER = ROOT / "prompts" / "cmr-reviewer.md"
 COMPLETENESS = ROOT / "prompts" / "cmr-completeness.md"
 SKILL = ROOT / "SKILL.md"
+DOC_MODE = ROOT / "DOC-MODE.md"
 
 
 def _norm(path):
@@ -229,7 +230,10 @@ def test_skill_step5_doc_mode_exception_negative():
         in txt
     ), "correctness/code modes must stay all-legs-concur, not majority"
     # the doc-mode ②(c) ledger clause must carry the all-legs framing too
-    doc_c = txt[txt.index("### ② Fix-classification ledger") : txt.index("### ③")]
+    doc_txt = _norm(DOC_MODE)
+    doc_c = doc_txt[
+        doc_txt.index("### ② Fix-classification ledger") : doc_txt.index("### ③")
+    ]
     assert "aggregating ALL legs' findings, including any leg dissenting" in doc_c, (
         "②(c)'s qualifying-round ledger must span all legs incl. dissenters"
     )
@@ -238,12 +242,12 @@ def test_skill_step5_doc_mode_exception_negative():
     )
     assert (
         "a single dissenting\n  leg's blocking finding (original-defect, fix-fix, or invention — all\n  count) keeps the ledger"
-        in SKILL.read_text(encoding="utf-8")
+        in DOC_MODE.read_text(encoding="utf-8")
         or "a single dissenting leg's blocking finding (original-defect, "
-        "fix-fix, or invention — all count) keeps the ledger" in txt
+        "fix-fix, or invention — all count) keeps the ledger" in doc_txt
     ), "②(c) must state the dissent-blocks-convergence safety property"
     # 0.3.18.9: the dissent property must NOT be filtered to original-defect
-    assert "single dissenting leg's blocking original-defect finding" not in txt, (
+    assert "single dissenting leg's blocking original-defect finding" not in doc_txt, (
         "②(c)'s dissent-blocks-convergence property must count blocking "
         "findings of any classification, not only original-defect"
     )

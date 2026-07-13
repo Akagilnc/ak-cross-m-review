@@ -1,4 +1,5 @@
-"""Doc-mode discipline must stay pinned in SKILL.md + the completeness lens.
+"""Doc-mode discipline must stay pinned across SKILL.md, DOC-MODE.md,
+and the completeness lens.
 
 The doc-mode defenses (constitution kill-axis, fix-classification ledger,
 bloat audit line, full confirmation-round early stop, round-10 escalation
@@ -18,6 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "SKILL.md"
+DOC_MODE = ROOT / "DOC-MODE.md"
 COMPLETENESS = ROOT / "prompts" / "cmr-completeness.md"
 
 
@@ -31,6 +33,10 @@ def _skill_text():
     return _norm(SKILL.read_text(encoding="utf-8"))
 
 
+def _doc_mode_text():
+    return _norm(DOC_MODE.read_text(encoding="utf-8"))
+
+
 def _doc_mode_section():
     txt = _skill_text()
     start = txt.index("## Doc mode discipline")
@@ -39,16 +45,51 @@ def _doc_mode_section():
     return txt[start:end]
 
 
+def _external_doc_mode_section():
+    return _doc_mode_text()
+
+
+def test_doc_mode_sections_have_one_owner_each():
+    skill = _skill_text()
+    doc = _doc_mode_text()
+    assert "### ① Constitution packet + kill-axis" in skill
+    assert "### ① Constitution packet + kill-axis" not in doc
+    for heading in (
+        "### ② Fix-classification ledger + stop signals",
+        "### ③ Anti-minutes-ification",
+        "### ④ Dead-leg standing degrade",
+        "### ⑤ Fix self-check becomes 三连",
+    ):
+        assert heading not in skill
+        assert heading in doc
+
+
+def test_shared_doc_mode_rationale_survives_once_in_external_file():
+    skill = _skill_text()
+    doc = _doc_mode_text()
+    assert doc.count("58% fix-fix") == 1
+    assert "58% fix-fix" not in skill
+    assert doc.count("are the **root** fixes") == 1
+    assert doc.count("are **backstops**") == 1
+    assert "are the **root** fixes" not in skill
+    assert "are **backstops**" not in skill
+
+
 def test_doc_mode_section_exists_and_is_recorded_rule():
-    sec = _doc_mode_section()
-    assert "RECORDED RULE" in sec, (
+    skill_sec = _doc_mode_section()
+    external_sec = _external_doc_mode_section()
+    assert "RECORDED RULE ①" in skill_sec, (
+        "the constitution must retain its own recorded-rule boundary"
+    )
+    assert "RECORDED RULE ②–⑤" in external_sec, (
         "doc-mode discipline must be marked a recorded rule so a wiki "
         "re-sync does not silently drop it"
     )
-    assert "upstreamed to the wiki 2026-07-06" in sec, (
+    assert "upstreamed to the wiki 2026-07-06" in external_sec, (
         "the banner must record that (and when) the upstream landed"
     )
-    assert "NOT drop this section on a wiki re-sync" in sec, (
+    assert "NOT drop this section on a wiki re-sync" in skill_sec
+    assert "NOT drop this section on a wiki re-sync" in external_sec, (
         "the do-not-drop instruction is the operative half of the marker"
     )
 
@@ -82,7 +123,7 @@ def test_constitution_kill_axis_and_delete_outranks_patch():
 
 
 def test_fix_classification_ledger_taxonomy():
-    sec = _doc_mode_section()
+    sec = _external_doc_mode_section()
     assert "original-defect / fix-fix / invention" in sec, (
         "the ledger taxonomy is the measuring instrument for every stop "
         "signal — without it nothing below is measurable"
@@ -95,7 +136,7 @@ def test_fix_classification_ledger_taxonomy():
 
 
 def test_bloat_line_is_audit_trigger_not_death_line():
-    sec = _doc_mode_section()
+    sec = _external_doc_mode_section()
     assert "1.5×" in sec
     assert "NOT a death line" in sec, (
         "1.5× must trigger a ledger audit, not an unconditional stop — a "
@@ -107,7 +148,7 @@ def test_bloat_line_is_audit_trigger_not_death_line():
 
 
 def test_early_stop_keeps_full_rereview_no_ap14_exception():
-    sec = _doc_mode_section()
+    sec = _external_doc_mode_section()
     assert "FULL confirmation round" in sec
     assert "no #14 exception" in sec, (
         "the early stop must NOT open a spot-check exception to "
@@ -164,7 +205,7 @@ def test_early_stop_keeps_full_rereview_no_ap14_exception():
 
 
 def test_round_gate_is_10_and_escalates_not_terminates():
-    sec = _doc_mode_section()
+    sec = _external_doc_mode_section()
     assert "round 10" in sec, "the round-gate value is the user's decided 10"
     assert "NOT a hard cap" in sec
     assert "escalate to the user with the ledger + current state" in sec, (
@@ -180,7 +221,7 @@ def test_round_gate_is_10_and_escalates_not_terminates():
 
 
 def test_dead_leg_standing_degrade():
-    sec = _doc_mode_section()
+    sec = _external_doc_mode_section()
     assert "2 consecutive dead rounds" in sec
     assert "stop re-dispatching" in sec
     assert "standing-DEGRADED" in sec
@@ -195,7 +236,7 @@ def test_dead_leg_standing_degrade():
 
 
 def test_self_check_becomes_sanlian():
-    sec = _doc_mode_section()
+    sec = _external_doc_mode_section()
     assert "三连" in sec
     assert "mandatory self-check 二连 with a third check" in sec, (
         "三连 must be defined as extending the existing mandatory 二连, "
@@ -206,7 +247,7 @@ def test_self_check_becomes_sanlian():
 
 
 def test_anti_minutes_fix_discipline():
-    sec = _doc_mode_section()
+    sec = _external_doc_mode_section()
     assert "changes the conclusion" in sec
     assert "decrease-only" in sec
     assert "stated justification in the round report" in sec
@@ -289,6 +330,7 @@ def test_no_stale_pending_upstream_claims():
     # the do-not-drop guard itself STAYS (it protects against a re-sync
     # from a stale wiki checkout; the golden hash enforces it)
     assert "NOT drop this section on a wiki re-sync" in skill
+    assert "NOT drop this section on a wiki re-sync" in _doc_mode_text()
 
 
 def test_golden_freeze_of_doc_mode_texts():
@@ -302,17 +344,26 @@ def test_golden_freeze_of_doc_mode_texts():
     still allowed — deliberately: recompute and update the constant in
     the same commit, which is exactly the visible, conscious act the
     RECORDED RULE demands (vs. the silent forgetting that lost N=10).
-    Recompute: python3 -c "import hashlib;t=open('SKILL.md').read();n=' '.join(t.split());s=n[n.index('## Doc mode discipline'):n.index('## Anti-patterns')];print(hashlib.sha256(s.encode()).hexdigest())"
+    Recompute SKILL.md: python3 -c "import hashlib;t=open('SKILL.md').read();n=' '.join(t.split());s=n[n.index('## Doc mode discipline'):n.index('## Anti-patterns')];print(hashlib.sha256(s.encode()).hexdigest())"
+    Recompute DOC-MODE.md: python3 -c "import hashlib;t=open('DOC-MODE.md').read();n=' '.join(t.split());print(hashlib.sha256(n.encode()).hexdigest())"
     """
     import hashlib
 
-    sec = _doc_mode_section()
-    assert hashlib.sha256(sec.encode()).hexdigest() == (
-        "d77be156c56c08f9c743219594aff7032e05e2eda36733921efbc70d5b56729f"
+    skill_sec = _doc_mode_section()
+    assert hashlib.sha256(skill_sec.encode()).hexdigest() == (
+        "f0c27d0e6604974e77260fbac014d3e09751aa55e34b14ba1ecaa533ce7df748"
     ), (
         "SKILL.md doc-mode section text changed — if intentional, update "
         "this hash in the same commit (see docstring); if you did not "
         "edit it, a re-sync just silently mutated the recorded rule"
+    )
+
+    external_sec = _external_doc_mode_section()
+    assert hashlib.sha256(external_sec.encode()).hexdigest() == (
+        "5bfd84837596a4257fc50cc43a953b8bda86cb08530d68c48e6d5b905e4436a5"
+    ), (
+        "DOC-MODE.md text changed — if intentional, update this hash in "
+        "the same commit; if not, investigate"
     )
 
     txt = _norm(COMPLETENESS.read_text(encoding="utf-8"))
@@ -328,7 +379,15 @@ def test_golden_freeze_of_doc_mode_texts():
 def test_step0_points_at_doc_mode_discipline():
     txt = _skill_text()
     step0 = txt[txt.index("## Step 0") : txt.index("## Step 1")]
-    assert "Doc mode discipline" in step0, (
-        "Step 0's design-doc bullet must route the reader to the doc-mode "
-        "discipline section, or it is undiscoverable at dispatch time"
+    assert "review 对象是 ADR/spec/plan → 先 Read `DOC-MODE.md` 再派单" in step0, (
+        "Step 0's design-doc bullet must give a hard read-before-dispatch "
+        "instruction for DOC-MODE.md"
+    )
+    assert (
+        "constitution kill-axis (① below); fix-classification ledger, "
+        "bloat audit line, full confirmation-round early stop, round-10 "
+        "escalation gate (②–⑤ in `DOC-MODE.md`)"
+    ) in step0, (
+        "Step 0's completeness list must keep ① below and route externalized "
+        "②–⑤ to DOC-MODE.md"
     )

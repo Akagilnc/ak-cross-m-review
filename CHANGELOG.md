@@ -4,6 +4,34 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.19.0 — 2026-07-13
+
+- **S1 (#26, PRD #25): doc-mode ②–⑤ split out of SKILL.md into
+  `DOC-MODE.md` (progressive disclosure, atomic golden-hash migration).**
+  SKILL.md 970 → 876 lines; DOC-MODE.md = 105 lines (②–⑤ verbatim + the
+  shared "Why doc mode needs its own defense (#440)" rationale + its own
+  ⚠ RECORDED ②–⑤ banner + new golden hash
+  `5bfd8483…`). SKILL.md keeps ① (constitution packet + kill-axis, ALL
+  modes) with its own independent ⚠ RECORDED ① marker (do-not-drop
+  semantics preserved), a one-line residual pointer to DOC-MODE.md, and a
+  recomputed residual-section hash `f0c27d0e…`. Step 0's doc-mode bullet
+  now carries the hard read-before-dispatch pointer (review 对象是
+  ADR/spec/plan → 先 Read DOC-MODE.md 再派单); the completeness-lens
+  bullet's discipline enumeration and Step 5's ②(c) reference (L599)
+  rewritten to cross-file form — no stale in-file pointers to migrated
+  content remain. All internal references inside the migrated text
+  (anti-pattern #14, Step 3, Step 6, Step 7 ×2) rewritten to `SKILL.md
+  …` cross-file form. Tests: `test_doc_mode.py` assertions split
+  per-object (① + Step-0 pointer stay on SKILL.md; ②–⑤ + hash follow to
+  DOC-MODE.md; golden freeze now three boundaries), `test_convergence.py`
+  ②(c) assertions redirected to DOC-MODE.md, two new red-first guards
+  (`test_doc_mode_sections_have_one_owner_each` bidirectional
+  anti-dual-source; `test_shared_doc_mode_rationale_survives_once_in_external_file`
+  keyed on "58% fix-fix"). completeness-addendum hash untouched
+  (`48bd9e6d…`). 120 → 122 tests, all green; selftest green (zero script
+  changes). Implemented by codex worker (gpt-5.6-sol); baseline
+  reconciliation addenda from issue #26's 2026-07-13 comment applied.
+
 ## 0.3.18.27 — 2026-07-13
 
 - **Ship-pre correctness-gate round 9 (qualifying clear round) — two P4
