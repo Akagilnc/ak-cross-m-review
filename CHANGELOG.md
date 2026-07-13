@@ -44,8 +44,9 @@ All notable changes to this project are documented here. Format follows
   (e.g. GPT-OSS) now correctly flag NO Google voice (family check
   inverted to Gemini/Google-only no-flag). **Won't-fix per owner: no
   read-only mounts / mutation detection / fail-closed machinery**
-  (「改了就改了。改对了就收,改错了就修」). Test functions 140 → 149
-  (150 collected with parametrization).
+  (「改了就改了。改对了就收,改错了就修」). Test functions 140 → 150
+  (151 collected with parametrization; counts verified via
+  `grep -rc '^def test_'` + `pytest --collect-only` at batch HEAD).
 
 ## 0.3.19.13 — 2026-07-13
 
