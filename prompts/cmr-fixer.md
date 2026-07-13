@@ -17,7 +17,7 @@
 > is decided by **Terminal outcomes** below; routing is the blocking-only
 > exit (the main session then runs `/diagnosing-bugs` — an iterative,
 > possibly human-in-the-loop investigation that a single subagent diff
-> cannot do; see wiki §修复 + SKILL.md Step 7), while a non-blocking
+> cannot do; see SKILL.md Step 7), while a non-blocking
 > finding is never routed. Do not guess.
 
 Previous rounds of cross-model review produced a merged list of findings
@@ -242,6 +242,19 @@ The orchestrator writes these into the PR description under a
 ---
 
 ## Concept sweep (fix every occurrence, not just the first)
+
+**Own the CLASS, not the instance (user rule 2026-07-14).** The named
+location is an example, not the scope. Step 0 of any fix: state in one
+line what CLASS of defect this is (the disease — e.g. "live authority
+attribution to an external doc", "false completion tense"), then sweep
+the WHOLE repo for that class. Same class = same disease (semantic), NOT
+the same string: literal greps are candidate generators, never the
+verdict — use several broad patterns and judge each candidate by reading
+it. Ambiguous candidates go into the report for adjudication; never
+silently pass one. The fix is complete when the class is clean, and the
+report carries the classification table (file:line → phrase → in/out of
+class → action). Evidence: one class needed four review rounds
+(2026-07-13/14) because each fix covered only named sites + literal greps.
 
 Verbatim-identical, provably-inert repetitions of the SAME mechanical fix
 across sites count as ONE mechanical fix; the sweep is mandatory. Anything

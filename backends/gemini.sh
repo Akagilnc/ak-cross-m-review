@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Gemini reviewer backend — calls `agy` (Antigravity CLI), the in-kind
 # replacement for the `gemini` CLI that Google stopped serving
-# 2026-06-18. agy is locked to Gemini 3.5 Flash — the wiki's explicit
+# 2026-06-18. agy is locked to Gemini 3.5 Flash — the recorded 2026-06-18
 # exception to the strongest-review-model rule, traded off to keep
 # 3-vendor cross-family coverage.
 #
@@ -9,8 +9,9 @@
 #   <stdin: full reviewer prompt incl. the diff to review>
 #           | backends/gemini.sh <mode>
 #
-# Success: review prose passes through verbatim on stdout. Degrade only:
-# synthetic JSON on stdout + nonzero exit. Diagnostics go to stderr.
+# Success: review prose passes through verbatim on stdout. On degrade,
+# stdout is empty, exit is nonzero, and diagnostics including the
+# "本轮缺 gemini" flag go to stderr.
 #
 # Env:
 #   AGY_PRINT_TIMEOUT        agy's own --print-timeout (default 15m;
@@ -27,7 +28,7 @@
 #                            (quota) Claude Sonnet 4.6 (Thinking) → (all
 #                            quota) degrade. See the ladder block below.
 #
-# Hard rules (wiki §并行启动 / §agy auth callout):
+# Hard rules (recorded 2026-06; origin: wiki §并行启动 / §agy auth callout):
 #   Invocation form: `agy --sandbox --print '' <<<prompt` (read OK,
 #   terminal/write restricted, existing OAuth scope). NOT the old
 #   `agy -p --sandbox <<<prompt`: agy 1.0.7 changed `--print`/`-p` to a
@@ -60,7 +61,6 @@ case "$MODE" in
   *)
     MODE="doc"
     echo "gemini: invalid MODE (expected doc|code) — degrade, flag '本轮缺 gemini'" >&2
-    printf '{"reviewer":"gemini","mode":"doc","findings":[]}\n'
     exit 1
     ;;
 esac
@@ -148,13 +148,12 @@ fi
 
 if ! command -v agy >/dev/null 2>&1; then
   echo "gemini: degrade — flag '本轮缺 gemini' (agy not installed; the post-EOL replacement for the dead gemini CLI)" >&2
-  printf '{"reviewer":"gemini","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
 fi
 
-# Reviewer discipline (wiki §调用规范). `--sandbox` is not a write-hard
+# Reviewer discipline (recorded contract). `--sandbox` is not a write-hard
 # guarantee, so prepend the no-modify/no-fix contract while preserving the
-# wiki's verification-command carve-out.
+# user decision 2026-07-13 REVIEW-ONLY verification-command relaxation.
 AGY_PROMPT="REVIEW ONLY — HARD CONSTRAINT. Do NOT modify, create, rename, or delete any file in the reviewed repo, and do NOT fix findings yourself. You MAY run read-only inspection and verification commands, including tests/builds and exercises with injected defects in a throwaway copy or fixture. Your ONLY output is your grounded prose review.
 
 $FULL_PROMPT"
@@ -224,7 +223,6 @@ for LADDER_MODEL in "${AGY_MODELS[@]}"; do
         continue
       fi
       echo "gemini: degrade — flag '本轮缺 gemini (auth race after retry×3)'" >&2
-      printf '{"reviewer":"gemini","mode":"%s","findings":[]}\n' "$MODE"
       exit 1
     fi
     break
@@ -245,7 +243,6 @@ done
 if [ -z "$RAW" ]; then
   REASON="$(agy_fatal_reason)"
   echo "gemini: degrade — flag '本轮缺 gemini' (empty output, agy rc=$G_RC${REASON:+; $REASON})" >&2
-  printf '{"reviewer":"gemini","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
 fi
 
@@ -266,14 +263,13 @@ fi
 # We deliberately do NOT run extract_json / require a sentinel-JSON shape.
 # Gemini's review is prose; the old sentinel gate treated any prose as
 # "no findings JSON" and degraded it to 本轮缺 gemini — dropping a real
-# review over format (the divergence from the wiki, which returns review
-# text the agent reads). The degrade-reason scan still reads ONLY agy's
+# review over format (prose-review is this skill's contract: review text
+# the agent reads). The degrade-reason scan still reads ONLY agy's
 # --log-file (agy_fatal_reason), never $RAW, so a review body that quotes
 # the diff's quota/429 code cannot mis-attribute a reason.
 if [ "$G_RC" -ne 0 ] || agy_log_has_quota; then
   REASON="$(agy_fatal_reason)"
   echo "gemini: degrade — flag '本轮缺 gemini' (agy exit rc=$G_RC${REASON:+; $REASON}; agy's stderr is in the captured output per 2>&1)" >&2
-  printf '{"reviewer":"gemini","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
 fi
 

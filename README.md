@@ -1,38 +1,38 @@
 # ak-cross-m-review
 
-Local, pre-PR **cross-model review** skill — the executable form of the
-wiki's `cross-model-review.md`. Dispatches an independent multi-vendor
+Local, pre-PR **cross-model review** skill. `SKILL.md` together with its
+disclosed file `DOC-MODE.md` is the standalone authority. It dispatches
+an independent multi-vendor
 reviewer squad against a diff — **ship-pre** in a **two-phase 顺机理
 dispatch** (msg1 = all CLI Bash reviewers in the background; msg2 = the
 Claude Agent), **per-slice** as just the Bash CLIs (`codex + agy`, no
-Claude) — then merges, grades, drift-checks and loops **as the agent
-judgment the wiki prescribes** — before code reaches a PR / `main`.
+Claude) — then merges, grades, drift-checks and loops through **agent
+judgment** — before code reaches a PR / `main`.
 
 **Status**: v0 prototype. Evolving.
 
 ## Why this exists
 
-The agent following the wiki's cross-model-review prose by hand drifts:
+An agent following cross-model-review prose by hand drifts:
 it serializes the parallel launch, picks a dev-tier reviewer model,
 silently degrades when a vendor is down, or rationalizes "one more
-round" past a drift signal. This skill is a tight, faithful transcription
-of that wiki step so the agent runs it the **same way every time**
+round" past a drift signal. This skill keeps the procedure tight so the
+agent runs it the **same way every time**
 instead of re-deciding by feel.
 
-It is **not** a re-implementation of the wiki as a program. The wiki
-explicitly frames merge / grade / drift / termination as agent
-*judgment* (any numeric thresholds are proto-calibrated, non-portable).
-The skill keeps it that way: prose procedure + thin invocation guards
-for the real CLI footguns, nothing more. Single source of truth:
+It is **not** a deterministic review program. Merge / grade / drift /
+termination remain agent *judgment* (numeric thresholds are
+proto-calibrated, non-portable): prose procedure + thin invocation guards
+for the real CLI footguns, nothing more. The historical origin is
 `~/WorkSpace/vault/ak-cc-wiki/wiki/concepts/cross-model-review.md`
-(defer + cross-slice discipline in `tdd-autonomous-dev.md`). If skill
-and wiki disagree, the wiki wins — except blocks marked ⚠ RECORDED RULE
-/ RECORDED divergence (deliberate, user-decided divergences; reconcile
-those by their decision record, never silently overwrite them wiki-ward).
+(with defer + cross-slice discipline from `tdd-autonomous-dev.md`). There
+is no automatic sync since 2026-07-13 (ADR 0002), and both sides may
+diverge. Blocks marked ⚠ RECORDED RULE / RECORDED divergence are the
+user-adjudication ledger; only the user may change them.
 
 ## The vendor squad — N+1+1 (ship-pre) / N+1 (per-slice)
 
-The squad depends on the trigger point (wiki §谁跑 cmr, 2026-06-18):
+The squad depends on the trigger point (recorded decision, 2026-06-18):
 **ship-pre** = the full `N codex + Claude + agy` (N+1+1), dispatched
 two-phase by the main session; **per-slice** = `N codex + agy` (2-vendor,
 **no Claude** — `claude -p` credit is too tight for the high-frequency
@@ -42,18 +42,18 @@ Against the same diff:
 - **1 × Claude reviewer** (**ship-pre only**) — via the `Agent` tool as
   an independent subagent (zero context contamination), model =
   **`claude-opus-4-8`** (Opus 4.8). **cmr does not use Fable** (quota
-  scarcity) — a deliberate skill-vs-wiki divergence recorded in SKILL.md
-  Step 2. Set the model explicitly — it does not inherit the session
+  scarcity) — a user-adjudicated rule recorded in `SKILL.md` Step 2
+  (historically a skill-vs-wiki divergence). Set the model explicitly —
+  it does not inherit the session
   model. This is why the skill MUST run in the
   **main session**: Claude Code does not expose `Agent` to subagents.
 - **N × Codex** (`gpt-5.6-sol`, via `backends/codex-review.sh`) — N scales
   with the diff's **effective** (core-logic) line count, excluding
   test/fixture/lock/doc noise (1 / 2 / 3 for `<500` / `500–1500` /
   `1500+`; thresholds raised ×2.5–3 on 2026-06-18); for N≥2 each codex
-  takes a distinct file-section slice. Reasoning effort defaults to
-  `medium` for ship-pre and per-slice (the operational convention);
-  `CMR_CODEX_EFFORT` overrides it and the backend passes any value through
-  verbatim (no whitelist).
+  takes a distinct file-section slice. Operational authority:
+  `SKILL.md` Step 2 **Reasoning-effort contract**. To override, set
+  `CMR_CODEX_EFFORT=<value>`.
 - **1 × Gemini** (via `backends/gemini.sh`, which internally calls
   `agy --sandbox --print ''` — Antigravity CLI, the in-kind replacement
   after the original `gemini` CLI's 2026-06-18 EOL; locked to Gemini
@@ -112,7 +112,7 @@ The engine itself:
   switch the two gate skills set. One invocation runs one lens. Prefer the
   named gate skills over setting this by hand.
 
-There is no `--rounds` cap: the wiki's drift detection decides when to
+There is no `--rounds` cap: the skill's drift procedure decides when to
 stop, not a round counter.
 
 ```bash
@@ -124,7 +124,8 @@ stop, not a round counter.
 ## What ships in this repo
 
 ```
-SKILL.md                  the engine — executable wiki transcription (union with DOC-MODE.md; see CLAUDE.md §Wiki sync mapping)
+SKILL.md                  the engine — standalone authority together with
+                          its disclosed file DOC-MODE.md
 DOC-MODE.md               doc-mode ②–⑤ discipline (SKILL.md Step 0 requires
                           Read before doc-mode dispatch)
 skills/ak-cmr-completeness/  the completeness gate (thin named wrapper →
@@ -154,13 +155,13 @@ prompts/cmr-fixer.md      fixer prompt template (defer protocol)
 ```
 
 That is the whole surface. Reviewers return a **prose** review and the
-agent reads / merges / drift-checks / terminates per the wiki signals —
+agent reads / merges / drift-checks / terminates per the skill's signals —
 there is intentionally no deterministic engine: no `merge.py` / `drift.py`
 (removed in 0.2.0.0) and, since 0.3.9.0, no `lib/extract_json.py`
 sentinel-JSON parser either. That parser demanded the strongest
 reviewer's prose be a JSON shape and dropped it as a phantom outage when
-it wasn't — the same over-formalization, one layer down, that the wiki
-warns against ("this is judgment, thresholds are non-portable").
+it wasn't — the same over-formalization, one layer down, that this skill
+rejects ("this is judgment, thresholds are non-portable").
 
 ## Origin
 
@@ -168,8 +169,8 @@ This repo began as a *grounded-review* prototype:
 [Akagilnc/ai-blogger-lab#50][i50] and [garrytan/gstack#973][i973] — an
 attempt to add a Grounded Review rule to `CLAUDE.md` as prose. It
 evolved, over-built into a deterministic review engine, then was cut
-back to what it should always have been: a faithful, compact executable
-of the wiki's cross-model-review step.
+back to what it should always have been: a compact standalone skill whose
+lineage is the wiki's cross-model-review step.
 
 [i50]: https://github.com/Akagilnc/ai-blogger-lab/issues/50
 [i973]: https://github.com/garrytan/gstack/issues/973
@@ -184,7 +185,6 @@ of the wiki's cross-model-review step.
   `gemini` CLI 2026-06-18 EOL. Locked to Gemini 3.5 Flash; has a
   documented keychain auth-race the backend works around with warm +
   retry × 4 (upstream issue google-antigravity/antigravity-cli#51).
-- `jq` — shell pipelines
 - `python3` ≥ 3.12 — **tests only** (`pytest`); the backends no longer
   call Python at runtime (the `extract_json.py` parser was removed)
 

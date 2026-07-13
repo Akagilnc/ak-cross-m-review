@@ -13,12 +13,11 @@
   `SKILL.md` 的 `## main=Codex 宿主替换表`，不是独立运行规范。
 - **disclosed file**：只在触发条件成立时由主干硬指针加载的规则文件。
   `DOC-MODE.md` 是该模式：设计文档 review 才披露 doc-mode ②–⑤。
-- **RECORDED RULE / RECORDED divergence**：前者固定用户裁定的本地规则，后者
-  明示本地与 wiki 的有意差异；分类与同步约束以 `SKILL.md` 头部为权威。
+- **RECORDED RULE / RECORDED divergence**：用户裁定账本；前者记录存续规则，
+  后者可记录相对 wiki 历史来源的有意差异。仅用户可改；分类以 `SKILL.md`
+  头部为权威。
 - **契约级**：一个 reviewer leg 同时写清四要素：入口、硬禁令、降级旗、
   RECORDED marker（如适用）。权威实例见 `SKILL.md` Step 2。
-- **上游化清单**：保存下一次 wiki sync 要吸收的逐字原文，而非新建中间权威；
-  当前权威载体是 `UPSTREAM-CHECKLIST.md`。
 - **待补守护**：已裁定但尚无可执行测试的行为叙事；在守护补齐前不得删除，
   权威见 `SKILL.md` Step 2 `### 待补守护（暂不得删）`。
 - **缺钉闸**：缺失必要测试/守护本身即 blocking finding；权威见

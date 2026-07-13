@@ -2,7 +2,8 @@
 
 The script now calls `agy` (Antigravity CLI) — the in-kind
 replacement after the original `gemini` CLI's 2026-06-18 EOL — with
-the wiki's keychain-warm + retry × 4 recipe.
+this skill's RECORDED keychain-warm + retry × 4 rule (kept by user
+decision against the wiki's later "no longer needed" conclusion).
 
 Pinned behaviors:
 
@@ -18,7 +19,6 @@ Pinned behaviors:
    retries up to 4 attempts (initial 1 + 3 retries), then degrades
    with the auth-race-specific flag. Never silent."""
 
-import json
 import os
 import stat
 import subprocess
@@ -70,12 +70,11 @@ def test_degrades_when_agy_exits_nonzero_with_salvageable_body(tmp_path):
         f"expected degrade exit 1, got {r.returncode}\n"
         f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     )
-    assert '"reviewer":"gemini"' in r.stdout
-    assert '"findings":[]' in r.stdout
+    assert r.stdout == ""
     assert "本轮缺 gemini" in r.stderr
 
 
-def test_invalid_mode_degrades_with_safe_json(tmp_path):
+def test_invalid_mode_degrades_with_empty_stdout(tmp_path):
     _stub_agy(tmp_path / "bin", '#!/bin/sh\necho "should not run"\nexit 0\n')
     r = subprocess.run(
         ["bash", str(SCRIPT), 'bad"\nmode'],
@@ -86,11 +85,7 @@ def test_invalid_mode_degrades_with_safe_json(tmp_path):
         timeout=60,
     )
     assert r.returncode == 1
-    assert json.loads(r.stdout) == {
-        "reviewer": "gemini",
-        "mode": "doc",
-        "findings": [],
-    }
+    assert r.stdout == ""
     assert "invalid MODE" in r.stderr
     assert "本轮缺 gemini" in r.stderr
     assert "should not run" not in r.stdout
@@ -113,8 +108,7 @@ def test_retries_on_auth_race_then_degrades_after_4_attempts(tmp_path):
         timeout=60,
     )
     assert r.returncode == 1
-    assert '"reviewer":"gemini"' in r.stdout
-    assert '"findings":[]' in r.stdout
+    assert r.stdout == ""
     assert "auth race after retry×3" in r.stderr
     # 3 retry-warn lines (after attempts 1, 2, 3) before the final
     # degrade on attempt 4 — confirms the loop actually iterated, did
@@ -159,7 +153,7 @@ def test_does_not_false_degrade_when_model_output_contains_auth_string(tmp_path)
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
         'echo "===CMR-FINDINGS-BEGIN==="\n'
-        'echo \'{"reviewer":"gemini","mode":"code","findings":[]}\'\n'
+        'echo "CMR-VERDICT: converged"\n'
         'echo "===CMR-FINDINGS-END==="\n'
         'echo "The reviewed diff added: echo Authentication required"\n'
         'exit 0\n'
@@ -177,7 +171,7 @@ def test_does_not_false_degrade_when_model_output_contains_auth_string(tmp_path)
     )
     # Success → agy's review is passed through verbatim; the review body
     # (here a clean zero-finding result) reaches the orchestrator.
-    assert '"findings":[]' in r.stdout
+    assert "CMR-VERDICT: converged" in r.stdout
     assert "本轮缺 gemini" not in r.stderr
     assert "auth race" not in r.stderr
 
@@ -198,8 +192,7 @@ def test_degrades_with_clear_flag_when_agy_not_installed(tmp_path):
         capture_output=True, text=True, env=env, timeout=30,
     )
     assert r.returncode == 1
-    assert '"reviewer":"gemini"' in r.stdout
-    assert '"findings":[]' in r.stdout
+    assert r.stdout == ""
     assert "agy not installed" in r.stderr
     assert "本轮缺 gemini" in r.stderr
 
@@ -258,7 +251,7 @@ def test_invocation_passes_sandbox_flag_and_empty_print_value(tmp_path):
         ': > "$AGY_ARGV_DUMP"\n'
         'for a in "$@"; do printf \'%s\\0\' "$a" >> "$AGY_ARGV_DUMP"; done\n'
         'echo "===CMR-FINDINGS-BEGIN==="\n'
-        'echo \'{"reviewer":"gemini","mode":"code","findings":[]}\'\n'
+        'echo "CMR-VERDICT: converged"\n'
         'echo "===CMR-FINDINGS-END==="\n'
         'exit 0\n'
     ))
@@ -328,7 +321,7 @@ def test_surfaces_quota_reason_when_agy_swallows_429_to_logfile(tmp_path):
         timeout=60,
     )
     assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert '"findings":[]' in r.stdout
+    assert r.stdout == ""
     assert "本轮缺 gemini" in r.stderr
     assert "quota" in r.stderr
     assert "429" in r.stderr
@@ -377,7 +370,7 @@ def test_quota_log_without_resets_line_still_degrades_cleanly(tmp_path):
     # 429/quota signature but NO "Resets in …" line, the optional
     # `resets="$(grep … | head -1)"` grep finds nothing. Under
     # `set -euo pipefail` this must NOT abort the script before it emits
-    # the degrade JSON — it must degrade cleanly and still name quota
+    # the degrade contract — it must degrade cleanly and still name quota
     # (just without the reset-time suffix).
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
@@ -398,9 +391,7 @@ def test_quota_log_without_resets_line_still_degrades_cleanly(tmp_path):
         timeout=60,
     )
     assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    # the synthetic degrade JSON MUST be present (proves no mid-function
-    # abort before the emit)
-    assert json.loads(r.stdout)["findings"] == []
+    assert r.stdout == ""
     assert "本轮缺 gemini" in r.stderr
     assert "quota" in r.stderr
     assert "Resets in" not in r.stderr  # no reset hint available
@@ -430,7 +421,7 @@ def test_nonempty_nonfatal_log_degrades_without_reason_suffix(tmp_path):
         timeout=60,
     )
     assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert json.loads(r.stdout)["findings"] == []
+    assert r.stdout == ""
     assert "本轮缺 gemini" in r.stderr
     assert "quota" not in r.stderr  # no false attribution from a benign log
 
@@ -552,7 +543,7 @@ def test_agy_steps_down_to_sonnet_when_gemini_quota_exhausted(tmp_path):
         'done\n'
         'if [ -n "$model" ]; then\n'
         '  echo "===CMR-FINDINGS-BEGIN==="\n'
-        '  echo \'{"reviewer":"gemini","mode":"code","findings":[]}\'\n'
+        '  echo "CMR-VERDICT: converged"\n'
         '  echo "===CMR-FINDINGS-END==="\n'
         '  exit 0\n'
         'fi\n'
@@ -568,7 +559,7 @@ def test_agy_steps_down_to_sonnet_when_gemini_quota_exhausted(tmp_path):
         timeout=60,
     )
     assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert '"findings":[]' in r.stdout  # the fallback rung's review passed through
+    assert "CMR-VERDICT: converged" in r.stdout  # fallback review passed through
     assert "stepping down to next agy model" in r.stderr
     assert "Claude Sonnet 4.6 (Thinking)" in r.stderr  # the fallback note
     assert "NO Google voice this round" in r.stderr
@@ -596,7 +587,7 @@ def test_agy_leg_degrades_only_when_every_model_quota_exhausted(tmp_path):
         timeout=60,
     )
     assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert json.loads(r.stdout)["findings"] == []
+    assert r.stdout == ""
     assert "stepping down to next agy model" in r.stderr  # tried the fallback
     assert "本轮缺 gemini" in r.stderr
     assert "quota" in r.stderr
@@ -636,8 +627,7 @@ def test_final_rung_quota_with_nonempty_banner_still_degrades(tmp_path):
     )
     assert "本轮缺 gemini" in r.stderr
     assert "quota" in r.stderr
-    # synthetic degrade payload, NOT the agy banner
-    assert json.loads(r.stdout)["findings"] == []
+    assert r.stdout == ""
     assert "some diagnostic banner" not in r.stdout, (
         "the quota-rung banner was passed through as if it were a review"
     )
@@ -649,7 +639,7 @@ def test_agy_does_not_step_down_when_gemini_works(tmp_path):
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
         'echo "===CMR-FINDINGS-BEGIN==="\n'
-        'echo \'{"reviewer":"gemini","mode":"code","findings":[]}\'\n'
+        'echo "CMR-VERDICT: converged"\n'
         'echo "===CMR-FINDINGS-END==="\n'
         'exit 0\n'
     ))
@@ -661,7 +651,7 @@ def test_agy_does_not_step_down_when_gemini_works(tmp_path):
         timeout=60,
     )
     assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert '"findings":[]' in r.stdout  # Gemini's review passed through
+    assert "CMR-VERDICT: converged" in r.stdout  # Gemini's review passed through
     assert "stepping down" not in r.stderr
     assert "NO Google voice" not in r.stderr
 
@@ -674,7 +664,7 @@ def test_agy_explicit_override_note_when_non_google_model_used(tmp_path):
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
         'echo "===CMR-FINDINGS-BEGIN==="\n'
-        'echo \'{"reviewer":"gemini","mode":"code","findings":[]}\'\n'
+        'echo "CMR-VERDICT: converged"\n'
         'echo "===CMR-FINDINGS-END==="\n'
         'exit 0\n'
     ))

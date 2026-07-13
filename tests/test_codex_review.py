@@ -3,7 +3,7 @@
 Two pinned behaviors around the degrade gate:
 
 1. A codex that exits NON-ZERO is a real outage (auth/quota/crash) and
-   must degrade (exit 1 + synthetic empty findings), even if it printed a
+   must degrade (empty stdout + exit 1 + stderr flag), even if it printed a
    salvageable-looking body. Otherwise a failed codex silently counts as
    a valid zero-finding reviewer.
 
@@ -14,7 +14,6 @@ Two pinned behaviors around the degrade gate:
    文本」: reviewers return prose, the orchestrator reads it) that lost the
    strongest reviewer to a format technicality across many rounds."""
 
-import json
 import os
 import stat
 import subprocess
@@ -48,9 +47,11 @@ def test_degrades_when_codex_exits_nonzero_with_salvageable_body(tmp_path):
         f"expected degrade exit 1, got {r.returncode}\n"
         f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     )
-    # Synthetic degrade payload (compact, no spaces — see the printf).
-    assert '"reviewer":"codex"' in r.stdout
-    assert '"findings":[]' in r.stdout
+    assert r.stdout == ""
+    assert "本轮缺 codex" in r.stderr, (
+        f"degrade must keep the visible flag — the stderr flag and the "
+        f"nonzero exit are the ONLY two signals since #39\nstderr={r.stderr!r}"
+    )
 
 
 def _codex_stub(stub_dir, body):
@@ -84,9 +85,7 @@ def _run_codex(stub_dir, mode="code", **env_extra):
 def test_dry_run_is_unmistakably_non_review_and_nonzero(tmp_path):
     r = _run_codex(tmp_path / "bin", CMR_DRY_RUN="1")
     assert r.returncode == 2
-    payload = json.loads(r.stdout)
-    assert payload["dry_run"] is True
-    assert payload["findings"] == []
+    assert r.stdout == ""
     assert "NON-REVIEW" in r.stderr
     assert "本轮缺 codex (NON-REVIEW DRY_RUN)" in r.stderr
 
@@ -98,17 +97,16 @@ def test_invalid_watchdog_env_degrades_visibly(tmp_path, field):
     watchdog_env[field] = "bogus"
     r = _run_codex(tmp_path / "bin", **watchdog_env)
     assert r.returncode == 1
-    assert json.loads(r.stdout)["findings"] == []
+    assert r.stdout == ""
     assert f"invalid {field}" in r.stderr
     assert "本轮缺 codex" in r.stderr
 
 
-def test_invalid_mode_degrades_with_safe_json(tmp_path):
+def test_invalid_mode_degrades_with_empty_stdout(tmp_path):
     _codex_stub(tmp_path / "bin", "exit 1\n")
     r = _run_codex(tmp_path / "bin", mode='bad"\nmode')
     assert r.returncode == 1
-    payload = json.loads(r.stdout)
-    assert payload == {"reviewer": "codex", "mode": "code", "findings": []}
+    assert r.stdout == ""
     assert "invalid MODE" in r.stderr
     assert "本轮缺 codex" in r.stderr
 
@@ -159,7 +157,7 @@ def test_degrades_when_final_message_empty(tmp_path):
         f"empty final message must degrade; got {r.returncode}\n"
         f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     )
-    assert '"findings":[]' in r.stdout
+    assert r.stdout == ""
     assert "本轮缺 codex" in r.stderr
 
 
@@ -200,7 +198,7 @@ def test_silent_codex_killed_after_idle_window(tmp_path):
         f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     )
     assert "本轮缺 codex" in r.stderr
-    assert '"findings":[]' in r.stdout
+    assert r.stdout == ""
 
 
 def _selftest(effort=None, model=None):

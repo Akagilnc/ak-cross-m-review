@@ -4,6 +4,53 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.22.0 — 2026-07-14
+
+Architecture deletion campaign W2+W3 (umbrella #35; issues #36 / #41 / #39).
+The skill is now the standalone authority for its own rules, and the last
+fossil of the deterministic pipeline is gone.
+
+### Changed
+
+- **Wiki decoupling, Tier B (#36 / ADR 0002).** No automatic sync with the
+  wiki ever again; `SKILL.md` + `DOC-MODE.md` are the standalone authority
+  and the "wiki wins" contract is abolished. The wiki keeps lineage status:
+  it may still be cited and even relied on (no forced transcription) —
+  what died is override authority and sync obligation, not reference
+  (owner calibration 2026-07-14). RECORDED markers stay, re-anchored as
+  the user-adjudication ledger. `UPSTREAM-CHECKLIST.md` deleted unconsumed;
+  CLAUDE.md §Wiki sync mapping removed; README / SKILL.md / DOC-MODE.md /
+  CONTEXT.md / backend comments / lens prompts re-framed from live wiki
+  authority to lineage. C5 residual: README's effort-rule restatement
+  reduced to a pointer at SKILL.md Step 2's Reasoning-effort contract
+  (TESTING.md's restatement had already gone in the 0.3.21.0 rewrite).
+- **Degrade contract simplified (#39).** On a true outage the backends now
+  emit NOTHING on stdout — the contract is empty stdout + stderr
+  `本轮缺 X` flag + exit≠0 (dry-run: empty stdout, exit 2, flag). The
+  synthetic `{"reviewer":X,"findings":[]}` sentinel (a fossil of the
+  parser removed in 0.3.9.0) had three redundant channels and zero
+  consumers; 12 printf sites deleted, TDD (assertions first), and the
+  codex degrade test now pins the stderr flag explicitly.
+
+### Added
+
+- **ADR 0002** — wiki decoupling decision record.
+- **ADR 0003** — mechanisms require incident basis; docs are guarded by
+  git, not pytest. Both-questions gate (哪次事故?谁在读?) with the
+  worth-it extension (owner 2026-07-14): probability × consequence must
+  justify new code, bug surface, and review rounds.
+- **Fixer class-sweep doctrine** (`prompts/cmr-fixer.md` §Concept sweep):
+  own the CLASS, not the instance — semantic same-class sweep is the
+  fixer's default duty; literal greps are candidate generators only
+  (evidence: one class cost four review rounds).
+
+### Review record
+
+- per-slice (codex + grok-4.5 high substitute; agy standing-DEGRADED all
+  rounds): 10 rounds, 12 findings, all original-defect (0 fix-fix,
+  0 invention), text net-negative; round-gate ②(d) escalated at R10,
+  owner ruled hand-off to the ship-pre double gates.
+
 ## 0.3.21.0 — 2026-07-13
 
 Architecture deletion campaign W1 (umbrella #35; slices #37 / #38 / #40).

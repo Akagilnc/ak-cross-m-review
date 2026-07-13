@@ -12,20 +12,17 @@ allowed-tools:
   - Skill
 ---
 
-# /ak-cross-m-review — wiki cross-model-review, executable
+# /ak-cross-m-review — standalone cross-model review skill
 
-This skill is a faithful, compact transcription of the **single source
-of truth**:
-`~/WorkSpace/vault/ak-cc-wiki/wiki/concepts/cross-model-review.md`
-(setup / invocation / termination / drift live there; defer + cross-slice
-discipline in `tdd-autonomous-dev.md` §切片内纪律). The wiki frames
-merge / grade / drift / termination as **agent judgment**, not a
-deterministic engine — this file keeps it that way. If this file and the
-wiki ever disagree, the wiki wins; re-sync, do not fork behavior — with
-ONE exception: blocks marked **⚠ RECORDED RULE / RECORDED divergence**
-are deliberate, user-decided divergences (or same-day-upstreamed rules a
-stale wiki checkout may not show yet). Reconcile those against their
-decision record; never silently overwrite them wiki-ward.
+This skill is the standalone authority for cmr in this environment;
+`DOC-MODE.md` is its disclosed file and part of that authority. Its
+origin / lineage is
+`~/WorkSpace/vault/ak-cc-wiki/wiki/concepts/cross-model-review.md`, from
+which it was originally derived (with defer + cross-slice discipline from
+`tdd-autonomous-dev.md` §切片内纪律). There is no automatic sync with the
+wiki since 2026-07-13 (ADR 0002). Blocks marked **⚠ RECORDED RULE /
+RECORDED divergence** are the user-adjudication ledger: only a user
+decision may change them; never alter or remove them silently.
 
 It is **Layer 1** (local, pre-PR). It does not replace Layer 3
 (`pr-review-loop`). It does not commit / push / open a PR — the caller
@@ -76,13 +73,13 @@ Build the reviewed diff with plain git (`git diff <base>...HEAD`, or
 `git diff <range>`, or the `--diff` file). No diff state machine — it is
 just the change under review for this round.
 
-Pre-flight gates (wiki §操作规程 / §边界):
+Pre-flight gates:
 
 - **Content PR with user-facing fact claims** (dates / names / orgs /
   stats / security): run `content-fact-gate` FIRST. Cross-model
   reviewers share training-data bias and rubber-stamp shared
   hallucinations; this lens cannot catch that. (`content-fact-gate` is
-  the upstream wiki gate `content-fact-gate.md` — a caller precondition,
+  the historically upstreamed `content-fact-gate.md` — a caller precondition,
   not a script bundled in this repo.)
 - **Small diff** (typo / copy, < 50 changed lines): explicit exception —
   run a reduced **cross-family 2-vendor** instead of the full default,
@@ -93,7 +90,7 @@ Pre-flight gates (wiki §操作规程 / §边界):
   commit message `"小 diff 例外，跑 2-vendor 不跑 v3 default"`. Silent
   degrade is an anti-pattern.
 - **Design docs (ADR / spec / contract) get cmr too — same rigor as
-  code** (wiki §设计文档). A design doc carries decisions *more
+  code**. A design doc carries decisions *more
   upstream* than code (a wrong spec → the whole implementation is built
   on a wrong premise; TDD-green ≠ spec-correct — code can perfectly
   implement a wrong design). **review 对象是 ADR/spec/plan → 先 Read
@@ -101,7 +98,7 @@ Pre-flight gates (wiki §操作规程 / §边界):
   full cmr in `doc` mode** — not "written → approved → done" — and when
   you *produce* such a doc you **proactively remind the user to review
   it**, without waiting to be asked. Doc-mode dispatches the same way as
-  code (per §Step 1 / wiki §谁跑 cmr — per-slice runner = all Bash CLI;
+  code (per §Step 1 — per-slice runner = all Bash CLI;
   ship-pre / main-session runner = two-phase + Claude via `Agent`);
   concretely: feed **`prompts/cmr-completeness.md`** (the completeness
   lens — NOT the correctness `cmr-reviewer.md`) + the doc, dispatched the
@@ -130,20 +127,20 @@ Pre-flight gates (wiki §操作规程 / §边界):
   (gate / fix-loop / guard / state-machine: RUN them with an injected
   defect; anti-pattern #15). **Green tests / a pipeline that runs are NOT
   completeness evidence** (#244: S8 + 612 tests green, yet the mandated
-  discipline was never wired). The full rubric IS that prompt; spine
-  source: wiki [[tdd-autonomous-dev]] §Step 5 + [[verification-scope-vacuum]].
+  discipline was never wired). The full rubric IS that prompt (lineage:
+  wiki [[tdd-autonomous-dev]] §Step 5 + [[verification-scope-vacuum]]).
 - **The two ship-pre gates are SEPARATE sequential passes — never merge
   them (wiki a70f97b «严禁合一次 cmr 闸»):** completeness (Step 5,
   spec-delivered lens) runs **first and must pass**, *then* correctness
   (Step 6, defect lens) runs on the now-complete diff. Do NOT run both
   lenses in one cmr / one prompt — conflating them makes **both** shallow
   (the completeness lens stops looking for "what's missing" and the
-  correctness lens stops grounding each defect; see wiki
-  [[gate-lens-heterogeneity]]). Different lens, different prompt, in order.
+  correctness lens stops grounding each defect; historical lineage:
+  `gate-lens-heterogeneity`). Different lens, different prompt, in order.
 
 ## Step 1 — setup: who runs it decides the squad + the N table
 
-**The squad depends on the trigger point** (wiki §谁跑 cmr, 2026-06-18 —
+**The squad depends on the trigger point** (recorded decision, 2026-06-18 —
 Claude is concentrated to ship-pre because Claude credit is too
 tight to run Claude on the high-frequency per-slice gate):
 
@@ -168,8 +165,8 @@ cmr does not use Fable (Step 2 recorded rule; ship-pre only); codex
 3.5 Flash (the documented exception). Only codex instantiates by diff
 size (the agy/Claude legs are always ×1 on the full diff).
 
-> **N is by *effective lines*, not raw lines** (wiki §N 取值表,
-> 2026-06-18 — hypothesis). Raw line count lies (500 lines of test
+> **N is by *effective lines*, not raw lines** (recorded 2026-06-18 —
+> hypothesis). Raw line count lies (500 lines of test
 > fixture ≠ 500 lines of settlement logic). Before computing N, split
 > `git diff --numstat` into two buckets: **noise** (reviewers still see
 > it, but it does NOT raise N) = `*test*` / `*spec*` / `__tests__/` /
@@ -201,7 +198,7 @@ size (the agy/Claude legs are always ×1 on the full diff).
 (Opus 4.8; Step 2 is the authority — **cmr does not use Fable**, recorded
 rule there), OpenAI `gpt-5.6-sol`;
 **Gemini is the documented exception** (locked to 3.5 Flash via `agy` —
-wiki trade-off: keep 3-vendor cross-family coverage over dropping the
+recorded trade-off: keep 3-vendor cross-family coverage over dropping the
 Gemini leg entirely after the `gemini` CLI EOL).
 **Never** dev-tier `gpt-5.3-codex-spark` / `claude sonnet-4.6` as a
 reviewer (coding-tier model choice is a separate matter; do not carry
@@ -218,7 +215,7 @@ it into review).
 > removed), so per-slice review **always** runs inside that subagent — a
 > **nested layer** — as `N codex + agy` (N+1) with **every leg a Bash
 > CLI** (nested reviewer-subagent spawning is forbidden). See Step 1 /
-> wiki §谁跑 cmr.
+> the recorded orchestration decision.
 
 ## main=Codex 宿主替换表
 
@@ -235,12 +232,12 @@ Codex 宿主进场先读本节；之后走同一条按 main=Claude 写成的主�
 | 固定双腿场景 | per-slice / correctness (Step 6) 固定为 `codex + agy`，flag `不用 Claude (credit)`；completeness (Step 5) 仍含 Claude 腿。计分同 mainline By-design 2-vendor 行：`(N+1)/(N+1) concur + flag`。 |
 | codex-solo 正向终止例外 | main=Codex 的 per-slice / correctness (Step 6) 遇 agy down 时，**codex solo** 可正向终止并 flag `单腿 codex (agy down)，无 cross-vendor，质量降级`；**不适用于 Step 5 completeness**、main=Claude，或仍有其他 cross-family vendor 可用的场景。 |
 
-## Step 2 — two-phase dispatch (wiki §并行启动, 2026-05-18 顺机理 reorder)
+## Step 2 — two-phase dispatch (recorded 2026-05-18 顺机理 reorder)
 
 > **Two-phase applies ONLY to ship-pre** (main session orchestrates,
 > Claude leg via the `Agent` tool). **per-slice does NOT use two-phase**
 > — it is `N codex + agy` = 2-vendor, no Claude / no `Agent`, just the
-> Bash CLIs run concurrently in the background (wiki §谁跑 cmr). For
+> Bash CLIs run concurrently in the background (per the orchestration decision). For
 > per-slice, do msg1 only (the bg Bash batch); there is no msg2.
 
 The old "all reviewers in ONE assistant message" rule **fights the tool
@@ -272,16 +269,16 @@ Peeking at a background notification or doing anything else between
 the two messages = silent serialization = drift back to the old failure
 mode.
 
-Both wiki goals are preserved by construction:
+Both dispatch goals are preserved by construction:
 
 - **Concurrency**: msg1's CLIs run in the background while msg2's Agent
   runs foreground → wall-clock ≈ max(cli, agent).
 - **Independence**: Agent is dispatched with ZERO CLI results in hand
   (you have not read them) → no cross-vendor contamination.
 
-Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
+Invocation forms (recorded from `codex-bot-conventions`):
 
-> **Reasoning-effort reality, per leg** (wiki §调用规范) — the legs run
+> **Reasoning-effort reality, per leg** — the legs run
 > at very different reasoning depths:
 > - **codex** = `medium` **uniform default** for both **ship-pre
 >   completeness/correctness (spine Step 5/6)** and **per-slice** (user
@@ -327,14 +324,14 @@ the hung instance's own pid tree, never global pkill.
   backend 会在 stderr 标 `NO Google voice this round`；该轮第三读是
   agy-served Claude（同 Anthropic 家族），合并判定不得计为 Google-family
   diversity，round report 必须带旗。
-  **⚠ RECORDED divergence（新建）— agy warm+retry：** 相对 wiki“agy 1.0.8 无需 warm+retry”的结论，本 skill 仍保留每次预热 + 共 4 次尝试；sync 时不得删除。
+  **⚠ RECORDED divergence（新建）— agy warm+retry：** 相对 wiki“agy 1.0.8 无需 warm+retry”的历史结论，本 skill 仍保留每次预热 + 共 4 次尝试；此用户裁定存续，仅用户可改。
 - **Claude reviewer** — **入口：** only via the main session's `Agent`
   tool with the full-diff prompt and explicit model = **`opus` (Claude
   Opus 4.8)**; it never inherits the session model. **硬禁令：** Never use
   headless `claude -p` for this leg. **降级旗：** `本轮缺 claude` means the
   orchestrator could not dispatch or obtain a result from the Agent leg;
   report the flag rather than silently shrinking the squad.
-  **⚠ RECORDED RULE（存续）— Fable 禁用：** cmr 不在任何腿使用 Fable；Claude 腿显式固定为 `opus`（Claude Opus 4.8）。这有意不同于 wiki 的最强可用 Claude 规则；sync 时不得重新加入 Fable。
+  **⚠ RECORDED RULE（存续）— Fable 禁用：** cmr 不在任何腿使用 Fable；Claude 腿显式固定为 `opus`（Claude Opus 4.8）。这有意不同于 wiki 的最强可用 Claude 历史规则；此用户裁定存续，仅用户可重新引入 Fable。
 
 ### 待补守护（暂不得删）
 
@@ -346,17 +343,18 @@ the hung instance's own pid tree, never global pkill.
 - Claude reviewer 必须由有 `Agent` 能力的 main session 派发；subagent
   不能再嵌套派发该 Agent 腿。
 
-Findings channel: reviewers return their review as **prose** (the wiki
-model — §「.result 是 review 文本」: a reviewer returns review text and
-the orchestrator, an agent, reads it with judgment). There is **no
-sentinel-JSON wrapper and no `extract_json` parse** — that gate was a
-divergence from the wiki: it demanded the strongest reviewer's prose be a
+Findings channel: reviewers return their review as **prose** (this
+skill's contract; lineage: wiki §「.result 是 review 文本」— a reviewer
+returns review text and the orchestrator, an agent, reads it with
+judgment). There is **no sentinel-JSON wrapper and no `extract_json`
+parse** — that gate was over-formalization (removed 0.3.9.0): it
+demanded the strongest reviewer's prose be a
 JSON shape, and when codex/agy naturally answered in prose it was dropped
 as "本轮缺 X", indistinguishable from an outage (the best reviewer
 repeatedly lost over format). `prompts/cmr-reviewer.md` asks for grounded
 prose ending in a `CMR-VERDICT: converged|findings` line. The backends
 (`backends/codex-review.sh` / `gemini.sh`) pass a successful review
-through and degrade (synthetic empty findings + nonzero exit + visible
+through and degrade (empty stdout + nonzero exit + visible stderr
 "本轮缺 X" flag) **only on a true outage** — timeout, empty output, the
 CLI exiting non-zero (auth/quota/crash), or agy keychain auth-race (after
 4 attempts). codex-review.sh emits codex's **final message only** (via
@@ -416,15 +414,15 @@ v3 requires all 3 vendors. If one is unavailable, run with the rest and
 Collect every reviewer's review by **reading each CLI's stdout directly**
 — it is prose (or whatever the reviewer wrote); read it the way you would
 a human reviewer's comment, taking its `CMR-VERDICT:` line and its
-grounded findings. A backend that degraded (nonzero exit + "本轮缺 X")
-is a MISSING vendor for this round, not an approve — do not count it as a
-zero-finding concur. Then, as judgment:
+grounded findings. A backend that degraded (empty stdout + nonzero exit +
+stderr "本轮缺 X" flag) is a MISSING vendor for this round, not an approve
+— do not count it as a zero-finding concur. Then, as judgment:
 
 - Group findings that describe the same issue across reviewers.
 - Grade each P0 / P1 / P2 / P3 / P4. Reviewers emit
   `critical|high|medium|low|clarity` (the `prompts/cmr-reviewer.md`
   schema) — map critical→P0, high→P1, medium→P2, low→P3, clarity→P4.
-  P0–P4 is the wiki's grade scale; keep that vocabulary downstream.
+  P0–P4 is the recorded grade scale; keep that vocabulary downstream.
 - **Concurrence = horizontal trust**: the more independent vendors
   raised it, the higher confidence → severity upgrade.
 - **Grounding density = vertical trust**: a finding whose `verification`
@@ -433,14 +431,14 @@ zero-finding concur. Then, as judgment:
   single-reviewer finding a severity floor boost (only up). Two
   independent axes — do not read concurrence alone.
 
-The wiki is explicit that any numeric thresholds are proto-calibrated
-constants, **not portable**. The portable rules are exactly the two
+This skill treats any numeric thresholds as proto-calibrated constants,
+**not portable**. The portable rules are exactly the two
 sentences above. Do not re-import a deterministic merge engine.
 
 Present ≤30 lines: total + by-severity; enumerate only P0/P1 (id,
 category, reviewer count, first claim quote); count the rest.
 
-## Step 5 — termination signals (wiki §终止信号)
+## Step 5 — termination signals
 
 > **concur ≠ done.** The concur thresholds below mean "the
 > code+spec-correctness lens is exhausted, proceed to the next gate" —
@@ -494,7 +492,7 @@ requires by squad shape:
 - Upgraded 1+N+1, 3 vendors present: **(N+2)/(N+2) concur**.
 - One vendor degraded (1+1+1 → 2 reviewers): **2/2 concur + flag**.
 - **By-design 2-vendor (no Claude)**: **per-slice** is fixed `codex + agy`
-  (Claude dropped for credit, Step 1 / wiki §谁跑 cmr) → **(N+1)/(N+1) concur + flag `不用 Claude
+  (Claude dropped for credit, Step 1) → **(N+1)/(N+1) concur + flag `不用 Claude
   (credit)`**, scored the same as a "missing 1 vendor" round. (ship-pre
   completeness (Step 5) and main=Claude correctness (Step 6) are still 1+1+1, not this row.)
 - Upgraded-state single-vendor loss (1+N+1):
@@ -506,7 +504,7 @@ requires by squad shape:
 **Hard stop (do not continue):** bug count not converging → the
 implementation method or architecture needs rework, not another patch.
 
-## Step 6 — drift triple-detection (agent judgment, wiki §drift)
+## Step 6 — drift triple-detection (agent judgment)
 
 Hit any one → **STOP, rework at implementation/architecture level, do
 NOT keep patching**:
@@ -559,7 +557,7 @@ not converging / drift hit → STOP, architectural/implementation
 ```
 
 > **After every fix, before the next round: the mandatory self-check
-> 二连** (wiki §修复, 2026-06-18 — it used to be just a flowchart arrow
+> 二连** (recorded 2026-06-18 — it used to be just a flowchart arrow
 > and got skipped). Do NOT `commit → next round` straight from the fix;
 > first do two checks and write a one-line "自查二连 done" in the commit
 > msg (or the fix's closing line) so the decision is visible in the
@@ -576,10 +574,10 @@ not converging / drift hit → STOP, architectural/implementation
 > anti-pattern #3); it just picks the low-hanging fruit you can catch
 > yourself instead of paying a whole round for it. **Mechanical fixes do
 > it too** (esp. the same-type check — a typo'd label is usually typo'd
-> elsewhere). Canonical: tdd-autonomous-dev §切片内纪律.
+> elsewhere).
 
 **Every round = full re-review (NOT a "did last round's P0/P1 close?"
-spot-check)** (wiki §每轮 review = 全量复审). From round 2 on, the reviewer
+spot-check)**. From round 2 on, the reviewer
 (and the main session dispatching it) drifts toward narrowing scope to
 "is last round's P1 fixed?" — only verifying prior findings, no longer
 reading the current full diff. **This repo has hit it repeatedly; refuse
@@ -638,12 +636,12 @@ looks* — and only full re-review makes the drift triple measurable. It is
 also the entry-scope floor that must hold *before* Step 6's Coverage-drift
 note (a late-convergence optimization) even applies.
 
-**Fix-loop discipline (wiki §修复).** The wiki's ground truth: "findings
+**Fix-loop discipline.** The recorded failure basis is: "findings
 are stable, the fix loop is the bottleneck — agent fixes by feel, breaks
 neighbors, skips repro / the regression test." So the fix step is gated.
 
 > **Default = non-trivial. The burden of proof is on whoever claims
-> "mechanical" (wiki `91a4e1f`).** The FIRST action in the fix loop is to
+> "mechanical" (recorded decision `91a4e1f`).** The FIRST action in the fix loop is to
 > **explicitly classify** the fix, in writing, **up front — a
 > conversation line BEFORE your first read/edit of the target.** A
 > commit-message-only classification is too late: it lets you do the
@@ -658,7 +656,7 @@ neighbors, skips repro / the regression test." So the fix step is gated.
 | Fix kind | Route |
 |---|---|
 | **Mechanical** — see the hard bar below; **must be explicitly declared + a one-line justification of why it qualifies** | edit directly, no further protocol |
-| **Non-trivial** (behavioral / runtime / may-touch-neighbors / not-fully-understood / **anything not explicitly declared mechanical**) | the **first tool call MUST invoke the `/diagnosing-bugs` skill** (via the `Skill` tool) — not first grep, not first guess, not first write a patch, not first read a file. /diagnosing-bugs's 6 phases (feedback loop → reproduce → ranked falsifiable hypotheses → one-probe-at-a-time instrument → fix + regression test → cleanup, with a HITL fallback) are an iterative, possibly human-in-the-loop investigation the **main session** drives — it does not collapse into a single fixer-subagent return. Canonical: wiki §修复 + `matt-pocock-skills#/diagnosing-bugs`. |
+| **Non-trivial** (behavioral / runtime / may-touch-neighbors / not-fully-understood / **anything not explicitly declared mechanical**) | the **first tool call MUST invoke the `/diagnosing-bugs` skill** (via the `Skill` tool) — not first grep, not first guess, not first write a patch, not first read a file. /diagnosing-bugs's 6 phases (feedback loop → reproduce → ranked falsifiable hypotheses → one-probe-at-a-time instrument → fix + regression test → cleanup, with a HITL fallback) are an iterative, possibly human-in-the-loop investigation the **main session** drives — it does not collapse into a single fixer-subagent return. Historical lineage: wiki §修复 + `matt-pocock-skills#/diagnosing-bugs`. |
 
 > **The mechanical bar is HIGH — claim it rarely.** Observed reality:
 > almost everything gets waved through as "mechanical," and those
@@ -713,9 +711,9 @@ critical/high→medium).
 ## Doc mode discipline (design-text reviews — the additive-runaway defense)
 
 > **⚠ RECORDED RULE ① — upstreamed to the wiki 2026-07-06 (user
-> decision same day; vault `b5495e8` / `da04ff5` / `e06bcfe`).** Do
-> NOT drop this section on a wiki re-sync (a re-sync from a stale wiki
-> checkout would erase it).
+> decision same day; vault `b5495e8` / `da04ff5` / `e06bcfe`).** This
+> remains in the user-adjudication ledger; only the user may change or
+> remove it.
 
 Applies **ONLY when the thing under review is a design text** (ADR /
 spec / contract / plan — the Step 0 doc-mode bullet, completeness lens)
@@ -746,7 +744,7 @@ patch finding** on the same mechanism. Rationale: a completeness lens is
 structurally add-only; subtraction must be explicitly licensed or the
 review can only ever make the text longer.
 
-## Anti-patterns (wiki §反模式 — refuse these)
+## Anti-patterns — refuse these
 
 1. N codex all on the full diff (N>1 must split sections — duplicate findings, no coverage gain).
 2. No cross-family reviewer (only Claude / only codex) — single family cannot break section silos.
@@ -762,4 +760,4 @@ review can only ever make the text longer.
 12. **A reviewer that writes or fixes findings** — relying on `--sandbox` alone to enforce the reviewer discipline. The prompt MUST forbid modifying the reviewed repo and fixing findings; inspection/verification commands (including tests/builds and behavioral exercises in a throwaway copy/fixture) remain allowed. A review that mutates the repo under review is the defect, even when the mutation is correct.
 13. **Over-claiming "mechanical" to skip /diagnosing-bugs** — waving a fix through as mechanical on "it's simple / one line / obvious / I'm confident." Default is non-trivial; mechanical is a closed high-bar allowlist that touches zero executing code (Step 7). A changed flag / guard / condition / quoting fix is non-trivial no matter how small. Skipping classification = non-trivial = `/diagnosing-bugs` required.
 14. **Narrowing a later round into a "did last round's P1 close?" spot-check** — every round must full-re-review the current full diff; prior-finding acceptance is only a tail item. Narrowing drops the regression the fix introduced + the surface last round missed, and fakes a low finding count that breaks the Step 5/6 convergence read. See Step 7 "Every round = full re-review."
-15. **Static-reading a behavioral gate counts as reviewing it** (wiki §反模式 #11, 2026-06-23) — for a load-bearing **gate / fix-loop / guard / state-machine**, "looks right / matches spec / tests pass" CANNOT tell a real gate from a **hollowed-out** one (same-looking code, both return `converged`). Such mechanisms MUST be **exercised**: run it, inject a known defect, and assert the mechanism actually fires (a cmr gate: a planted cross-slice bug must drive **catch → fix → re-cmr → concur**; if it still returns `converged` with the poison in, the gate is fake). The author's green tests are NOT evidence (coding-author blind spot). Worst case — 2-3 reviewers sharing one "review the diff" prompt all do static reads and all miss the behavioral defect (input-bias; cross-model can't fix it — change the prompt to "run the gate / verify behavior", not "read the diff"). Evidence: #330 (an orchestrator's integration cmr hollowed to a single no-loop pass slipped past a 2-3-model Step 5). Wiki [[verification-scope-vacuum]] + [[reviewer-as-system-under-test]].
+15. **Static-reading a behavioral gate counts as reviewing it** (recorded 2026-06-23) — for a load-bearing **gate / fix-loop / guard / state-machine**, "looks right / matches spec / tests pass" CANNOT tell a real gate from a **hollowed-out** one (same-looking code, both return `converged`). Such mechanisms MUST be **exercised**: run it, inject a known defect, and assert the mechanism actually fires (a cmr gate: a planted cross-slice bug must drive **catch → fix → re-cmr → concur**; if it still returns `converged` with the poison in, the gate is fake). The author's green tests are NOT evidence (coding-author blind spot). Worst case — 2-3 reviewers sharing one "review the diff" prompt all do static reads and all miss the behavioral defect (input-bias; cross-model can't fix it — change the prompt to "run the gate / verify behavior", not "read the diff"). Evidence: #330 (an orchestrator's integration cmr hollowed to a single no-loop pass slipped past a 2-3-model Step 5). Historical lineage: `verification-scope-vacuum` + `reviewer-as-system-under-test`.

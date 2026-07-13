@@ -2,8 +2,8 @@
 # Codex reviewer backend for /ak-cross-m-review.
 #
 # This is the DELIVERATELY-CORRECT codex invocation. It exists because the
-# naive/uncorrected codex invocations use the two patterns the
-# wiki marks confidence-10 footguns (D1/D2 in the analysis):
+# naive/uncorrected codex invocations use the two patterns
+# recorded as confidence-10 footguns (D1/D2 in the analysis):
 #
 #   ❌ codex exec "$PROMPT" -C "$WORKDIR" -s read-only
 #      - positional-arg prompt (stdin-pipe hang risk; off-convention)
@@ -23,7 +23,7 @@
 #      - `--ephemeral`: do NOT persist a session rollout file. cmr runs
 #        N codex in parallel (1+N+1); without it concurrent instances
 #        collide on ~/.codex/session → cross-talk (prompt A surfaces in
-#        instance B's context). Wiki §额外硬规则 #6 / codex#11435.
+#        instance B's context). Recorded rule; evidence: codex#11435.
 #      - `-c model_reasoning_effort=<effort>`: pass the effort in effect
 #        EXPLICITLY so codex can't silently inherit ~/.codex/config.toml's
 #        global value (a clone / other host could drift otherwise). This
@@ -43,13 +43,13 @@
 # nothing; both are fully overridable (CMR_CODEX_MODEL / CMR_CODEX_EFFORT)
 # and any override is passed through verbatim, never validated or rejected.
 #
-# Source of truth:
+# Historical lineage (wiki sync cancelled 2026-07-13, ADR 0002):
 #   wiki/concepts/cross-model-review.md  §调用规范 / §额外硬规则
 #   wiki/concepts/codex-bot-conventions.md  §CLI 侧的正确 pattern / §模型变体
 #
 # Invocation:
 #   <stdin: full review prompt incl. diff> | codex-review.sh <mode> [<label>]
-#     mode  : doc | code   (review lens; echoed in the degrade payload)
+#     mode  : doc | code   (review lens)
 #     label : optional diagnostic tag (e.g. "section-2of3")
 #
 #   CMR_CODEX_MODEL   override review model (default: gpt-5.6-sol). Any
@@ -68,22 +68,22 @@
 #                     reasoning / large diffs go silent for MANY minutes
 #                     before the first token. Escalation history: 3min →
 #                     8min → 15min. Wiki §额外硬规则 #4 updated to 15min
-#                     the same day (vault b5495e8) — in sync, do not
-#                     regress either side. Matches agy --print-timeout 15m).
+#                     the same day (vault b5495e8; historical note). Matches
+#                     agy --print-timeout 15m).
 #   CMR_CODEX_IDLE_POLL  watchdog poll interval seconds (default 5).
-#   CMR_DRY_RUN=1     print the exact command that WOULD run, do not call
-#                     codex, emit a dry_run payload, and exit 2. This is
-#                     never a review leg; --selftest is a separate path.
+#   CMR_DRY_RUN=1     print the exact command that WOULD run to stderr, do
+#                     not call codex, leave stdout empty, and exit 2. This
+#                     is never a review leg; --selftest is a separate path.
 #
 # On success we emit codex's FINAL MESSAGE (the review — prose or JSON,
 # from the `-o` file) to stdout; the orchestrator reads it with judgment
-# (wiki §「.result 是 review 文本」). Diagnostics to stderr. On timeout /
-# non-zero codex exit (auth/quota/crash) / an empty final message:
-# synthetic empty-findings JSON + exit 1 so the orchestrator degrades and
-# flags "本轮缺 codex". The script does NOT parse findings or demand a
-# sentinel-JSON format — that gate dropped codex's prose review as a
-# phantom outage (removed in 0.3.9.0). It also does NOT tail-parse the
-# verbose stdout — codex's own `-o` gives the clean last message directly.
+# (the recorded prose-review contract). Diagnostics to stderr. On timeout /
+# non-zero codex exit (auth/quota/crash) / an empty final message: empty
+# stdout + exit 1 + a stderr "本轮缺 codex" flag. The script does NOT parse
+# findings or demand a sentinel-JSON format — that gate dropped codex's
+# prose review as a phantom outage (removed in 0.3.9.0). It also does NOT
+# tail-parse the verbose stdout — codex's own `-o` gives the clean last
+# message directly.
 
 set -euo pipefail
 
@@ -95,7 +95,6 @@ if [ "${1:-}" != "--selftest" ]; then
     *)
       MODE="code"
       echo "codex-review: invalid MODE (expected doc|code) — degrade, flag '本轮缺 codex'" >&2
-      printf '{"reviewer":"codex","mode":"code","findings":[]}\n'
       exit 1
       ;;
   esac
@@ -104,7 +103,7 @@ MODEL="${CMR_CODEX_MODEL:-gpt-5.6-sol}"
 # IDLE/silence timeout — seconds with NO new output before we call it a hang
 # and kill (NOT a total wall-clock cap). Default 900 = 15min (user decision
 # 2026-07-06 after an 8min false-kill; wiki §额外硬规则 #4 updated to 15min
-# the same day — in sync). A streaming codex is never killed for total
+# the same day, historical note). A streaming codex is never killed for total
 # runtime.
 IDLE_TIMEOUT="${CMR_CODEX_TIMEOUT:-900}"
 IDLE_POLL="${CMR_CODEX_IDLE_POLL:-5}"
@@ -118,12 +117,10 @@ CMR_CODEX_EFFORT="${CMR_CODEX_EFFORT:-medium}"
 if [ "${1:-}" != "--selftest" ]; then
   if ! [[ "$IDLE_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
     echo "codex-review: invalid CMR_CODEX_TIMEOUT='$IDLE_TIMEOUT' (expected positive integer seconds) — degrade, flag '本轮缺 codex'" >&2
-    printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
     exit 1
   fi
   if ! [[ "$IDLE_POLL" =~ ^[1-9][0-9]*$ ]]; then
     echo "codex-review: invalid CMR_CODEX_IDLE_POLL='$IDLE_POLL' (expected positive integer seconds) — degrade, flag '本轮缺 codex'" >&2
-    printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
     exit 1
   fi
 fi
@@ -150,7 +147,7 @@ trap 'rm -f "$LASTMSG"' EXIT
 # inherits ~/.codex/config.toml's global value otherwise, so pinning it in
 # the command prevents a clone / other machine from silently drifting. This
 # passes whatever value is in effect; it does NOT lock the value to medium
-# (wiki §调用规范 reasoning-effort callout).
+# (the recorded reasoning-effort contract).
 CODEX_CMD=(codex exec --ephemeral -c model_reasoning_effort="$CMR_CODEX_EFFORT" --model "$MODEL" -o "$LASTMSG" -)
 
 # --selftest: validate the REAL invocation array (not a hand-copied
@@ -168,7 +165,7 @@ if [ "${1:-}" = "--selftest" ]; then
   esac
   # On-convention canonical form. This pins BOTH the stdin-pipe shape AND
   # `-c model_reasoning_effort=<effort>` (the reasoning-depth pin so a
-  # clone / other host can't inherit a config.toml value, wiki §调用规范).
+  # clone / other host can't inherit a config.toml value, per the recorded contract).
   # The effort is whatever's in effect (default medium, overridable via
   # CMR_CODEX_EFFORT) — the check interpolates ${CMR_CODEX_EFFORT} so it
   # pins the FORM not the VALUE, adapting to any override. A missing/altered
@@ -186,7 +183,7 @@ if [ "${1:-}" = "--selftest" ]; then
     *) echo "FAIL: command missing -o/--output-last-message (last-message extraction)" >&2; fail=1 ;;
   esac
   # --ephemeral mandatory: parallel codex instances collide on
-  # ~/.codex/session without it (wiki §额外硬规则 #6 / codex#11435).
+  # ~/.codex/session without it (recorded rule; evidence: codex#11435).
   case "$CMD" in
     *"--ephemeral"*) ;;
     *) echo "FAIL: command missing --ephemeral (parallel session-collision guard)" >&2; fail=1 ;;
@@ -226,13 +223,12 @@ fi
 
 if [ "${CMR_DRY_RUN:-0}" = "1" ]; then
   echo "codex-review: NON-REVIEW DRY_RUN — no Codex reviewer ran; 本轮缺 codex (NON-REVIEW DRY_RUN); command: printf %s \"\$PROMPT\" | ${CODEX_CMD[*]} 2>&1" >&2
-  printf '{"reviewer":"codex","mode":"%s","dry_run":true,"findings":[]}\n' "$MODE"
   exit 2
 fi
 
 echo "codex-review: model=${MODEL} mode=${MODE} label=${LABEL} idle-timeout=${IDLE_TIMEOUT}s" >&2
 
-# IDLE-based hang detection (wiki §额外硬规则 #4) — NOT a total wall-clock
+# IDLE-based hang detection (recorded hard rule #4) — NOT a total wall-clock
 # cap. A hang = codex produces NO new stdout/stderr for $IDLE_TIMEOUT
 # seconds; a codex still streaming its reasoning/trace (deep reasoning +
 # large diffs go silent for minutes before the first token, then stream)
@@ -307,20 +303,17 @@ RAW="$(cat "$TMP_OUT" 2>/dev/null || true)"
 case "$RC" in
   124|137|143)
     echo "codex-review: timeout/kill (rc=$RC) — degrade, flag '本轮缺 codex'" >&2
-    printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
     exit 1
     ;;
 esac
 if [ "$RC" -ne 0 ]; then
   echo "codex-review: codex exited rc=$RC (auth/quota/crash, not a review) — degrade, flag '本轮缺 codex'" >&2
-  printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
 fi
 
 REVIEW="$(cat "$LASTMSG" 2>/dev/null || true)"
 if [ -z "$REVIEW" ]; then
   echo "codex-review: codex exited 0 but wrote no final message (empty -o file; only a trace, or -o unsupported) — degrade, flag '本轮缺 codex'" >&2
-  printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
 fi
 printf '%s\n' "$REVIEW"
