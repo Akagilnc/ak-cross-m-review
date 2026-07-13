@@ -4,6 +4,34 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.20.0 — 2026-07-13
+
+- **S6 audit findings: 13 fixed in one pass, 1 owner-rejected (issue
+  #29's 14 findings, owner-adjudicated same day — no defer loop).**
+  Headline: **the strict REVIEW-ONLY divergence is WITHDRAWN** (owner:
+  reviewers were never banned from running commands; no-modify/no-fix
+  stays prompt-level, no hard gates) — gemini.sh's injected preamble now
+  permits read-only inspection/verification commands incl. exercises
+  with injected defects in a throwaway copy; both lens prompts aligned;
+  SKILL.md's REVIEW-ONLY RECORDED marker removed (2 markers remain:
+  Fable, agy warm+retry); the skill re-aligns with the wiki's 2026-07-06
+  exercise carve-out. Constitution/kill-axis now explicitly applies in
+  ALL modes in the completeness prompt (code mode skips only ②–⑤/
+  anti-minutes; addendum golden hash recomputed). Both prompts' dead
+  "②–⑤ … below/untouched" anchors now point at DOC-MODE.md. Fixer:
+  mode-conditional self-check (code=二连, doc=三连 per DOC-MODE.md ⑤);
+  mechanical-vs-sweep contradiction closed with the verbatim-identical-
+  propagation narrow exception. Backends hardened (all red-first):
+  CMR_DRY_RUN can no longer pose as a successful zero-finding leg
+  (loud + nonzero); watchdog env vars validated (invalid → visible
+  degrade); MODE validated doc|code in both backends (JSON-injection
+  shape closed); gemini auth-race grep no longer SIGPIPEs on >buffer
+  output (here-string; 1.6MB repro test); non-Google AGY_MODEL overrides
+  (e.g. GPT-OSS) now correctly flag NO Google voice (family check
+  inverted to Gemini/Google-only no-flag). **Won't-fix per owner: no
+  read-only mounts / mutation detection / fail-closed machinery**
+  (「改了就改了。改对了就收,改错了就修」). 140 → 145 tests.
+
 ## 0.3.19.13 — 2026-07-13
 
 - **Ship-pre correctness round-1 fixes (1 high + 1 medium + 1 low).**

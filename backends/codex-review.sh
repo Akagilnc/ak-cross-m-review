@@ -72,7 +72,8 @@
 #                     regress either side. Matches agy --print-timeout 15m).
 #   CMR_CODEX_IDLE_POLL  watchdog poll interval seconds (default 5).
 #   CMR_DRY_RUN=1     print the exact command that WOULD run, do not call
-#                     codex, exit 0. Used by --selftest.
+#                     codex, emit a dry_run payload, and exit 2. This is
+#                     never a review leg; --selftest is a separate path.
 #
 # On success we emit codex's FINAL MESSAGE (the review — prose or JSON,
 # from the `-o` file) to stdout; the orchestrator reads it with judgment
@@ -88,6 +89,17 @@ set -euo pipefail
 
 MODE="${1:-code}"
 LABEL="${2:-full}"
+if [ "${1:-}" != "--selftest" ]; then
+  case "$MODE" in
+    doc|code) ;;
+    *)
+      MODE="code"
+      echo "codex-review: invalid MODE (expected doc|code) — degrade, flag '本轮缺 codex'" >&2
+      printf '{"reviewer":"codex","mode":"code","findings":[]}\n'
+      exit 1
+      ;;
+  esac
+fi
 MODEL="${CMR_CODEX_MODEL:-gpt-5.6-sol}"
 # IDLE/silence timeout — seconds with NO new output before we call it a hang
 # and kill (NOT a total wall-clock cap). Default 900 = 15min (user decision
@@ -102,6 +114,17 @@ IDLE_POLL="${CMR_CODEX_IDLE_POLL:-5}"
 # is avoiding codex pitfalls, not restricting model/effort). Symmetric with
 # CMR_CODEX_MODEL above.
 CMR_CODEX_EFFORT="${CMR_CODEX_EFFORT:-medium}"
+
+if ! [[ "$IDLE_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
+  echo "codex-review: invalid CMR_CODEX_TIMEOUT='$IDLE_TIMEOUT' (expected positive integer seconds) — degrade, flag '本轮缺 codex'" >&2
+  printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
+  exit 1
+fi
+if ! [[ "$IDLE_POLL" =~ ^[1-9][0-9]*$ ]]; then
+  echo "codex-review: invalid CMR_CODEX_IDLE_POLL='$IDLE_POLL' (expected positive integer seconds) — degrade, flag '本轮缺 codex'" >&2
+  printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
+  exit 1
+fi
 
 # codex writes ONLY its final message (the review) here via
 # `-o`/--output-last-message. We emit this file's contents on success, NOT
@@ -200,9 +223,9 @@ if [ -z "$FULL_PROMPT" ]; then
 fi
 
 if [ "${CMR_DRY_RUN:-0}" = "1" ]; then
-  echo "DRY_RUN cmd: printf %s \"\$PROMPT\" | ${CODEX_CMD[*]} 2>&1" >&2
-  printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
-  exit 0
+  echo "codex-review: NON-REVIEW DRY_RUN — no Codex reviewer ran; command: printf %s \"\$PROMPT\" | ${CODEX_CMD[*]} 2>&1" >&2
+  printf '{"reviewer":"codex","mode":"%s","dry_run":true,"findings":[]}\n' "$MODE"
+  exit 2
 fi
 
 echo "codex-review: model=${MODEL} mode=${MODE} label=${LABEL} idle-timeout=${IDLE_TIMEOUT}s" >&2

@@ -15,6 +15,13 @@ CORRECTNESS = ROOT / "prompts" / "cmr-reviewer.md"
 COMPLETENESS = ROOT / "prompts" / "cmr-completeness.md"
 SKILL = ROOT / "SKILL.md"
 
+REVIEW_DISCIPLINE = (
+    "Do NOT modify, create, rename, or delete any file in the reviewed repo, "
+    "and do NOT fix findings yourself. You MAY run read-only inspection and "
+    "verification commands, including tests/builds and exercises with injected "
+    "defects in a throwaway copy or fixture."
+)
+
 
 def test_both_lens_prompts_exist():
     assert CORRECTNESS.is_file(), "correctness lens prompt missing"
@@ -29,6 +36,17 @@ def test_both_lenses_prioritize_deletion_over_addition():
         assert "能删大于能加" in prompt.read_text(encoding="utf-8"), (
             f"{prompt.name} missing the deletion-over-addition principle"
         )
+
+
+def test_both_lenses_allow_verification_commands_but_forbid_repo_edits_and_fixes():
+    for prompt in (CORRECTNESS, COMPLETENESS):
+        raw = prompt.read_text(encoding="utf-8").replace("\n> ", "\n")
+        txt = " ".join(raw.split())
+        assert REVIEW_DISCIPLINE in txt, (
+            f"{prompt.name} must allow verification commands while preserving "
+            "the no-modify/no-fix reviewer discipline"
+        )
+        assert "Do NOT run any shell command" not in txt
 
 
 def test_correctness_prompt_is_the_defect_lens():

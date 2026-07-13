@@ -67,8 +67,11 @@ def test_reviewer_report_all_means_findings_not_padding_positive():
     assert 'means the *findings* you actually see' in txt, (
         "'report all' must be scoped to findings, never to adding text"
     )
-    assert "②–⑤ anti-runaway discipline is untouched" in txt, (
-        "doc-mode anti-runaway discipline must be declared unaffected"
+    assert (
+        "②–⑤ anti-runaway discipline (now in DOC-MODE.md, "
+        "dispatcher/orchestrator-side) is untouched"
+    ) in txt, (
+        "doc-mode anti-runaway discipline must be anchored to DOC-MODE.md"
     )
     assert "Progressive exposure" in txt
     assert "it is not a contract breach" in txt, (
@@ -116,8 +119,11 @@ def test_completeness_report_all_means_gaps_not_padding_positive():
     assert "means the *gaps* you actually find" in txt, (
         "'report all' must be scoped to gaps, not to padding the design"
     )
-    assert "②–⑤ anti-runaway discipline below is untouched" in txt, (
-        "the doc-mode addendum's anti-runaway discipline stays unaffected"
+    assert (
+        "②–⑤ anti-runaway discipline (now in DOC-MODE.md, "
+        "dispatcher/orchestrator-side) is untouched"
+    ) in txt, (
+        "the doc-mode anti-runaway discipline must be anchored to DOC-MODE.md"
     )
     assert "Progressive exposure" in txt
 
@@ -252,6 +258,19 @@ def test_fixer_first_duty_no_scope_restriction_negative():
     assert "Concept sweep (fix every occurrence, not just the first)" in full, (
         "the EXAM-818 sweep doctrine header must stay verbatim"
     )
+
+
+def test_fixer_mechanical_repetition_exception_is_pinned_at_scope_and_sweep():
+    txt = _norm(FIXER)
+    clause = (
+        "Verbatim-identical, provably-inert repetitions of the SAME mechanical "
+        "fix across sites count as ONE mechanical fix; the sweep is mandatory. "
+        "Anything requiring per-site adaptation is non-trivial → route."
+    )
+    header = txt[: txt.index("## First duty")]
+    concept = txt[txt.index("## Concept sweep") : txt.index("## Safety rules")]
+    assert clause in header
+    assert clause in concept
 
 
 # --- 0.3.18.3 finding #2: FALSE adjudication has a structured schema field

@@ -17,13 +17,12 @@ source, not by trusting the diff in isolation.
 > adds code, mechanism, or text; flag additions that a deletion could have
 > achieved.
 
-> **READ-ONLY — HARD CONSTRAINT.** You are a reviewer, not a fixer. Do
-> NOT modify, create, rename, or delete any file. Do NOT run tests,
-> builds, git, or any command that changes state. Reading / grepping
-> source to verify a finding is expected; writing anything is a contract
-> violation. Your ONLY output is your written review (the grounded prose
-> findings described below) — the caller applies fixes separately, never
-> you.
+> **REVIEW ONLY — HARD CONSTRAINT.** Do NOT modify, create, rename, or
+> delete any file in the reviewed repo, and do NOT fix findings yourself.
+> You MAY run read-only inspection and verification commands, including
+> tests/builds and exercises with injected defects in a throwaway copy or
+> fixture. Your ONLY output is your written review (the grounded prose
+> findings described below); the caller applies fixes separately.
 
 ---
 
@@ -133,7 +132,8 @@ the fixer. Your review is delivered only once every defect you saw is
 written down. This holds in **every review mode** (per-slice, ship-pre's
 two gates, doc mode). "Report all" means the *findings* you actually see —
 never a licence to pad the review with "you could also add…" suggestions,
-and doc-mode's ②–⑤ anti-runaway discipline is untouched by it. Progressive
+and doc-mode's ②–⑤ anti-runaway discipline (now in DOC-MODE.md,
+dispatcher/orchestrator-side) is untouched by it. Progressive
 exposure — a defect that becomes visible only after an earlier one is
 fixed — is expected: report it in the round it surfaces, it is not a
 contract breach.

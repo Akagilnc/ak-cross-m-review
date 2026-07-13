@@ -285,7 +285,8 @@ def test_anti_minutes_fix_discipline():
 
 def test_completeness_prompt_carries_doc_mode_addendum():
     txt = _norm(COMPLETENESS.read_text(encoding="utf-8"))
-    assert "## Doc mode addendum" in txt
+    assert "## Doc mode addendum + constitution check (ALL modes)" in txt
+    assert "## Doc mode addendum (ONLY" not in txt
     assert "second mission" in txt
     assert "Page one of your dispatch packet" in txt, (
         "the prompt must tell the reviewer where the constitution lives, "
@@ -301,8 +302,21 @@ def test_completeness_prompt_carries_doc_mode_addendum():
     # the prompt side of anti-minutes, not just the SKILL side
     assert "Anti-minutes discipline" in txt
     assert "change the conclusion" in txt
-    # scoped: code mode skips the addendum
-    assert "In code mode this section does not apply" in txt
+    assert "Constitution check + kill-axis applies in **every review mode**" in txt
+    assert (
+        "In code mode, skip only this doc-mode-specific ②–⑤ / anti-minutes "
+        "discipline; the constitution check + kill-axis still applies."
+    ) in txt
+    assert "In code mode this section does not apply" not in txt
+
+
+def test_fixer_uses_mode_conditional_self_check_at_both_fix_sites():
+    txt = _norm((ROOT / "prompts" / "cmr-fixer.md").read_text(encoding="utf-8"))
+    contract = (
+        "mode-conditional self-check: `fixer_mode: code` = 二连; "
+        "`fixer_mode: doc` = 三连 per `DOC-MODE.md` ⑤"
+    )
+    assert txt.count(contract) == 2
 
 
 def test_wiki_wins_contract_carries_recorded_rule_exception():
@@ -395,7 +409,7 @@ def test_golden_freeze_of_doc_mode_texts():
     txt = _norm(COMPLETENESS.read_text(encoding="utf-8"))
     add = txt[txt.index("## Doc mode addendum") : txt.index("## The gate")]
     assert hashlib.sha256(add.encode()).hexdigest() == (
-        "48bd9e6d0e0f5d270cff439f2efbaf84e6158516a987f1bd4dd2389628b7e3d6"
+        "2168c7fc954c2d6e16a2b7b9d12e7f1339ab9c93cf52c64bb301d0b176698835"
     ), (
         "cmr-completeness.md doc-mode addendum changed — if intentional, "
         "update this hash in the same commit; if not, investigate"

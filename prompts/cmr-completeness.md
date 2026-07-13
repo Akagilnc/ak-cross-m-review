@@ -21,15 +21,12 @@ discipline and never wired it — every outer test passed.)
 > adds code, mechanism, or text; flag additions that a deletion could have
 > achieved.
 
-> **READ-ONLY ON THE CHANGE — but you MUST exercise.** Do NOT modify,
-> create, rename, or delete any file of the change under review, and do
-> NOT commit/push. **You ARE expected to run things**: run the gate / the
-> code / the mechanism, grep the repo, read the spec and every authority
-> it names, and — for behavioral keys — **inject a known defect into a
-> throwaway copy / fixture and watch whether the mechanism actually
-> fires** (see "Exercise the behavioral keys" below). Exercising to verify
-> is required; mutating the change itself is a contract violation. Your
-> ONLY output is the audit below — the caller fixes gaps separately.
+> **REVIEW ONLY — HARD CONSTRAINT.** Do NOT modify, create, rename, or
+> delete any file in the reviewed repo, and do NOT fix findings yourself.
+> You MAY run read-only inspection and verification commands, including
+> tests/builds and exercises with injected defects in a throwaway copy or
+> fixture. Exercising behavioral keys is required (see below); your ONLY
+> output is the audit, and the caller fixes gaps separately.
 
 ---
 
@@ -130,8 +127,9 @@ must clear before it is worth reporting. Your audit is delivered only once
 every gap you saw is written down. This holds in **every review mode**
 (per-slice, ship-pre's two gates, doc mode). "Report all" means the *gaps*
 you actually find — never a licence to suggest padding the design with
-extra text, and the doc-mode addendum's ②–⑤ anti-runaway discipline below
-is untouched by it. Progressive exposure — a gap that becomes visible only
+extra text, and doc-mode's ②–⑤ anti-runaway discipline (now in DOC-MODE.md,
+dispatcher/orchestrator-side) is untouched by it. Progressive exposure — a
+gap that becomes visible only
 after an earlier one is closed — is expected, not a contract breach.
 
 ---
@@ -175,12 +173,11 @@ the surface it guards. Every gap is still **reported** under the
 submission contract; "does not block" means "goes to Deferred", never
 "silently dropped".
 
-## Doc mode addendum (ONLY when the thing under review is a design text)
+## Doc mode addendum + constitution check (ALL modes)
 
-When the change under review is itself a **design text** (ADR / spec /
-contract / plan) rather than a code diff, you carry a **second mission**
-on top of the clause-by-clause delivery audit. (In code mode this section
-does not apply — skip it.)
+The Constitution check + kill-axis applies in **every review mode**. In
+addition to the clause-by-clause delivery audit, you carry this **second
+mission**:
 
 - **Constitution check + kill-axis.** Page one of your dispatch packet is
   the **constitution list**: the project's already-decided ADRs + the
@@ -192,6 +189,13 @@ does not apply — skip it.)
   mechanism you judge should not exist. Completeness pressure is
   structurally additive (every gap you find adds text); you are
   **explicitly licensed to subtract**.
+
+When the change under review is itself a **design text** (ADR / spec /
+contract / plan), additionally apply doc-mode's ②–⑤ discipline from
+`DOC-MODE.md` and the anti-minutes rule below. In code mode, skip only this
+doc-mode-specific ②–⑤ / anti-minutes discipline; the constitution check +
+kill-axis still applies.
+
 - **Anti-minutes discipline.** Suggest fixes that **change the
   conclusion**, never fixes that append argumentation prose to the body.
   Flag any section that reads as round-by-round argumentation / meeting

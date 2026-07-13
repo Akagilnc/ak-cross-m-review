@@ -7,7 +7,9 @@
 > touches zero executing code, single site with no propagation, provably
 > inert (cannot change any test/runtime outcome). "It's simple / one line
 > / obvious / I'm confident" do NOT make a fix mechanical — those are the
-> over-claims that cause breakage. Default is **non-trivial**: anything
+> over-claims that cause breakage.
+> Verbatim-identical, provably-inert repetitions of the SAME mechanical fix across sites count as ONE mechanical fix; the sweep is mandatory. Anything requiring per-site adaptation is non-trivial → route.
+> Default is **non-trivial**: anything
 > touching shell logic, a flag, a condition, control flow, a regex, a
 > path, a number, or whose effect you cannot prove inert is NOT yours to
 > patch directly here — its actual disposition (fixed elsewhere, routed to
@@ -104,7 +106,8 @@ single authority; the routing/deferring language here only points at it.
   2026-06-23): the defer-eligible `low`/`clarity` findings
   (correctness/code mode; in **doc mode `low` is blocking**, see above, so
   only `clarity` is defer-eligible there) that are cheap and low-risk —
-  **fix them** (then the self-check 二连), do NOT bank them as backlog
+  **fix them** (then the mode-conditional self-check: `fixer_mode: code` =
+  二连; `fixer_mode: doc` = 三连 per `DOC-MODE.md` ⑤), do NOT bank them as backlog
   debt. Filing an issue for a nit ≈ never fixing it; the context is here
   now and the post-push bots re-review it anyway. **Defer is ONLY for** a
   non-blocking finding that is genuinely out-of-scope, needs a design
@@ -183,7 +186,8 @@ there are no others — are the three below, and every combination of
    mode: `clarity` only**, since `low`/P3 is blocking there) → **fixed** OR
    **deferred**, never routed.
    - **fixed** — the default for cheap, low-risk findings
-     (SHOULD-fix-by-default; then run the self-check 二连).
+     (SHOULD-fix-by-default; then run the mode-conditional self-check:
+     `fixer_mode: code` = 二连; `fixer_mode: doc` = 三连 per `DOC-MODE.md` ⑤).
    - **deferred-with-all-three-parts** (severity · specific rationale ·
      expected timing — see the **Defer protocol** below).
    The main session does **not** intervene on non-blocking work, so there
@@ -238,6 +242,10 @@ The orchestrator writes these into the PR description under a
 ---
 
 ## Concept sweep (fix every occurrence, not just the first)
+
+Verbatim-identical, provably-inert repetitions of the SAME mechanical fix
+across sites count as ONE mechanical fix; the sweep is mandatory. Anything
+requiring per-site adaptation is non-trivial → route.
 
 Each finding may carry `related_locations`. When fixing a finding:
 

@@ -9,7 +9,8 @@
 #   <stdin: full reviewer prompt incl. the diff to review>
 #           | backends/gemini.sh <mode>
 #
-# Outputs JSON (reviewer payload) to stdout. Diagnostics to stderr.
+# Success: review prose passes through verbatim on stdout. Degrade only:
+# synthetic JSON on stdout + nonzero exit. Diagnostics go to stderr.
 #
 # Env:
 #   AGY_PRINT_TIMEOUT        agy's own --print-timeout (default 15m;
@@ -53,6 +54,16 @@ set -euo pipefail
 
 MODE="${1:-doc}"
 PRINT_TIMEOUT="${AGY_PRINT_TIMEOUT:-15m}"
+
+case "$MODE" in
+  doc|code) ;;
+  *)
+    MODE="doc"
+    echo "gemini: invalid MODE (expected doc|code) — degrade, flag '本轮缺 gemini'" >&2
+    printf '{"reviewer":"gemini","mode":"doc","findings":[]}\n'
+    exit 1
+    ;;
+esac
 
 # The repo UNDER REVIEW (where the orchestrator invoked us — the user's
 # project), captured BEFORE any `cd`. agy's workspace must be THIS, not
@@ -141,18 +152,10 @@ if ! command -v agy >/dev/null 2>&1; then
   exit 1
 fi
 
-# Read-only contract (wiki §调用规范, line 185). agy (Antigravity) is an
-# agentic CLI: `--sandbox` alone does NOT stop it editing files in the
-# workspace or running commands. Observed first-run failure: an agy
-# review rewrote tracked files (gemini.sh, a test) and ran pytest instead
-# of just reviewing. The prompt ITSELF must forbid this. Prepend an
-# explicit read-only instruction to every agy prompt; --sandbox is
-# defense-in-depth, not the primary guard.
-AGY_PROMPT="REVIEW ONLY — HARD CONSTRAINT. Do NOT modify, create, rename,
-or delete ANY file. Do NOT run any shell command, test, build, git, or
-edit operation. You are a read-only reviewer: your ONLY output is your
-review (grounded prose findings). Touching the filesystem or running
-commands is a contract violation, not help.
+# Reviewer discipline (wiki §调用规范). `--sandbox` is not a write-hard
+# guarantee, so prepend the no-modify/no-fix contract while preserving the
+# wiki's verification-command carve-out.
+AGY_PROMPT="REVIEW ONLY — HARD CONSTRAINT. Do NOT modify, create, rename, or delete any file in the reviewed repo, and do NOT fix findings yourself. You MAY run read-only inspection and verification commands, including tests/builds and exercises with injected defects in a throwaway copy or fixture. Your ONLY output is your grounded prose review.
 
 $FULL_PROMPT"
 
@@ -214,7 +217,7 @@ for LADDER_MODEL in "${AGY_MODELS[@]}"; do
     G_RC=$?
     set -e
 
-    if [ "$G_RC" -ne 0 ] && echo "$RAW" | grep -qE "Authentication required|authentication timed out"; then
+    if [ "$G_RC" -ne 0 ] && grep -qE "Authentication required|authentication timed out" <<<"$RAW"; then
       if [ "$attempt" -lt 4 ]; then
         echo "gemini: warn: agy auth-race on attempt $attempt/4, retrying..." >&2
         [ "${GEMINI_RETRY_WARM_SLEEP:-0}" != "0" ] && sleep "${GEMINI_RETRY_WARM_SLEEP}"
@@ -274,17 +277,19 @@ if [ "$G_RC" -ne 0 ] || agy_log_has_quota; then
   exit 1
 fi
 
-# Success WITH a non-Gemini fallback model → flag that this round has no
-# Google voice (the 3rd voice is agy-served Claude). Emitted ONLY here,
+# Success with any non-Gemini/non-Google model → flag that this round has no
+# Google voice. Gemini/Google is the only family that suppresses the flag;
+# do not enumerate every possible non-Google vendor. Emitted ONLY here,
 # after the round actually succeeds (not before the degrade gates, or it
 # would falsely claim a 3rd voice on a degraded round — codex#1 R1).
 # Word it by cause: quota step-down vs an explicit AGY_MODEL override.
 case "$AGY_RAN_MODEL" in
-  *[Cc]laude*)
+  ""|*[Gg]emini*|*[Gg]oogle*) ;;
+  *)
     if [ "$AGY_STEPPED_DOWN" -eq 1 ]; then
       echo "gemini: note: agy Gemini quota-exhausted → leg stepped down to '$AGY_RAN_MODEL' (separate quota). NO Google voice this round; the 3rd voice is agy-served Claude, distinct from the squad's Opus 4.8 leg." >&2
     else
-      echo "gemini: note: agy ran the explicit AGY_MODEL override '$AGY_RAN_MODEL' (non-Google). NO Google voice this round; the 3rd voice is agy-served Claude." >&2
+      echo "gemini: note: agy ran the explicit AGY_MODEL override '$AGY_RAN_MODEL' (non-Google). NO Google voice this round; the 3rd voice is agy-served '$AGY_RAN_MODEL'." >&2
     fi
     ;;
 esac
