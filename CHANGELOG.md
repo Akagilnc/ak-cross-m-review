@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.19.5 — 2026-07-13
+
+- **S2 round-2 nits + convergence.** Pin the last unpinned table flag
+  string `不用 Claude (credit)` (tests/test_codex_host_substitution.py);
+  note the 5th test (127 → 128) in the 0.3.19.4 entry. S2 converged at
+  round 3 (rounds 2+3 both clear; Opus + grok-4.5 high). This heading
+  backfills the missing 0.3.19.5 entry (grok round-3 low — the
+  one-heading-per-micro convention, same class as PR #32 round-8 F5).
+
 ## 0.3.19.4 — 2026-07-13
 
 - **S2 per-slice review round-1 fixes (2 medium + 2 low + 1 clarity).**
