@@ -497,6 +497,14 @@ def test_step2_contract_keeps_all_invocation_hard_bans():
         assert hard_ban in txt, f"missing Step 2 hard ban: {hard_ban}"
 
 
+def test_step2_keeps_four_element_structure_labels_for_all_three_legs():
+    txt = _step2_raw()
+    for label in ("**入口：**", "**硬禁令：**", "**降级旗：**"):
+        assert txt.count(label) >= 3, (
+            f"Step 2 must keep one {label} label per reviewer leg"
+        )
+
+
 def test_step2_gemini_step_down_is_not_google_family_diversity():
     txt = " ".join(_step2_raw().split())
     assert "NO Google voice this round" in txt

@@ -4,6 +4,24 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.19.12 — 2026-07-13
+
+- **Ship-pre completeness round-1 fixes (PR #33).** Both legs (Opus +
+  grok-4.5; agy quota-dead) returned `gaps` — the delivered mechanisms
+  all fired under injected defects, but two 缺钉 and three unposted
+  process artifacts blocked: (a) `UPSTREAM-CHECKLIST.md` — the sole
+  surviving copy of the deleted agy-ladder archaeology — had zero test
+  coverage; now pinned by
+  `test_upstream_checklist_keeps_agy_archaeology_until_sync`
+  (key sentences, no golden hash — the file is designed to be consumed
+  and deleted by the next sync PR); (b) the Step-2 four-element
+  structure labels (入口/硬禁令/降级旗 ×3 legs) were content-pinned but
+  not structure-pinned; now asserted. Process artifacts posted:
+  S2 pre-refactor inset inventory → issue #27 comment; S3
+  deleted-narrative guardian ledger + wiki-collation evidence → issue
+  #30 comment; S1 test-split 分流清单 → PR #33 comment. 140 → 142
+  tests, all green.
+
 ## 0.3.19.11 — 2026-07-13
 
 - **S5 round-1 review fixes (1 medium + 3 low + 2 P4).** CLAUDE.md's
