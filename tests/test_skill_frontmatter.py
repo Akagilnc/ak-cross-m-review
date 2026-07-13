@@ -26,11 +26,15 @@ FORBIDDEN_DESCRIPTION_PHRASES = (
     "no-peek",
     "Claude",
     "Gemini",
+    "gpt-5.6",
+    "codex",
+    "agy",
     "DONE/PARTIAL",
     "NOT-DONE",
     "CONFORMS/VIOLATES",
     "UNVERIFIED-GAP",
     "P0–P4",
+    "P0-P4",
 )
 
 
@@ -115,7 +119,7 @@ def test_descriptions_preserve_gate_triggers():
     }
     for phrase in ("per-slice", "baseline commit", "ship-pre", "before a pr", "design document"):
         assert phrase in descriptions["main"]
-    for phrase in ("before the correctness gate", "finished change", "design document"):
+    for phrase in ("before the correctness gate", "finished change", "ship-pre", "design document"):
         assert phrase in descriptions["completeness"]
-    for phrase in ("per-slice", "baseline commit", "ship-pre", "before a pr"):
+    for phrase in ("per-slice", "baseline commit", "ship-pre", "before a pr", "after completeness passes"):
         assert phrase in descriptions["correctness"]

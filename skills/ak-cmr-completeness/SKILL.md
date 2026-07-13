@@ -1,6 +1,6 @@
 ---
 name: ak-cmr-completeness
-description: Completeness gate for cross-model review. Use before the correctness gate on a finished change, and when reviewing a design document (ADR/spec).
+description: Completeness gate for cross-model review. Use before the correctness gate on a finished change (ship-pre), and when reviewing a design document (ADR/spec).
 allowed-tools:
   - Bash
   - Read

@@ -9,13 +9,14 @@ All notable changes to this project are documented here. Format follows
 - **S4 (#28, PRD #25): frontmatter description diet — identity +
   triggers only.** The three descriptions (main skill + two gate
   wrappers) shed every mechanism/rubric detail that now has an
-  authoritative home in the body or prompts: 124→30, 98→21, 79→23
-  words (total 301→74, −75% of always-resident context). Trigger
+  authoritative home in the body or prompts: 124→30, 98→22, 79→23
+  words (total 301→75, −75% of always-resident context). Trigger
   semantics preserved (per-slice after a baseline commit / ship-pre
   before a PR / design docs / gate ordering). Main gate:
   red-first **absence assertions** in test_skill_frontmatter.py
-  (`N+1+1`, `two-phase`, `no-peek`, model names, DONE/PARTIAL,
-  CONFORMS/VIOLATES, P0–P4 must never reappear in any description) —
+  (`N+1+1`, `two-phase`, `no-peek`, `Claude`, `Gemini`, `gpt-5.6`,
+  `codex`, `agy`, DONE/PARTIAL, CONFORMS/VIOLATES, P0–P4/P0-P4 must
+  never reappear in any description) —
   the length caps (36/28/30 words) are only the auxiliary net, since a
   short-but-mechanism-laden description would pass a cap. Wrapper
   bodies untouched. 132 → 135 tests, all green.
