@@ -17,7 +17,7 @@ never 走正常设计流程。实例：
   拦不住有测试写权限的 worker（撞红会去改测试；solo 仓 CODEOWNERS
   因作者不可自批而结构性失效）；裁定账本本就活在 prose 的 RECORDED
   标记与 git 史里（`git log -S` 可考古）。
-- 降级 JSON 哨兵（#39，W3 落地）：outage 路径三条冗余通道，零个消费端读第三条。
+- 降级 JSON 哨兵（#39）：outage 路径三条冗余通道，零个消费端读第三条。
 
 本仓是 skill，不是系统：错误便宜、可修、git 可考古。
 
