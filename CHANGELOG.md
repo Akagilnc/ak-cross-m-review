@@ -21,15 +21,15 @@ fossil of the deterministic pipeline is gone.
   the user-adjudication ledger. `UPSTREAM-CHECKLIST.md` deleted unconsumed;
   CLAUDE.md §Wiki sync mapping removed; README / SKILL.md / DOC-MODE.md /
   CONTEXT.md / backend comments / lens prompts re-framed from live wiki
-  authority to lineage. C5 residual: README / TESTING.md effort-rule
-  restatements reduced to pointers at SKILL.md Step 2's Reasoning-effort
-  contract.
+  authority to lineage. C5 residual: README's effort-rule restatement
+  reduced to a pointer at SKILL.md Step 2's Reasoning-effort contract
+  (TESTING.md's restatement had already gone in the 0.3.21.0 rewrite).
 - **Degrade contract simplified (#39).** On a true outage the backends now
   emit NOTHING on stdout — the contract is empty stdout + stderr
   `本轮缺 X` flag + exit≠0 (dry-run: empty stdout, exit 2, flag). The
   synthetic `{"reviewer":X,"findings":[]}` sentinel (a fossil of the
   parser removed in 0.3.9.0) had three redundant channels and zero
-  consumers; 11 printf sites deleted, TDD (assertions first), and the
+  consumers; 12 printf sites deleted, TDD (assertions first), and the
   codex degrade test now pins the stderr flag explicitly.
 
 ### Added
