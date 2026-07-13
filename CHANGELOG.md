@@ -20,7 +20,9 @@ All notable changes to this project are documented here. Format follows
   cells corrected to name the real pointer locations (Opus low).
   Orchestrator adjudication recorded: grok's Only-1-vendor join-marker
   suggestion rejected — the host table's 只在下列点替换 preamble IS the
-  join; mainline stays host-clean per S2's red line. 140 → 141 tests.
+  join; mainline stays host-clean per S2's red line. The coherence pin
+  is an assertion inside the existing host-inset test; suite stays at
+  140.
 
 ## 0.3.19.12 — 2026-07-13
 
