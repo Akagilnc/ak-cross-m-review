@@ -1,9 +1,9 @@
 # Doc mode discipline ②–⑤ (design-text reviews)
 
 > **⚠ RECORDED RULE ②–⑤ — upstreamed to the wiki 2026-07-06 (user
-> decision same day; vault `b5495e8` / `da04ff5` / `e06bcfe`).** Do
-> NOT drop this section on a wiki re-sync (a re-sync from a stale wiki
-> checkout would erase it). The
+> decision same day; vault `b5495e8` / `da04ff5` / `e06bcfe`).** This
+> remains in the user-adjudication ledger; only the user may change or
+> remove it. The
 > round-gate value **10** restores cmr's original founding setting (it
 > had been silently forgotten by later versions).
 

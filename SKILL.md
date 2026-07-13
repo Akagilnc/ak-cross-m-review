@@ -12,20 +12,17 @@ allowed-tools:
   - Skill
 ---
 
-# /ak-cross-m-review — wiki cross-model-review, executable
+# /ak-cross-m-review — standalone cross-model review skill
 
-This skill is a faithful, compact transcription of the **single source
-of truth**:
-`~/WorkSpace/vault/ak-cc-wiki/wiki/concepts/cross-model-review.md`
-(setup / invocation / termination / drift live there; defer + cross-slice
-discipline in `tdd-autonomous-dev.md` §切片内纪律). The wiki frames
-merge / grade / drift / termination as **agent judgment**, not a
-deterministic engine — this file keeps it that way. If this file and the
-wiki ever disagree, the wiki wins; re-sync, do not fork behavior — with
-ONE exception: blocks marked **⚠ RECORDED RULE / RECORDED divergence**
-are deliberate, user-decided divergences (or same-day-upstreamed rules a
-stale wiki checkout may not show yet). Reconcile those against their
-decision record; never silently overwrite them wiki-ward.
+This skill is the standalone authority for cmr in this environment;
+`DOC-MODE.md` is its disclosed file and part of that authority. Its
+origin / lineage is
+`~/WorkSpace/vault/ak-cc-wiki/wiki/concepts/cross-model-review.md`, from
+which it was originally derived (with defer + cross-slice discipline from
+`tdd-autonomous-dev.md` §切片内纪律). There is no automatic sync with the
+wiki since 2026-07-13 (ADR 0002). Blocks marked **⚠ RECORDED RULE /
+RECORDED divergence** are the user-adjudication ledger: only a user
+decision may change them; never alter or remove them silently.
 
 It is **Layer 1** (local, pre-PR). It does not replace Layer 3
 (`pr-review-loop`). It does not commit / push / open a PR — the caller
@@ -327,14 +324,14 @@ the hung instance's own pid tree, never global pkill.
   backend 会在 stderr 标 `NO Google voice this round`；该轮第三读是
   agy-served Claude（同 Anthropic 家族），合并判定不得计为 Google-family
   diversity，round report 必须带旗。
-  **⚠ RECORDED divergence（新建）— agy warm+retry：** 相对 wiki“agy 1.0.8 无需 warm+retry”的结论，本 skill 仍保留每次预热 + 共 4 次尝试；sync 时不得删除。
+  **⚠ RECORDED divergence（新建）— agy warm+retry：** 相对 wiki“agy 1.0.8 无需 warm+retry”的历史结论，本 skill 仍保留每次预热 + 共 4 次尝试；此用户裁定存续，仅用户可改。
 - **Claude reviewer** — **入口：** only via the main session's `Agent`
   tool with the full-diff prompt and explicit model = **`opus` (Claude
   Opus 4.8)**; it never inherits the session model. **硬禁令：** Never use
   headless `claude -p` for this leg. **降级旗：** `本轮缺 claude` means the
   orchestrator could not dispatch or obtain a result from the Agent leg;
   report the flag rather than silently shrinking the squad.
-  **⚠ RECORDED RULE（存续）— Fable 禁用：** cmr 不在任何腿使用 Fable；Claude 腿显式固定为 `opus`（Claude Opus 4.8）。这有意不同于 wiki 的最强可用 Claude 规则；sync 时不得重新加入 Fable。
+  **⚠ RECORDED RULE（存续）— Fable 禁用：** cmr 不在任何腿使用 Fable；Claude 腿显式固定为 `opus`（Claude Opus 4.8）。这有意不同于 wiki 的最强可用 Claude 历史规则；此用户裁定存续，仅用户可重新引入 Fable。
 
 ### 待补守护（暂不得删）
 
@@ -433,8 +430,8 @@ zero-finding concur. Then, as judgment:
   single-reviewer finding a severity floor boost (only up). Two
   independent axes — do not read concurrence alone.
 
-The wiki is explicit that any numeric thresholds are proto-calibrated
-constants, **not portable**. The portable rules are exactly the two
+This skill treats any numeric thresholds as proto-calibrated constants,
+**not portable**. The portable rules are exactly the two
 sentences above. Do not re-import a deterministic merge engine.
 
 Present ≤30 lines: total + by-severity; enumerate only P0/P1 (id,
@@ -638,7 +635,7 @@ looks* — and only full re-review makes the drift triple measurable. It is
 also the entry-scope floor that must hold *before* Step 6's Coverage-drift
 note (a late-convergence optimization) even applies.
 
-**Fix-loop discipline (wiki §修复).** The wiki's ground truth: "findings
+**Fix-loop discipline (wiki §修复).** The recorded failure basis is: "findings
 are stable, the fix loop is the bottleneck — agent fixes by feel, breaks
 neighbors, skips repro / the regression test." So the fix step is gated.
 
@@ -658,7 +655,7 @@ neighbors, skips repro / the regression test." So the fix step is gated.
 | Fix kind | Route |
 |---|---|
 | **Mechanical** — see the hard bar below; **must be explicitly declared + a one-line justification of why it qualifies** | edit directly, no further protocol |
-| **Non-trivial** (behavioral / runtime / may-touch-neighbors / not-fully-understood / **anything not explicitly declared mechanical**) | the **first tool call MUST invoke the `/diagnosing-bugs` skill** (via the `Skill` tool) — not first grep, not first guess, not first write a patch, not first read a file. /diagnosing-bugs's 6 phases (feedback loop → reproduce → ranked falsifiable hypotheses → one-probe-at-a-time instrument → fix + regression test → cleanup, with a HITL fallback) are an iterative, possibly human-in-the-loop investigation the **main session** drives — it does not collapse into a single fixer-subagent return. Canonical: wiki §修复 + `matt-pocock-skills#/diagnosing-bugs`. |
+| **Non-trivial** (behavioral / runtime / may-touch-neighbors / not-fully-understood / **anything not explicitly declared mechanical**) | the **first tool call MUST invoke the `/diagnosing-bugs` skill** (via the `Skill` tool) — not first grep, not first guess, not first write a patch, not first read a file. /diagnosing-bugs's 6 phases (feedback loop → reproduce → ranked falsifiable hypotheses → one-probe-at-a-time instrument → fix + regression test → cleanup, with a HITL fallback) are an iterative, possibly human-in-the-loop investigation the **main session** drives — it does not collapse into a single fixer-subagent return. Historical lineage: wiki §修复 + `matt-pocock-skills#/diagnosing-bugs`. |
 
 > **The mechanical bar is HIGH — claim it rarely.** Observed reality:
 > almost everything gets waved through as "mechanical," and those
@@ -713,9 +710,9 @@ critical/high→medium).
 ## Doc mode discipline (design-text reviews — the additive-runaway defense)
 
 > **⚠ RECORDED RULE ① — upstreamed to the wiki 2026-07-06 (user
-> decision same day; vault `b5495e8` / `da04ff5` / `e06bcfe`).** Do
-> NOT drop this section on a wiki re-sync (a re-sync from a stale wiki
-> checkout would erase it).
+> decision same day; vault `b5495e8` / `da04ff5` / `e06bcfe`).** This
+> remains in the user-adjudication ledger; only the user may change or
+> remove it.
 
 Applies **ONLY when the thing under review is a design text** (ADR /
 spec / contract / plan — the Step 0 doc-mode bullet, completeness lens)

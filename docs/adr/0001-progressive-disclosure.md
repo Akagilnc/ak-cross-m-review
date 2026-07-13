@@ -5,6 +5,8 @@
 Accepted（2026-07-13）
 
 > 2026-07-13（同日，#38）：本 ADR 描述的测试侧保护（golden hash ×2、anti-dual-source / shared-rationale-survival 断言、存在性/关键句测试）已按用户裁定整体移除；§Golden-hash 迁移规则与 Consequences 中的相关描述自此为历史记录，不再现役。规则留痕改由 prose 内 RECORDED 标记 + git 史承担（见 ADR 0003，issue #41）。
+>
+> 2026-07-13（同日，#36/ADR 0002）：§Wiki sync 待办作废——wiki 同步已整体取消。
 
 ## Context
 

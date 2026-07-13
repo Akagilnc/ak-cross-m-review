@@ -33,8 +33,8 @@ Or, if pytest is on PATH: `pytest`.
 Doc-consistency tests were removed by adjudication on 2026-07-13 (issue #38).
 Rule provenance lives in prose `RECORDED` markers and git history, not pytest.
 
-Merge / grade / drift / termination are **agent judgment** per the wiki
-(`cross-model-review.md`), not deterministic code. The full N+1+1 reviewer
+Merge / grade / drift / termination are **agent judgment** per `SKILL.md`,
+not deterministic code. The full N+1+1 reviewer
 loop is exercised by running the skill itself against a real diff.
 
 ## Conventions
