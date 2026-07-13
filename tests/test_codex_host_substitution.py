@@ -29,6 +29,9 @@ def test_codex_host_substitution_table_covers_dispatch_and_claude_call():
     assert "`claude -p`" in sec and "`--model claude-opus-4-8`" in sec
     assert "无 `--effort max`" in sec
     assert "reviewer 不带 `--tools \"\"`" in sec
+    assert "file/env" in sec
+    assert "PROMPT_FILE" in sec
+    assert "wiki hypothesis" in sec and "未在本 skill 实测" in sec
 
 
 def test_codex_host_substitution_table_covers_degradation_rows():
@@ -36,12 +39,22 @@ def test_codex_host_substitution_table_covers_degradation_rows():
     assert "Claude down" in sec and "Codex + Gemini" in sec
     assert "Gemini down" in sec and "Codex + Claude" in sec
     assert "Claude + Gemini both down" in sec and "Codex only" in sec
+    assert "本轮缺 claude" in sec
+    assert "本轮缺 gemini" in sec
+    assert "本轮无 outside voice" in sec
+
+
+def test_codex_host_substitution_table_pins_fixed_two_leg_scenario():
+    sec = _table_section()
+    assert "固定双腿场景" in sec
+    assert "completeness (Step 5) 仍含 Claude 腿" in sec
 
 
 def test_codex_solo_exception_is_scoped_away_from_completeness():
     sec = _table_section()
     assert "per-slice / correctness (Step 6)" in sec
     assert "codex solo" in sec
+    assert "单腿 codex (agy down)，无 cross-vendor，质量降级" in sec
     assert "不适用于 Step 5 completeness" in sec
 
 

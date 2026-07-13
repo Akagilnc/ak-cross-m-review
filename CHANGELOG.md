@@ -4,6 +4,25 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.19.4 — 2026-07-13
+
+- **S2 per-slice review round-1 fixes (2 medium + 2 low + 1 clarity).**
+  The consolidation had dropped two load-bearing nuances that existed
+  nowhere else in the tree (both restored into the Claude-leg table
+  row): the **file/env auth-check ban** (keychain/GUI false negatives —
+  live-smoke is the only accepted probe) and the **concrete review
+  invocation** (`cat "$PROMPT_FILE" | claude -p --model claude-opus-4-8
+  --output-format json --disable-slash-commands`), preserving the
+  smoke-has-`--tools ""` / review-does-not asymmetry. The codex-leg row
+  regains its (wiki hypothesis，未在本 skill 实测) hedge — the native-
+  subagent path was never field-verified. Test suite hardened: Row 6's
+  unique tokens, the three degrade flag strings, the codex-solo flag,
+  and the two restored phrases are all pinned (9 new assertions).
+  Squad note: Opus cleared the dropped invocation as non-load-bearing;
+  the grok-4.5 leg flagged both drops as medium — orchestrator
+  adjudicated with grok after source verification (HEAD~1 had them,
+  tree had zero occurrences, no other home in repo).
+
 ## 0.3.19.3 — 2026-07-13
 
 - **S2 (#27, PRD #25): main=Codex host substitution table.** All
