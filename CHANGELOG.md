@@ -17,7 +17,8 @@ All notable changes to this project are documented here. Format follows
   regains its (wiki hypothesis，未在本 skill 实测) hedge — the native-
   subagent path was never field-verified. Test suite hardened: Row 6's
   unique tokens, the three degrade flag strings, the codex-solo flag,
-  and the two restored phrases are all pinned (9 new assertions).
+  and the two restored phrases are all pinned (9 new assertions); a
+  5th test was added to the suite, taking the total from 127 → 128.
   Squad note: Opus cleared the dropped invocation as non-load-bearing;
   the grok-4.5 leg flagged both drops as medium — orchestrator
   adjudicated with grok after source verification (HEAD~1 had them,

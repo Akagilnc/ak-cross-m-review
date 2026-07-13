@@ -47,6 +47,7 @@ def test_codex_host_substitution_table_covers_degradation_rows():
 def test_codex_host_substitution_table_pins_fixed_two_leg_scenario():
     sec = _table_section()
     assert "固定双腿场景" in sec
+    assert "不用 Claude (credit)" in sec, "fixed two-leg flag must stay pinned"
     assert "completeness (Step 5) 仍含 Claude 腿" in sec
 
 
