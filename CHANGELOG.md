@@ -4,6 +4,27 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.19.3 — 2026-07-13
+
+- **S2 (#27, PRD #25): main=Codex host substitution table.** All
+  main=Codex point-differences, previously scattered as parenthetical
+  insets across Step 2/3/5, consolidate into one `## main=Codex
+  宿主替换表` section (placed before Step 2 — a Codex-host agent reads
+  it once on entry, then walks the same main=Claude mainline): codex leg
+  → native subagent (ship-pre top level only; per-slice stays `codex
+  exec`), Claude leg → live-smoke probe then `claude -p` (pin
+  `--model claude-opus-4-8`, no `--effort max`, reviewer without
+  `--tools ""`), the three Codex-host degrade rows, the fixed-2-vendor
+  scenarios, and the codex-solo positive-termination exception —
+  verbatim carrying its "不适用于 Step 5 completeness" exclusion.
+  Mainline Step 2/3/5 now read clean as main=Claude; old inset signature
+  phrases asserted absent. The Fable RECORDED RULE block stays mainline
+  (host-independent, not a substitution point). New red-first suite
+  `tests/test_codex_host_substitution.py` (4 tests: table existence,
+  codex-solo scope + exclusion, degrade rows, inset absence). SKILL.md
+  876 → 842 lines (net −34: 能删大于能加); doc-mode residual hash
+  unchanged (`f0c27d0e…`). 123 → 127 tests, all green; selftest green.
+
 ## 0.3.19.2 — 2026-07-13
 
 - **Owner directive: 「能删大于能加」 reviewer principle added to both

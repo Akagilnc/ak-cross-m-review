@@ -144,7 +144,7 @@ Pre-flight gates (wiki §操作规程 / §边界):
 ## Step 1 — setup: who runs it decides the squad + the N table
 
 **The squad depends on the trigger point** (wiki §谁跑 cmr, 2026-06-18 —
-Claude is concentrated to ship-pre because `claude -p` credit is too
+Claude is concentrated to ship-pre because Claude credit is too
 tight to run Claude on the high-frequency per-slice gate):
 
 - **per-slice** (after each slice's baseline commit — within-slice lens):
@@ -156,8 +156,8 @@ tight to run Claude on the high-frequency per-slice gate):
   (N+1)/(N+1) + flag `per-slice 不用 Claude (credit)`.
 - **ship-pre** (after all slices done — cross-slice cumulative-diff
   lens): **+Claude → 1+1+1 (N+1+1).** The **main session** orchestrates;
-  the Claude leg runs via the **`Agent` subagent** (cheap, never
-  `claude -p`). codex effort defaults to **`medium`**, the same as
+  the Claude leg runs via the **`Agent` subagent**. codex effort defaults
+  to **`medium`**, the same as
   per-slice, overridable via `CMR_CODEX_EFFORT` (full contract in the
   §调用规范 callout below — the single source of truth). This is the
   two-phase dispatch (Step 2).
@@ -217,9 +217,23 @@ it into review).
 > (2026-06-19: the old main-session-self-run-small-slices exception is
 > removed), so per-slice review **always** runs inside that subagent — a
 > **nested layer** — as `N codex + agy` (N+1) with **every leg a Bash
-> CLI** (nested Agent / native-subagent spawning is forbidden on both
-> hosts). The native codex-subagent path exists **only for ship-pre** (the
-> main-session top level). See Step 1 / wiki §谁跑 cmr.
+> CLI** (nested reviewer-subagent spawning is forbidden). See Step 1 /
+> wiki §谁跑 cmr.
+
+## main=Codex 宿主替换表
+
+Codex 宿主进场先读本节；之后走同一条按 main=Claude 写成的主干，只在
+下列点替换：
+
+| 替换点 | main=Codex 执行 |
+|---|---|
+| codex reviewer 腿 | **ship-pre 顶层**改用 Codex **native subagent**，逐腿设置 `model` / `model_reasoning_effort` / `developer_instructions`；per-slice 位于禁止嵌套派生的 slice subagent 内，仍走 `backends/codex-review.sh` 的 **`codex exec`**。 |
+| Claude reviewer 腿 | 先跑 **live-smoke**：`printf 'Return exactly: CLAUDE_OK\n' \| claude -p --output-format json --disable-slash-commands --tools ""`，仅 `.result == "CLAUDE_OK"` 算可用；再以 `claude -p` review。review 调用须 pin **`--model claude-opus-4-8`**、**无 `--effort max`**、**reviewer 不带 `--tools ""`**（保留 Read/Grep/Glob）。 |
+| Claude down | Codex + Gemini；flag `本轮缺 claude`。 |
+| Gemini down | Codex + Claude；flag `本轮缺 gemini`。 |
+| Claude + Gemini both down | Codex only；flag `本轮无 outside voice`。 |
+| 固定双腿场景 | per-slice / correctness (Step 6) 固定为 `codex + agy`，flag `不用 Claude (credit)`；completeness (Step 5) 仍含 Claude 腿。 |
+| codex-solo 正向终止例外 | main=Codex 的 per-slice / correctness (Step 6) 遇 agy down 时，**codex solo** 可正向终止并 flag `单腿 codex (agy down)，无 cross-vendor，质量降级`；**不适用于 Step 5 completeness**、main=Claude，或仍有其他 cross-family vendor 可用的场景。 |
 
 ## Step 2 — two-phase dispatch (wiki §并行启动, 2026-05-18 顺机理 reorder)
 
@@ -278,10 +292,6 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
 >   default and **cannot be dialed up** — the `Agent` tool exposes no
 >   effort param, and `ultrathink` in a subagent prompt is inert literal
 >   text (claude-code#25669).
-> - **Claude `claude -p`** (only main=Codex completeness one-pass, spine Step 5, now) = default
->   effort. **`--effort max` was RETRACTED** (2026-06-18): it does give
->   ≈5× depth, but `claude -p` billing on isolated/capped credit (the
->   6/15 policy is paused but may restart) burns 5× tokens too fast.
 > - **agy / Gemini** = 3.5 Flash, no knob.
 >
 > Codex is explicitly pinned rather than inheriting host config.
@@ -302,15 +312,6 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   can never differ from `medium`. `--selftest` guards the form. Never
   `codex exec "$(...)"` (hangs → pkill), never `-C <dir>` (wrong
   workdir), never `codex review --base B "PROMPT"` (can't pass both).
-  *(main=Codex host only: the codex leg runs as a Codex **native
-  subagent** with per-agent `model`/`model_reasoning_effort`/
-  `developer_instructions`, NOT `codex exec` — but this native-subagent
-  path is **ship-pre only** (top level); per-slice slices are always
-  implemented by a clean-context subagent (nested, 2026-06-19), where
-  subagent-spawning is forbidden, so the per-slice codex leg always falls
-  back to `codex exec`. Wiki §主=Codex codex reviewer 腿走原生
-  subagent, hypothesis. This skill executes main=Claude, where the codex
-  leg is always `codex exec` via this backend.)*
 - **Gemini** — only via `backends/gemini.sh`, which calls
   `agy --sandbox --print '' <<<prompt` (Antigravity CLI, the in-kind
   replacement after `gemini` CLI's 2026-06-18 EOL; locked to 3.5 Flash).
@@ -394,15 +395,11 @@ Invocation forms (wiki §调用规范, from `codex-bot-conventions`):
   > on a wiki re-sync** (same standing-divergence handling as the agy
   > warm+retry). Revisit only if the user changes the decision.
 
-  Never the headless `claude -p` path **for the Claude reviewer in this
-  (main = Claude) flow** (rate-limit + 25min timeout footgun, plus the
+  Never the headless `claude -p` path for the Claude reviewer (rate-limit
+  + 25min timeout footgun, plus the
   2026-05-17 capability correction: subagents cannot spawn subagents, so
   here the Claude reviewer MUST be spawned by the main session via
-  `Agent`). (Exception — a *different host*: when the main session is
-  **Codex**, Step 3, it has no `Agent` tool, so there the Claude reviewer
-  legitimately runs via `claude -p`; and the Step 3 Claude-auth
-  *live-smoke* is a `claude -p` probe too — both are outside this ban,
-  which is only about dispatching the reviewer in the main=Claude flow.)
+  `Agent`).
 - Always `2>&1`. Run from the repo root, no `-C`. The backends
   self-time-out on an **idle/hang** (`backends/codex-review.sh`:
   `CMR_CODEX_TIMEOUT` = seconds of NO output before kill, default 900s =
@@ -491,35 +488,6 @@ v3 requires all 3 vendors. If one is unavailable, run with the rest and
 > v2.1.170+) no longer apply — there is no Fable leg to fall back FROM.
 > Opus 4.8 is simply the Claude leg, not a degradation.
 
-**If the main session is Codex** (not the wiki's primary scenario, but
-symmetric — wiki §降级链 "主 session = Codex"):
-
-| Down (main = Codex) | Continue with | Flag |
-|---|---|---|
-| Claude (verify by live-smoke first, below) | Codex + Gemini | `本轮缺 claude` |
-| Gemini | Codex + Claude | `本轮缺 gemini` |
-| Claude + Gemini both | Codex only (fallback, no outside voice) | `本轮无 outside voice` |
-
-When main = Codex, **never** check Claude auth via file/env (false
-negatives on keychain / GUI logins) — use a live smoke:
-`printf 'Return exactly: CLAUDE_OK\n' | claude -p --output-format json
---disable-slash-commands --tools ""` (`.result == "CLAUDE_OK"` → up,
-priority 1; failure / timeout → degrade). After the smoke passes, the
-actual Claude **review** call (the main=Codex completeness one-pass, spine Step 5) is
-`cat "$PROMPT_FILE" | claude -p --model claude-opus-4-8 --output-format
-json --disable-slash-commands` — note three things: **(a)** pin
-`--model claude-opus-4-8` (the Claude leg; cmr does not use Fable — Step 2
-recorded rule) so a default-model drift can't
-quietly downgrade the reviewer; **(b) NO `--effort max`** — it was
-retracted (it gives ≈5× depth but `claude -p` billing on isolated/capped
-credit burns too fast); **(c) NO `--tools ""`** — the tool-kill is ONLY
-for the auth smoke; a reviewer must keep Read/Grep/Glob for grounded
-review (one agy over-step in hundreds of reviews doesn't justify gutting
-the grounding axis for all three — wiki §调用规范). The outside-voice
-reviewer always stays the strongest in range (main = Claude → codex
-`gpt-5.6-sol`; main = Codex → current strongest Claude or Gemini), never
-dev-tier spark / 5.3-codex / sonnet. See wiki §降级链.
-
 ## Step 4 — merge + grade (agent judgment, not a deterministic engine)
 
 Collect every reviewer's review by **reading each CLI's stdout directly**
@@ -602,17 +570,15 @@ requires by squad shape:
 - ship-pre / main=Claude default: **3/3 concur** (all reviewers approve).
 - Upgraded 1+N+1, 3 vendors present: **(N+2)/(N+2) concur**.
 - One vendor degraded (1+1+1 → 2 reviewers): **2/2 concur + flag**.
-- **By-design 2-vendor (no Claude)**: **per-slice (both hosts)** and the
-  **main=Codex correctness (spine Step 6)** are fixed `codex + agy` (Claude dropped for credit,
-  Step 1 / wiki §谁跑 cmr) → **(N+1)/(N+1) concur + flag `不用 Claude
+- **By-design 2-vendor (no Claude)**: **per-slice** is fixed `codex + agy`
+  (Claude dropped for credit, Step 1 / wiki §谁跑 cmr) → **(N+1)/(N+1) concur + flag `不用 Claude
   (credit)`**, scored the same as a "missing 1 vendor" round. (ship-pre
-  completeness (Step 5) and main=Claude correctness (Step 6) are still 1+1+1, not this row.)
+  completeness (Step 5) and correctness (Step 6) are still 1+1+1, not this row.)
 - Upgraded-state single-vendor loss (1+N+1):
   - Claude **or** Gemini missing → N+1 reviewers: **(N+1)/(N+1) concur + flag**.
   - **All codex missing** → falls back to 1+0+1 = 2 reviewers (Claude + Gemini): **2/2 concur + flag `升级态缺 codex，已退化`**.
   - codex partial-instance loss (N→N′): **(N′+2)/(N′+2) concur + flag `codex 实例数 N→N′`**.
-- Only 1 vendor ran (no outside voice — e.g. codex+gemini both down → Claude only; or claude+gemini both down → codex only): **NOT positive** — no cross-family check; needs human review or wait for vendor recovery.
-  - > **Explicit exception: main=Codex per-slice / correctness (Step 6) + agy down → codex solo is POSITIVE, don't block.** Those scenarios are already Claude-less (`codex + agy`), and agy's small quota frequently 429s; when agy is the only one left and it drops, run **codex solo**, count it as positive termination, and flag `单腿 codex (agy down)，无 cross-vendor，质量降级` (optionally re-run when agy recovers, but do not stall the dev loop — waiting on agy isn't worth it). **This relaxation is ONLY here** — not for main=Claude / completeness (Step 5) / or when another cross-family vendor is still available.
+- Only 1 vendor ran (no outside voice — e.g. codex+gemini both down → Claude only): **NOT positive** — no cross-family check; needs human review or wait for vendor recovery.
 
 **Hard stop (do not continue):** bug count not converging → the
 implementation method or architecture needs rework, not another patch.
