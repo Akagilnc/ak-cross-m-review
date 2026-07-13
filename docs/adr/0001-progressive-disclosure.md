@@ -6,7 +6,13 @@ Accepted（2026-07-13）
 
 > 2026-07-13（同日，#38）：本 ADR 描述的测试侧保护（golden hash ×2、anti-dual-source / shared-rationale-survival 断言、存在性/关键句测试）已按用户裁定整体移除；§Golden-hash 迁移规则与 Consequences 中的相关描述自此为历史记录，不再现役。规则留痕改由 prose 内 RECORDED 标记 + git 史承担（见 ADR 0003，issue #41）。
 >
-> 2026-07-13（同日，#36/ADR 0002）：§Wiki sync 待办作废——wiki 同步已整体取消。
+> 2026-07-13（同日，#36/ADR 0002）：wiki 同步整体取消，本 ADR
+> 全部同步耦合条款自此为历史记录、不再现役：Decision §3 的「考古内容上游化进
+> UPSTREAM-CHECKLIST.md」路径（该文件已删除，未经消费）；Decision §5 的
+> wiki-wins / RECORDED 契约表述与「SKILL.md 头部保持原样」约束（头部已按
+> ADR 0002 改写为独立权威）；§Wiki sync 待办全节；Consequences 末条「wiki
+> 同步者……转写并集」。Decision §3 的「不得另建 BACKENDS.md
+> 作为第二层规则源」半句不属同步耦合，仍现役。
 
 ## Context
 

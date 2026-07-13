@@ -27,7 +27,7 @@ never 走正常设计流程。实例：
    冻结、frontmatter 结构断言类测试。规则留痕 = prose 内 RECORDED
    标记 + commit message + git 史。
 2. **新增防御 / 审计 / 校验机制必须先答两问：事故在哪？消费端在哪？**
-   二者皆无 → 不得引入。既有机制经同问不过 → 删除。
+   任一缺失 → 不得引入。既有机制经同问任一不过 → 删除。
 3. **代码行为测试不受影响。** backend subprocess 行为测试与
    `codex-review.sh --selftest` 存续——它们测可执行代码、有真实事故史
    （D1/D2 调用形式四轮回归），按 TDD 继续。

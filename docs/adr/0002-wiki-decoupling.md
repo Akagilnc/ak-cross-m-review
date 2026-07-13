@@ -30,4 +30,7 @@ Accepted（2026-07-13）
 
 - 对规则文档的修改在本仓内裁定，不再等待或追随 wiki 同步。
 - 规则 provenance 由 prose 内 RECORDED 标记与 git 历史共同承担。
-- ADR 0001 的同步相关条款（§Wiki sync 待办）自此作废；其余渐进披露边界不变。
+- ADR 0001 的同步耦合条款（Decision §3 上游化路径、Decision §5 wiki-wins
+  与头部冻结约束、§Wiki sync 待办、Consequences 的 wiki
+  同步者条）自此作废为历史记录；其余渐进披露边界（宿主差异不外置、①
+  留主干、不得另建 BACKENDS.md、description 只留 identity+triggers）不变。

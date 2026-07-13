@@ -573,7 +573,7 @@ not converging / drift hit → STOP, architectural/implementation
 > anti-pattern #3); it just picks the low-hanging fruit you can catch
 > yourself instead of paying a whole round for it. **Mechanical fixes do
 > it too** (esp. the same-type check — a typo'd label is usually typo'd
-> elsewhere). Canonical: tdd-autonomous-dev §切片内纪律.
+> elsewhere).
 
 **Every round = full re-review (NOT a "did last round's P0/P1 close?"
 spot-check)** (wiki §每轮 review = 全量复审). From round 2 on, the reviewer
