@@ -1,8 +1,7 @@
 # Testing
 
-100% test coverage is the key to great vibe coding. Tests let you move
-fast, trust your instincts, and ship with confidence — without them,
-vibe coding is just yolo coding. With tests, it's a superpower.
+The surviving suite has two layers. Both cover executable behavior; prose
+rules are tracked in prose and git history, not pinned by pytest.
 
 ## Framework
 
@@ -22,43 +21,30 @@ Or, if pytest is on PATH: `pytest`.
 
 ## Test layers
 
-Two complementary layers, both run in CI (`.github/workflows/test.yml`):
+1. **pytest subprocess behavioral tests** — `tests/test_codex_review.py` and
+   `tests/test_gemini.py` execute `backends/codex-review.sh` and
+   `backends/gemini.sh`. They stub `codex` / `agy` on PATH, so they exercise
+   backend behavior without real reviewer CLI calls.
+2. **codex-review.sh invocation-form guard** —
+   `bash backends/codex-review.sh --selftest` validates the invocation form
+   without calling codex. Pytest also drives this selftest with supported
+   environment-variable combinations.
 
-1. **Unit tests (`tests/`)** — pytest. `test_codex_review.py` /
-   `test_gemini.py` are subprocess regression tests for the backends'
-   degrade-vs-passthrough gate: a successful reviewer run (exit 0) — even
-   pure **prose** with no JSON — must pass through verbatim (exit 0), and
-   only a true outage (empty output, a non-zero CLI exit, agy auth-race /
-   quota) degrades with "本轮缺 X". They stub `codex` / `agy` on PATH —
-   real assertions, no real CLI calls. (There is no `extract_json` parser
-   to test — it was removed in 0.3.9.0; reviewers return prose the
-   orchestrator reads, not sentinel-JSON.)
-2. **codex-review.sh selftest** — `bash backends/codex-review.sh
-   --selftest` validates the pinned invocation **form** (no `-C`, stdin
-   pipe, `--model gpt-5.6-sol`, a `-c model_reasoning_effort=…` pin
-   interpolated from `${CMR_CODEX_EFFORT}` — the form using whatever effort
-   is in effect, NOT a fixed value, `2>&1`); it is the regression guard for
-   the codex footguns the wiki lists as hard rules. The effort default and
-   override contract live in the SKILL.md §调用规范 callout, the single
-   source of truth — the selftest checks the form, not the value. Never
-   calls codex.
+Doc-consistency tests were removed by adjudication on 2026-07-13 (issue #38).
+Rule provenance lives in prose `RECORDED` markers and git history, not pytest.
 
 Merge / grade / drift / termination are **agent judgment** per the wiki
-(`cross-model-review.md`), not deterministic code — there is no
-`merge.py` / `drift.py` to unit-test (removed in 0.2.0.0). The full
-N+1+1 reviewer loop is exercised by running the skill itself against a
-real diff (it shells out to `claude` / `codex` / `agy` — the last is the
-post-EOL replacement for the original `gemini` CLI; see SKILL.md Step 2
-invocation forms).
+(`cross-model-review.md`), not deterministic code. The full N+1+1 reviewer
+loop is exercised by running the skill itself against a real diff.
 
 ## Conventions
 
 - Test files: `tests/test_<module>.py`; functions `test_<behavior>`.
 - Assert real computed values, never `assert x is not None` / existence
   smoke checks.
-- Mock nothing in the core tests — stub the reviewer CLIs (`codex` /
-  `agy`) on PATH and assert the backend's exact stdout / exit / flags.
-- New function → add a `tests/test_*.py` case. Bug fix → regression test.
-  New conditional branch → test both paths.
+- Mock nothing in the core tests — stub the reviewer CLIs (`codex` / `agy`)
+  on PATH and assert the backend's exact stdout / exit / flags.
+- New executable function → add a `tests/test_*.py` case. Executable bug fix
+  → regression test. New executable conditional branch → test both paths.
 - Never import secrets/API keys in tests.
 - Never commit code that makes the suite or the selftest battery red.
