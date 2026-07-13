@@ -263,8 +263,8 @@ fi
 # We deliberately do NOT run extract_json / require a sentinel-JSON shape.
 # Gemini's review is prose; the old sentinel gate treated any prose as
 # "no findings JSON" and degraded it to 本轮缺 gemini — dropping a real
-# review over format (the divergence from the wiki, which returns review
-# text the agent reads). The degrade-reason scan still reads ONLY agy's
+# review over format (prose-review is this skill's contract: review text
+# the agent reads). The degrade-reason scan still reads ONLY agy's
 # --log-file (agy_fatal_reason), never $RAW, so a review body that quotes
 # the diff's quota/429 code cannot mis-attribute a reason.
 if [ "$G_RC" -ne 0 ] || agy_log_has_quota; then

@@ -343,11 +343,12 @@ the hung instance's own pid tree, never global pkill.
 - Claude reviewer 必须由有 `Agent` 能力的 main session 派发；subagent
   不能再嵌套派发该 Agent 腿。
 
-Findings channel: reviewers return their review as **prose** (the wiki
-model — §「.result 是 review 文本」: a reviewer returns review text and
-the orchestrator, an agent, reads it with judgment). There is **no
-sentinel-JSON wrapper and no `extract_json` parse** — that gate was a
-divergence from the wiki: it demanded the strongest reviewer's prose be a
+Findings channel: reviewers return their review as **prose** (this
+skill's contract; lineage: wiki §「.result 是 review 文本」— a reviewer
+returns review text and the orchestrator, an agent, reads it with
+judgment). There is **no sentinel-JSON wrapper and no `extract_json`
+parse** — that gate was over-formalization (removed 0.3.9.0): it
+demanded the strongest reviewer's prose be a
 JSON shape, and when codex/agy naturally answered in prose it was dropped
 as "本轮缺 X", indistinguishable from an outage (the best reviewer
 repeatedly lost over format). `prompts/cmr-reviewer.md` asks for grounded
