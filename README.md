@@ -124,7 +124,7 @@ stop, not a round counter.
 ## What ships in this repo
 
 ```
-SKILL.md                  the engine — the executable wiki transcription
+SKILL.md                  the engine — executable wiki transcription (union with DOC-MODE.md; see CLAUDE.md §Wiki sync mapping)
 DOC-MODE.md               doc-mode ②–⑤ discipline (SKILL.md Step 0 requires
                           Read before doc-mode dispatch)
 skills/ak-cmr-completeness/  the completeness gate (thin named wrapper →
