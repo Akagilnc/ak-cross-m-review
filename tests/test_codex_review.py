@@ -500,6 +500,8 @@ def test_step2_contract_keeps_all_invocation_hard_bans():
 def test_step2_gemini_step_down_is_not_google_family_diversity():
     txt = " ".join(_step2_raw().split())
     assert "NO Google voice this round" in txt
+    assert "Google-family" in txt, "missing Step 2 Google-family diversity exclusion"
+    assert "round report 必须带旗" in txt, "missing Step 2 round report flag requirement"
 
 
 def test_step2_has_single_pending_guard_section_for_unguarded_behavior():
