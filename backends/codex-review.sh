@@ -49,7 +49,7 @@
 #
 # Invocation:
 #   <stdin: full review prompt incl. diff> | codex-review.sh <mode> [<label>]
-#     mode  : doc | code   (review lens; echoed in the degrade payload)
+#     mode  : doc | code   (review lens)
 #     label : optional diagnostic tag (e.g. "section-2of3")
 #
 #   CMR_CODEX_MODEL   override review model (default: gpt-5.6-sol). Any
@@ -71,19 +71,19 @@
 #                     the same day (vault b5495e8; historical note). Matches
 #                     agy --print-timeout 15m).
 #   CMR_CODEX_IDLE_POLL  watchdog poll interval seconds (default 5).
-#   CMR_DRY_RUN=1     print the exact command that WOULD run, do not call
-#                     codex, emit a dry_run payload, and exit 2. This is
-#                     never a review leg; --selftest is a separate path.
+#   CMR_DRY_RUN=1     print the exact command that WOULD run to stderr, do
+#                     not call codex, leave stdout empty, and exit 2. This
+#                     is never a review leg; --selftest is a separate path.
 #
 # On success we emit codex's FINAL MESSAGE (the review — prose or JSON,
 # from the `-o` file) to stdout; the orchestrator reads it with judgment
 # (the recorded prose-review contract). Diagnostics to stderr. On timeout /
-# non-zero codex exit (auth/quota/crash) / an empty final message:
-# synthetic empty-findings JSON + exit 1 so the orchestrator degrades and
-# flags "本轮缺 codex". The script does NOT parse findings or demand a
-# sentinel-JSON format — that gate dropped codex's prose review as a
-# phantom outage (removed in 0.3.9.0). It also does NOT tail-parse the
-# verbose stdout — codex's own `-o` gives the clean last message directly.
+# non-zero codex exit (auth/quota/crash) / an empty final message: empty
+# stdout + exit 1 + a stderr "本轮缺 codex" flag. The script does NOT parse
+# findings or demand a sentinel-JSON format — that gate dropped codex's
+# prose review as a phantom outage (removed in 0.3.9.0). It also does NOT
+# tail-parse the verbose stdout — codex's own `-o` gives the clean last
+# message directly.
 
 set -euo pipefail
 
@@ -95,7 +95,6 @@ if [ "${1:-}" != "--selftest" ]; then
     *)
       MODE="code"
       echo "codex-review: invalid MODE (expected doc|code) — degrade, flag '本轮缺 codex'" >&2
-      printf '{"reviewer":"codex","mode":"code","findings":[]}\n'
       exit 1
       ;;
   esac
@@ -118,12 +117,10 @@ CMR_CODEX_EFFORT="${CMR_CODEX_EFFORT:-medium}"
 if [ "${1:-}" != "--selftest" ]; then
   if ! [[ "$IDLE_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
     echo "codex-review: invalid CMR_CODEX_TIMEOUT='$IDLE_TIMEOUT' (expected positive integer seconds) — degrade, flag '本轮缺 codex'" >&2
-    printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
     exit 1
   fi
   if ! [[ "$IDLE_POLL" =~ ^[1-9][0-9]*$ ]]; then
     echo "codex-review: invalid CMR_CODEX_IDLE_POLL='$IDLE_POLL' (expected positive integer seconds) — degrade, flag '本轮缺 codex'" >&2
-    printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
     exit 1
   fi
 fi
@@ -226,7 +223,6 @@ fi
 
 if [ "${CMR_DRY_RUN:-0}" = "1" ]; then
   echo "codex-review: NON-REVIEW DRY_RUN — no Codex reviewer ran; 本轮缺 codex (NON-REVIEW DRY_RUN); command: printf %s \"\$PROMPT\" | ${CODEX_CMD[*]} 2>&1" >&2
-  printf '{"reviewer":"codex","mode":"%s","dry_run":true,"findings":[]}\n' "$MODE"
   exit 2
 fi
 
@@ -307,20 +303,17 @@ RAW="$(cat "$TMP_OUT" 2>/dev/null || true)"
 case "$RC" in
   124|137|143)
     echo "codex-review: timeout/kill (rc=$RC) — degrade, flag '本轮缺 codex'" >&2
-    printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
     exit 1
     ;;
 esac
 if [ "$RC" -ne 0 ]; then
   echo "codex-review: codex exited rc=$RC (auth/quota/crash, not a review) — degrade, flag '本轮缺 codex'" >&2
-  printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
 fi
 
 REVIEW="$(cat "$LASTMSG" 2>/dev/null || true)"
 if [ -z "$REVIEW" ]; then
   echo "codex-review: codex exited 0 but wrote no final message (empty -o file; only a trace, or -o unsupported) — degrade, flag '本轮缺 codex'" >&2
-  printf '{"reviewer":"codex","mode":"%s","findings":[]}\n' "$MODE"
   exit 1
 fi
 printf '%s\n' "$REVIEW"

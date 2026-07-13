@@ -353,7 +353,7 @@ as "本轮缺 X", indistinguishable from an outage (the best reviewer
 repeatedly lost over format). `prompts/cmr-reviewer.md` asks for grounded
 prose ending in a `CMR-VERDICT: converged|findings` line. The backends
 (`backends/codex-review.sh` / `gemini.sh`) pass a successful review
-through and degrade (synthetic empty findings + nonzero exit + visible
+through and degrade (empty stdout + nonzero exit + visible stderr
 "本轮缺 X" flag) **only on a true outage** — timeout, empty output, the
 CLI exiting non-zero (auth/quota/crash), or agy keychain auth-race (after
 4 attempts). codex-review.sh emits codex's **final message only** (via
@@ -413,9 +413,9 @@ v3 requires all 3 vendors. If one is unavailable, run with the rest and
 Collect every reviewer's review by **reading each CLI's stdout directly**
 — it is prose (or whatever the reviewer wrote); read it the way you would
 a human reviewer's comment, taking its `CMR-VERDICT:` line and its
-grounded findings. A backend that degraded (nonzero exit + "本轮缺 X")
-is a MISSING vendor for this round, not an approve — do not count it as a
-zero-finding concur. Then, as judgment:
+grounded findings. A backend that degraded (empty stdout + nonzero exit +
+stderr "本轮缺 X" flag) is a MISSING vendor for this round, not an approve
+— do not count it as a zero-finding concur. Then, as judgment:
 
 - Group findings that describe the same issue across reviewers.
 - Grade each P0 / P1 / P2 / P3 / P4. Reviewers emit
