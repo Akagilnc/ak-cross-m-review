@@ -174,7 +174,10 @@ there are no others — are the three below, and every combination of
      - `claim_quote not found → main-session /diagnosing-bugs (needs verification)`
        — the finding's `claim_quote` cannot be located in the source, so
        the claim itself needs main-session verification. Never fabricate a
-       plausible-looking replacement.
+       plausible-looking replacement. This route carries **no** REAL/FALSE
+       `adjudications` entry — it is routed-for-verification, not a
+       confirmed verdict (the same no-verdict rule as branch 3's
+       unverifiable case).
 
 3. **REAL, non-blocking** (`low`/`clarity` in correctness/code mode; **doc
    mode: `clarity` only**, since `low`/P3 is blocking there) → **fixed** OR
@@ -288,8 +291,9 @@ Each finding may carry `related_locations`. When fixing a finding:
     }
   ],
   "fixes_skipped": [
-    { "merged_id": "M3", "reason": "reviewers disagreed on the value",
-      "details": "claude said X, codex said Y" }
+    { "merged_id": "M3",
+      "reason": "blocking-but-unfixable → main-session /diagnosing-bugs (no safe suggested_fix)",
+      "details": "reviewers disagreed: claude said X, codex said Y" }
   ],
   "incidental_fixes": [
     {

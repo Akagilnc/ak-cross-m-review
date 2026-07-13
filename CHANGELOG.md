@@ -4,6 +4,23 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.27 — 2026-07-13
+
+- **Ship-pre correctness-gate round 9 (qualifying clear round) — two P4
+  clarity fixes (`prompts/cmr-fixer.md`).** Round 9 was the gate's first
+  clear round (codex + Claude both `converged`; gemini degraded, 本轮缺):
+  no blocking finding, two `clarity` observations from the Claude leg,
+  both verified and fixed per SHOULD-fix-by-default. (a) The
+  `fixes_skipped` schema example used the free-form reason "reviewers
+  disagreed on the value" instead of Terminal-outcomes' canonical
+  `blocking-but-unfixable → main-session /diagnosing-bugs (no safe
+  suggested_fix)` string — example aligned, disagreement detail moved to
+  `details`. (b) Branch 2's `claim_quote not found` route was silent on
+  adjudication, so a literal-minded fixer could stamp `verdict: REAL` on
+  a finding routed precisely because it could not be verified — added the
+  one-line no-verdict mirror of branch 3's rule (routed-for-verification,
+  not a confirmed verdict).
+
 ## 0.3.18.26 — 2026-07-13
 
 - **Ship-pre correctness-gate round 8 — 4 findings fixed, 1 rejected FALSE.**
