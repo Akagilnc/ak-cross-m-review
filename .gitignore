@@ -1,7 +1,3 @@
-# Run outputs (per-run findings, merged reports, proposed diffs)
-outputs/*
-!outputs/.gitkeep
-
 # Python
 __pycache__/
 *.py[cod]
@@ -19,8 +15,6 @@ venv/
 *.swp
 .vscode/
 .idea/
-.cmr-gate/
-.review-unconverged.log
 
 # Local agent / tool state (per-machine, never committed)
 .claude/

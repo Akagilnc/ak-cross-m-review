@@ -25,12 +25,16 @@ Full conventions and the two-layer model are in
 
 Test expectations:
 
-- 100% coverage is the goal — tests make vibe coding safe, not yolo.
-- New function → write a corresponding test in `tests/test_<module>.py`.
-- Bug fix → write a regression test that fails before, passes after.
+- 100% coverage of executable code is the goal — tests make vibe coding
+  safe, not yolo. Docs/prose are never pytest targets (#38; ADR 0003):
+  rule provenance = RECORDED markers + git history.
+- New executable function → write a corresponding test in
+  `tests/test_<module>.py`.
+- Executable bug fix → write a regression test that fails before, passes
+  after.
 - New error path → cover it; keep `bash backends/codex-review.sh
   --selftest` (the invocation-form regression guard) green.
-- New conditional (if/else, branch) → test BOTH paths.
+- New executable conditional (if/else, branch) → test BOTH paths.
 - Assert real computed values, never existence/smoke checks.
 - Never commit code that makes existing tests or the selftest battery
   fail.

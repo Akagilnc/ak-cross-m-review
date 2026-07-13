@@ -185,7 +185,7 @@ of the wiki's cross-model-review step.
   documented keychain auth-race the backend works around with warm +
   retry × 4 (upstream issue google-antigravity/antigravity-cli#51).
 - `jq` — shell pipelines
-- `python3` ≥ 3.11 — **tests only** (`pytest`); the backends no longer
+- `python3` ≥ 3.12 — **tests only** (`pytest`); the backends no longer
   call Python at runtime (the `extract_json.py` parser was removed)
 
 All three CLIs are subscription-authed in the author's setup; no API

@@ -715,7 +715,7 @@ critical/high→medium).
 > **⚠ RECORDED RULE ① — upstreamed to the wiki 2026-07-06 (user
 > decision same day; vault `b5495e8` / `da04ff5` / `e06bcfe`).** Do
 > NOT drop this section on a wiki re-sync (a re-sync from a stale wiki
-> checkout would erase it; the golden-hash test enforces this).
+> checkout would erase it).
 
 Applies **ONLY when the thing under review is a design text** (ADR /
 spec / contract / plan — the Step 0 doc-mode bullet, completeness lens)
