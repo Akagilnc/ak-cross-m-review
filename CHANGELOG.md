@@ -7,8 +7,9 @@ All notable changes to this project are documented here. Format follows
 ## 0.3.21.0 — 2026-07-13
 
 Architecture deletion campaign W1 (umbrella #35; slices #37 / #38 / #40).
-Net −2946 lines: the review engine's prose rules are now guarded by git
-history and RECORDED markers alone — pytest guards executable behavior only.
+Net −2880 lines (67+ / 2947−): the review engine's prose rules are now
+guarded by git history and RECORDED markers alone — pytest guards executable
+behavior only.
 
 ### Removed
 
@@ -24,17 +25,21 @@ history and RECORDED markers alone — pytest guards executable behavior only.
   issue #41).
 - **cmr-gate L1 audit, entirely (#37)** — `scripts/cmr-gate/`,
   `.githooks/post-commit`, the `.review-unconverged.log` trail, its
-  `.gitignore` entries, and the repo-local `core.hooksPath`. Zero
+  `.gitignore` entries, and the repo-local `core.hooksPath` (unset on the
+  working machine; a stale clone that ran the old install.sh should
+  `git config --unset core.hooksPath`). Zero
   producers ever wrote its frontmatter report format; the 64-line audit
   log was 100% `NO_REPORT` noise (bypassed and reviewed commits were
   indistinguishable); its companion `verify_report.py` never existed.
   Review discipline lives in the orchestrator flow itself. The vendored
   copy in ak-ai-vela is torn down in the same campaign (vela branch
   `cleanup/cmr-gate-teardown`).
-- **Dead shells (#40)** — `lib/` (stale bytecode of sources removed in
-  0.2.0.0 / 0.3.9.0), empty `eval/`, `outputs/` (1.8 MB of dead-pipeline
-  scratch + tracked `.gitkeep`), the false `pythonpath = ["lib"]`
-  pyproject entry, and the stale `extract_json` CI step name.
+- **Dead shells (#40)** — tracked changes: `outputs/.gitkeep`, its
+  `.gitignore` entries, the false `pythonpath = ["lib"]` pyproject entry,
+  and the stale `extract_json` CI step name. The untracked piles (`lib/`
+  stale bytecode of sources removed in 0.2.0.0 / 0.3.9.0, empty `eval/`,
+  1.8 MB of dead-pipeline `outputs/` scratch) were cleaned on the working
+  machine — other clones clean theirs by hand.
 
 ### Fixed
 
