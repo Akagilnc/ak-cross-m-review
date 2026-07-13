@@ -4,6 +4,89 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.18.26 — 2026-07-13
+
+- **Ship-pre correctness-gate round 8 — 4 findings fixed, 1 rejected FALSE.**
+  The rejected finding (codex, high) claimed the 交卷契约's
+  `incidental_fixes`/`reported_defects`/`summary` envelope violates "ADR
+  0062's three-signal envelope" and demanded DELETE; verified FALSE — ADR
+  0062 appears in this repo only as an illustrative example inside the
+  kill-axis ① description (SKILL.md ~L854) and a cross-reference in
+  `prompts/cmr-reviewer.md`, not as a ratified constraint of this repo (no
+  `docs/adr/` exists), so there is nothing for the fixer-output contract to
+  violate.
+- **Round 8, F2 — a "clear" confirmation round that itself edits is not
+  terminal (`SKILL.md` Step 7 + Step 5 + doc-mode ②(c)).** Step 7's loop let
+  STOP fire straight after a confirmation round even if that round had just
+  fixed a non-blocking P3/P4 (per SHOULD-fix-by-default) — leaving that fix,
+  which is new diff, forever un-re-reviewed, contradicting the file's own
+  "the fix is itself new diff and must be reviewed" principle. Step 7 now
+  carries the authoritative carve-out; the Step-5 positive-termination
+  paragraph and doc-mode ②(c) early-stop arm each gained a one-line pointer
+  to it (coverage-drift doctrine: one authority, pointers elsewhere). The
+  doc-mode golden hash in `tests/test_doc_mode.py` was recomputed per that
+  test's own intentional-edit procedure.
+- **Round 8, F3 — First-duty and Terminal-outcomes acknowledge the
+  no-verdict third state (`prompts/cmr-fixer.md`).** Round 7 created the
+  "genuinely-unverifiable non-blocking → deferred with NO adjudications
+  entry" path, but First-duty still promised "an empirical verdict on every
+  finding" and Terminal-outcomes still claimed exhaustive (FALSE/REAL)
+  coverage. Both summary lines now name the third state; the branch logic
+  itself is unchanged.
+- **Round 8, F4 — the doc-guard test's comment no longer overclaims
+  (`tests/test_codex_review.py`).** Comment-only edit: part (A) is genuinely
+  tied to the real backend invariant, part (B) is honestly scoped as a
+  narrow textual net against the one recurring value-token phrasing — not an
+  exhaustive guard against every semantically-equivalent rewording (docs are
+  free text; residual risk accepted, per don't-over-defend). Assertions
+  untouched.
+- **Round 8, F5 — backfilled the missing `0.3.18.25` CHANGELOG entry.**
+  `VERSION` and HEAD were at 0.3.18.25 but the changelog's latest entry was
+  still 0.3.18.24; the round-7 commit had skipped its entry.
+
+## 0.3.18.25 — 2026-07-13
+
+- **Ship-pre correctness-gate finding (round 7, F1) — scope-clarification
+  that incidental defects are a separate track from the Terminal-outcomes
+  branches (`prompts/cmr-fixer.md`).** The Terminal-outcomes opening line now
+  states it governs only **supplied/adjudicated** findings (the ones you were
+  handed); an **incidental** defect spotted in passing is First-duty's
+  separate, parallel track and does **not** flow through these branches. An
+  incidental defect follows its own **severity-independent** rule — a clean
+  mechanical one goes to `incidental_fixes`, a **non-trivial** one is reported
+  in `reported_defects` for the main session regardless of its own severity —
+  so a non-blocking incidental defect is still routed, never subject to this
+  section's blocking/non-blocking split. No behavior change; closes a
+  readability contradiction.
+- **Round 7, F2 — unverifiable non-blocking findings route straight to
+  `deferred[]` with no forced REAL/FALSE adjudication (`prompts/cmr-fixer.md`).**
+  Round 4's own fix had said an unverifiable non-blocking finding "stays
+  **REAL**" and is deferred, which asserted absence-of-evidence as
+  proof-of-real — the same epistemic error as the FALSE-default it replaced.
+  It now goes straight to `deferred[]` with **no** `adjudications` entry
+  (neither REAL nor FALSE is confirmed), framed as a safety/visibility
+  default: inability to verify is neither evidence-of-false (never laundered
+  into a FALSE adjudication) nor evidence-of-true (not stamped REAL). Applied
+  at both the Terminal-outcomes non-blocking branch and the Diff-requirements
+  `claim_quote` sibling bullet; test expectations updated in
+  `tests/test_defer_severity.py`. No new schema verdict value.
+- **Round 7, F3 (4th recurrence — root fix) — the codex-effort doc-guard test
+  now ties to the real backend selftest code invariant, not a wording pattern
+  (`tests/test_codex_review.py`, `TESTING.md`, `SKILL.md`).** `TESTING.md`
+  described `--selftest` as checking a fixed `model_reasoning_effort=medium`;
+  the selftest actually validates `model_reasoning_effort=${CMR_CODEX_EFFORT}`
+  (form, not value), and the round-6 backtick-`` `medium` `` regex guard was
+  structurally blind to the compound `model_reasoning_effort=medium` token.
+  Reworded `TESTING.md` to form-not-value with a pointer to the canonical
+  `SKILL.md` §调用规范 site (the single source of truth), and trimmed the two
+  Step-1 bullets to point at that source instead of restating the contract.
+  Replaced the value-token regex guard with
+  `test_selftest_validates_effort_form_not_value`, tied to the REAL invariant:
+  part (A) extracts the actual selftest block from the backend and asserts it
+  interpolates `${CMR_CODEX_EFFORT}` and hard-codes no
+  `model_reasoning_effort=medium`; part (B) is a narrower textual net that no
+  doc describes the selftest as checking that fixed value.
+
 ## 0.3.18.24 — 2026-07-13
 
 - **Ship-pre correctness-gate finding (round 6) — a THIRD leftover site of

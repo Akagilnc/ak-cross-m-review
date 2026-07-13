@@ -390,10 +390,16 @@ def test_selftest_validates_effort_form_not_value():
     # not a backtick), which the round-6 backtick-delimited `medium` guard
     # structurally could not see.
     #
-    # Stop chasing phrasings. Tie the test to the REAL invariant instead:
-    # the selftest validates the invocation FORM, pinning
+    # Part (A) below ties the test to the REAL invariant (the actual
+    # backend code): the selftest validates the invocation FORM, pinning
     # `model_reasoning_effort=${CMR_CODEX_EFFORT}` — whatever effort is in
-    # effect — NOT the literal value `medium`. Two structural anchors:
+    # effect — NOT the literal value `medium`. Part (B) is a narrower
+    # textual safety net against the ONE specific value-token phrasing that
+    # has recurred 4 times — it is not, and cannot be, an exhaustive guard
+    # against every possible semantically-equivalent rewording (docs are
+    # free text); that residual risk is accepted, not solved, per this
+    # repo's own "don't over-defend with more mechanism" principle. Two
+    # structural anchors:
     #
     #   (A) Backend: extract the selftest block from the ACTUAL script and
     #       confirm its canonical-form check interpolates ${CMR_CODEX_EFFORT}
@@ -402,7 +408,8 @@ def test_selftest_validates_effort_form_not_value():
     #   (B) Docs: no .md may describe the selftest (window around every
     #       "selftest" mention) as checking a fixed
     #       `model_reasoning_effort=medium` — the value the selftest does
-    #       NOT check. Any doc that does is asserting form-as-value again.
+    #       NOT check. This catches the one recurring value-token phrasing,
+    #       not every equivalent rewording (see the caveat above).
     src = SCRIPT.read_text(encoding="utf-8")
 
     # (A) isolate the selftest block: from the `--selftest` guard to EOF.

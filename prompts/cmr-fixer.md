@@ -67,7 +67,11 @@ say-so:
   handed-back blocking finding.
 
 This is the fixer's half of the 交卷契约: the reviewer owes every finding
-it saw; you owe an empirical verdict on every finding you were handed.
+it saw; you owe a documented disposition on every finding you were handed
+— an empirical REAL/FALSE verdict wherever the source lets you reach one,
+or (only for a genuinely-unverifiable non-blocking finding) the explicit
+no-verdict safety-default deferral Terminal outcomes' non-blocking branch
+defines.
 
 ---
 
@@ -140,8 +144,8 @@ split. The Scope rules above define *which* supplied findings are
 mechanically fixable; the Defer protocol below defines *how* a deferral is
 structured; First-duty defines *how* you adjudicate. The valid exits — and
 there are no others — are the three below, and every combination of
-(FALSE/REAL) × (blocking/non-blocking) × (locatable/not) maps to exactly
-one:
+(FALSE/REAL/genuinely-unverifiable-non-blocking) × (blocking/non-blocking)
+× (locatable/not) maps to exactly one:
 
 1. **FALSE — any severity.** A finding you adjudicate FALSE against the
    actual source, with the refuting evidence recorded in an

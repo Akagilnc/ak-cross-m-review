@@ -572,7 +572,9 @@ has no blocking finding, i.e. every non-degraded leg concurs by the
 fractions below. One clear round no longer converges on its own: it is
 the **qualifying round**, and the next round is a **full re-review
 confirmation round**. Two consecutive clear rounds (qualifying +
-confirmation) → converged, stop. A blocking finding in the confirmation
+confirmation) → converged, stop (a confirmation round that itself makes
+any edit is not terminal — see the Step-7 loop's carve-out; its edit is
+new diff needing its own full re-review). A blocking finding in the confirmation
 round → NOT converged: fix it and the early-stop arm **re-qualifies from
 scratch** (a single clear round again becomes merely qualifying). The
 fractions below describe what **one fully-concurring (clear) round**
@@ -646,6 +648,12 @@ no blocking finding (round is CLEAR)
     (this one + the confirmation) → STOP (normal convergence).
     A blocking finding in the confirmation round → re-qualify from
     scratch (FIX, then a fresh clear round is needed again).
+    A "clear" round that itself makes any edit (e.g. fixing a
+    non-blocking P3/P4 per SHOULD-fix-by-default below) is not a
+    terminal confirming round — that edit is new diff and needs its
+    own full re-review round before two-consecutive-clear can close
+    (same "the fix is itself new diff" principle below applies here
+    too).
 P3/P4 only  → do NOT block, do NOT by themselves trigger another fix
               round — a round with only P3/P4 (P4 in doc mode) counts as
               CLEAR regardless. That CLEAR status is ORTHOGONAL to whether
@@ -895,7 +903,9 @@ review can only ever make the text longer.
   blocking; the split is ②(b)'s bloat-line/ledger-audit trigger only, never
   the clear/convergence gate) (only P4 exempt; P4 clarity
   reported-but-Deferred, doesn't block the confirmation round) →
-  **converged, stop**. Because the zero-blocking check spans every leg AND
+  **converged, stop** (a confirmation round that itself makes any edit is
+  not terminal — see the Step-7 loop's carve-out; its edit is new diff
+  needing its own full re-review). Because the zero-blocking check spans every leg AND
   counts blocking findings of every classification, a single dissenting
   leg's blocking finding (original-defect, fix-fix, or invention — all
   count) keeps the ledger non-zero → NOT converged **regardless of the
