@@ -127,8 +127,8 @@ Pre-flight gates:
   (gate / fix-loop / guard / state-machine: RUN them with an injected
   defect; anti-pattern #15). **Green tests / a pipeline that runs are NOT
   completeness evidence** (#244: S8 + 612 tests green, yet the mandated
-  discipline was never wired). The full rubric IS that prompt; spine
-  source: wiki [[tdd-autonomous-dev]] §Step 5 + [[verification-scope-vacuum]].
+  discipline was never wired). The full rubric IS that prompt (lineage:
+  wiki [[tdd-autonomous-dev]] §Step 5 + [[verification-scope-vacuum]]).
 - **The two ship-pre gates are SEPARATE sequential passes — never merge
   them (wiki a70f97b «严禁合一次 cmr 闸»):** completeness (Step 5,
   spec-delivered lens) runs **first and must pass**, *then* correctness
