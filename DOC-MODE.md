@@ -3,10 +3,9 @@
 > **⚠ RECORDED RULE ②–⑤ — upstreamed to the wiki 2026-07-06 (user
 > decision same day; vault `b5495e8` / `da04ff5` / `e06bcfe`).** Do
 > NOT drop this section on a wiki re-sync (a re-sync from a stale wiki
-> checkout would erase it; the golden-hash test enforces this). The
+> checkout would erase it). The
 > round-gate value **10** restores cmr's original founding setting (it
-> had been silently forgotten by later versions — which is exactly why
-> these tests-pinned rules exist).
+> had been silently forgotten by later versions).
 
 **Why doc mode needs its own defense (evidence: #440).** A review of a
 DESIGN TEXT is structurally **additive** — every finding suggests adding
