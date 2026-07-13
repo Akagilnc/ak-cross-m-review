@@ -15,7 +15,9 @@ Accepted（2026-07-13）
 ## Decision
 
 1. 本环境的独立权威是 `SKILL.md` 与其 disclosed file `DOC-MODE.md` 的并集。
-2. wiki 降为 lineage / 历史来源，不再决定本仓当前行为；“wiki wins”契约废止。
+2. wiki 对本仓无覆盖权、无同步义务；“wiki wins”契约废止。wiki 仍可被
+   引用甚至依赖（部分流程步骤本就参考 wiki 页面执行），只是无强制照抄
+   ——废除的是权威等级与同步机制，不是引用权（用户校准 2026-07-14）。
 3. **RECORDED RULE / RECORDED divergence** 标记保留，但语义改为用户裁定账本：
    仅用户决定可更改，不得静默覆盖或删除。divergence 可继续记录相对 wiki
    历史来源的差异，但不表示等待同步。

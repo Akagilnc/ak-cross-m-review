@@ -2,7 +2,8 @@
 
 The script now calls `agy` (Antigravity CLI) — the in-kind
 replacement after the original `gemini` CLI's 2026-06-18 EOL — with
-the wiki's keychain-warm + retry × 4 recipe.
+this skill's RECORDED keychain-warm + retry × 4 rule (kept by user
+decision against the wiki's later "no longer needed" conclusion).
 
 Pinned behaviors:
 
