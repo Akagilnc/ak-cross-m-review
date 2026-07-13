@@ -19,7 +19,7 @@ All notable changes to this project are documented here. Format follows
   not structure-pinned; now asserted. Process artifacts posted:
   S2 pre-refactor inset inventory → issue #27 comment; S3
   deleted-narrative guardian ledger + wiki-collation evidence → issue
-  #30 comment; S1 test-split 分流清单 → PR #33 comment. 140 → 142
+  #30 comment; S1 test-split 分流清单 → PR #33 comment. 138 → 140
   tests, all green.
 
 ## 0.3.19.11 — 2026-07-13
