@@ -17,7 +17,7 @@
 > is decided by **Terminal outcomes** below; routing is the blocking-only
 > exit (the main session then runs `/diagnosing-bugs` — an iterative,
 > possibly human-in-the-loop investigation that a single subagent diff
-> cannot do; see wiki §修复 + SKILL.md Step 7), while a non-blocking
+> cannot do; see SKILL.md Step 7), while a non-blocking
 > finding is never routed. Do not guess.
 
 Previous rounds of cross-model review produced a merged list of findings

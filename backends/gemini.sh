@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Gemini reviewer backend — calls `agy` (Antigravity CLI), the in-kind
 # replacement for the `gemini` CLI that Google stopped serving
-# 2026-06-18. agy is locked to Gemini 3.5 Flash — the wiki's explicit
+# 2026-06-18. agy is locked to Gemini 3.5 Flash — the recorded 2026-06-18
 # exception to the strongest-review-model rule, traded off to keep
 # 3-vendor cross-family coverage.
 #
@@ -27,7 +27,7 @@
 #                            (quota) Claude Sonnet 4.6 (Thinking) → (all
 #                            quota) degrade. See the ladder block below.
 #
-# Hard rules (wiki §并行启动 / §agy auth callout):
+# Hard rules (recorded 2026-06; origin: wiki §并行启动 / §agy auth callout):
 #   Invocation form: `agy --sandbox --print '' <<<prompt` (read OK,
 #   terminal/write restricted, existing OAuth scope). NOT the old
 #   `agy -p --sandbox <<<prompt`: agy 1.0.7 changed `--print`/`-p` to a
@@ -152,9 +152,9 @@ if ! command -v agy >/dev/null 2>&1; then
   exit 1
 fi
 
-# Reviewer discipline (wiki §调用规范). `--sandbox` is not a write-hard
+# Reviewer discipline (recorded contract). `--sandbox` is not a write-hard
 # guarantee, so prepend the no-modify/no-fix contract while preserving the
-# wiki's verification-command carve-out.
+# user decision 2026-07-13 REVIEW-ONLY verification-command relaxation.
 AGY_PROMPT="REVIEW ONLY — HARD CONSTRAINT. Do NOT modify, create, rename, or delete any file in the reviewed repo, and do NOT fix findings yourself. You MAY run read-only inspection and verification commands, including tests/builds and exercises with injected defects in a throwaway copy or fixture. Your ONLY output is your grounded prose review.
 
 $FULL_PROMPT"

@@ -107,9 +107,9 @@ trusted more by the merge step.
 
 ## Severity
 
-Use these exact words (they map to the wiki's P0–P4):
+Use these exact words (they map to the recorded P0–P4 scale):
 
-| word       | wiki | meaning                                                            |
+| word       | P-level | meaning                                                         |
 |------------|------|--------------------------------------------------------------------|
 | `critical` | P0   | exploitable security, data loss, crash on normal input, build red, breaks an invariant the system depends on |
 | `high`     | P1   | wrong result under a common condition, silent failure, missing guard for routine input, cross-slice contradiction |
@@ -150,7 +150,7 @@ contort your strongest analysis into a schema; just write the review.
 For **each finding**, give (in whatever prose layout is clearest):
 
 - **severity** — one of `critical` / `high` / `medium` / `low` /
-  `clarity` (the wiki's P0–P4; see the Severity table above).
+  `clarity` (the recorded P0–P4 scale; see the Severity table above).
 - **location** — `path:line` (or the hunk header).
 - **the problem** — what is wrong, in a sentence or two. **Quote the exact
   offending line** from the diff verbatim so the fixer can locate it; if
@@ -180,7 +180,7 @@ CMR-VERDICT: findings
 ```
 
 - `CMR-VERDICT: converged` — use when you raised **no critical / high /
-  medium defect** this round (P0 / P1 / P2 in the wiki's scale; Step 4
+  medium defect** this round (P0 / P1 / P2 in the recorded scale; Step 4
   maps your words to those levels). This is your approve vote. You MAY
   have raised `low` / `clarity` (P3 / P4) findings — you still report
   them (submission contract), but they do **not** block and do **not**

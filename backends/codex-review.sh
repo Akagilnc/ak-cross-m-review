@@ -2,8 +2,8 @@
 # Codex reviewer backend for /ak-cross-m-review.
 #
 # This is the DELIVERATELY-CORRECT codex invocation. It exists because the
-# naive/uncorrected codex invocations use the two patterns the
-# wiki marks confidence-10 footguns (D1/D2 in the analysis):
+# naive/uncorrected codex invocations use the two patterns
+# recorded as confidence-10 footguns (D1/D2 in the analysis):
 #
 #   ❌ codex exec "$PROMPT" -C "$WORKDIR" -s read-only
 #      - positional-arg prompt (stdin-pipe hang risk; off-convention)
@@ -23,7 +23,7 @@
 #      - `--ephemeral`: do NOT persist a session rollout file. cmr runs
 #        N codex in parallel (1+N+1); without it concurrent instances
 #        collide on ~/.codex/session → cross-talk (prompt A surfaces in
-#        instance B's context). Wiki §额外硬规则 #6 / codex#11435.
+#        instance B's context). Recorded rule; evidence: codex#11435.
 #      - `-c model_reasoning_effort=<effort>`: pass the effort in effect
 #        EXPLICITLY so codex can't silently inherit ~/.codex/config.toml's
 #        global value (a clone / other host could drift otherwise). This
@@ -77,7 +77,7 @@
 #
 # On success we emit codex's FINAL MESSAGE (the review — prose or JSON,
 # from the `-o` file) to stdout; the orchestrator reads it with judgment
-# (wiki §「.result 是 review 文本」). Diagnostics to stderr. On timeout /
+# (the recorded prose-review contract). Diagnostics to stderr. On timeout /
 # non-zero codex exit (auth/quota/crash) / an empty final message:
 # synthetic empty-findings JSON + exit 1 so the orchestrator degrades and
 # flags "本轮缺 codex". The script does NOT parse findings or demand a
@@ -150,7 +150,7 @@ trap 'rm -f "$LASTMSG"' EXIT
 # inherits ~/.codex/config.toml's global value otherwise, so pinning it in
 # the command prevents a clone / other machine from silently drifting. This
 # passes whatever value is in effect; it does NOT lock the value to medium
-# (wiki §调用规范 reasoning-effort callout).
+# (the recorded reasoning-effort contract).
 CODEX_CMD=(codex exec --ephemeral -c model_reasoning_effort="$CMR_CODEX_EFFORT" --model "$MODEL" -o "$LASTMSG" -)
 
 # --selftest: validate the REAL invocation array (not a hand-copied
@@ -168,7 +168,7 @@ if [ "${1:-}" = "--selftest" ]; then
   esac
   # On-convention canonical form. This pins BOTH the stdin-pipe shape AND
   # `-c model_reasoning_effort=<effort>` (the reasoning-depth pin so a
-  # clone / other host can't inherit a config.toml value, wiki §调用规范).
+  # clone / other host can't inherit a config.toml value, per the recorded contract).
   # The effort is whatever's in effect (default medium, overridable via
   # CMR_CODEX_EFFORT) — the check interpolates ${CMR_CODEX_EFFORT} so it
   # pins the FORM not the VALUE, adapting to any override. A missing/altered
@@ -186,7 +186,7 @@ if [ "${1:-}" = "--selftest" ]; then
     *) echo "FAIL: command missing -o/--output-last-message (last-message extraction)" >&2; fail=1 ;;
   esac
   # --ephemeral mandatory: parallel codex instances collide on
-  # ~/.codex/session without it (wiki §额外硬规则 #6 / codex#11435).
+  # ~/.codex/session without it (recorded rule; evidence: codex#11435).
   case "$CMD" in
     *"--ephemeral"*) ;;
     *) echo "FAIL: command missing --ephemeral (parallel session-collision guard)" >&2; fail=1 ;;
@@ -232,7 +232,7 @@ fi
 
 echo "codex-review: model=${MODEL} mode=${MODE} label=${LABEL} idle-timeout=${IDLE_TIMEOUT}s" >&2
 
-# IDLE-based hang detection (wiki §额外硬规则 #4) — NOT a total wall-clock
+# IDLE-based hang detection (recorded hard rule #4) — NOT a total wall-clock
 # cap. A hang = codex produces NO new stdout/stderr for $IDLE_TIMEOUT
 # seconds; a codex still streaming its reasoning/trace (deep reasoning +
 # large diffs go silent for minutes before the first token, then stream)

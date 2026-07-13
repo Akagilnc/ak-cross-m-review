@@ -32,7 +32,7 @@ user-adjudication ledger; only the user may change them.
 
 ## The vendor squad — N+1+1 (ship-pre) / N+1 (per-slice)
 
-The squad depends on the trigger point (wiki §谁跑 cmr, 2026-06-18):
+The squad depends on the trigger point (recorded decision, 2026-06-18):
 **ship-pre** = the full `N codex + Claude + agy` (N+1+1), dispatched
 two-phase by the main session; **per-slice** = `N codex + agy` (2-vendor,
 **no Claude** — `claude -p` credit is too tight for the high-frequency
@@ -160,8 +160,8 @@ there is intentionally no deterministic engine: no `merge.py` / `drift.py`
 (removed in 0.2.0.0) and, since 0.3.9.0, no `lib/extract_json.py`
 sentinel-JSON parser either. That parser demanded the strongest
 reviewer's prose be a JSON shape and dropped it as a phantom outage when
-it wasn't — the same over-formalization, one layer down, that the wiki
-warns against ("this is judgment, thresholds are non-portable").
+it wasn't — the same over-formalization, one layer down, that this skill
+rejects ("this is judgment, thresholds are non-portable").
 
 ## Origin
 
