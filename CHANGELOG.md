@@ -4,6 +4,20 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.19.9 — 2026-07-13
+
+- **S4 round-1 review fixes (2 medium + 2 low).** The absence guard now
+  bans the tokens actually dieted out — `gpt-5.6`, `codex`, `agy`, plus
+  the ASCII `P0-P4` variant (round 1's list only named Claude/Gemini,
+  under-delivering the advertised "model names" class); the correctness
+  trigger test locks the gate-order phrase "after completeness passes"
+  (symmetry with completeness's "before the correctness gate"); the
+  completeness description regains the ship-pre spine keyword (22/28
+  words) with its own trigger assert. Full enforced tuple (superset of
+  the highlights below): `N+1+1`, `N+1`, `two-phase`, `no-peek`,
+  `Claude`, `Gemini`, `gpt-5.6`, `codex`, `agy`, `DONE/PARTIAL`,
+  `NOT-DONE`, `CONFORMS/VIOLATES`, `UNVERIFIED-GAP`, `P0–P4`, `P0-P4`.
+
 ## 0.3.19.8 — 2026-07-13
 
 - **S4 (#28, PRD #25): frontmatter description diet — identity +
@@ -13,10 +27,7 @@ All notable changes to this project are documented here. Format follows
   words (total 301→75, −75% of always-resident context). Trigger
   semantics preserved (per-slice after a baseline commit / ship-pre
   before a PR / design docs / gate ordering). Main gate:
-  red-first **absence assertions** in test_skill_frontmatter.py
-  (`N+1+1`, `two-phase`, `no-peek`, `Claude`, `Gemini`, `gpt-5.6`,
-  `codex`, `agy`, DONE/PARTIAL, CONFORMS/VIOLATES, P0–P4/P0-P4 must
-  never reappear in any description) —
+  red-first **absence assertions** in test_skill_frontmatter.py —
   the length caps (36/28/30 words) are only the auxiliary net, since a
   short-but-mechanism-laden description would pass a cap. Wrapper
   bodies untouched. 132 → 135 tests, all green.
