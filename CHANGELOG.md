@@ -4,6 +4,21 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.19.11 — 2026-07-13
+
+- **S5 round-1 review fixes (1 medium + 3 low + 2 P4).** CLAUDE.md's
+  intro no longer contradicts its own §Wiki sync mapping — the entry
+  sentence now reads "SKILL.md … with DOC-MODE.md, together a faithful
+  transcription of the wiki" (a top-of-file-only reader previously got
+  the pre-split sync surface; grok medium). ADR mapping-table
+  corrections: the Fable row's pointer column no longer names a
+  non-existent host-table row (→ 无); row 1's "absence guard" pointer
+  reworded to its negative-space meaning. Freeze-boundary sentence
+  scoped to the split itself (the completeness-addendum hash is
+  pre-existing, not split-produced). Thin tests deepened one notch
+  (still no golden hash): ADR red-line phrase + CONTEXT load-bearing
+  pointer sentence pinned red-first. "15-term" → 16-term.
+
 ## 0.3.19.10 — 2026-07-13
 
 - **S5 (#31, PRD #25): paper sedimentation — ADR 0001 + CONTEXT.md +
@@ -15,7 +30,7 @@ All notable changes to this project are documented here. Format follows
   header zero additions), the two-freeze-boundary atomic-migration rule,
   the 规则→唯一权威位置 mapping table (9 rules — the baseline for the
   future dedup round), and the wiki-side layout-note TODO. `CONTEXT.md`
-  defines the 15-term domain vocabulary, each term pointing at its
+  defines the 16-term domain vocabulary, each term pointing at its
   authority. Repo `CLAUDE.md` gains the sync map: 转写 = SKILL.md +
   DOC-MODE.md 的并集, linked to the ADR. Thin red-first
   existence/key-sentence assertions (no golden hash on these files).

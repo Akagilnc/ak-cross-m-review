@@ -42,12 +42,19 @@ def _doc_mode_text():
 
 def test_progressive_disclosure_adr_has_authority_map():
     assert ADR_0001.exists()
-    assert "规则 → 唯一权威位置映射" in ADR_0001.read_text(encoding="utf-8")
+    adr = _norm(ADR_0001.read_text(encoding="utf-8"))
+    assert "规则 → 唯一权威位置映射" in adr
+    assert "宿主差异不外置" in adr
+    assert "不得另建 `BACKENDS.md`" in adr
+    assert "拆分本身产生两个 freeze boundary" in adr
 
 
 def test_context_glossary_exists():
     assert CONTEXT.exists()
-    assert "## 域词表" in CONTEXT.read_text(encoding="utf-8")
+    context = _norm(CONTEXT.read_text(encoding="utf-8"))
+    assert "## 域词表" in context
+    assert "disclosed file" in context
+    assert "`DOC-MODE.md` 是该模式" in context
 
 
 def test_claude_sync_mapping_covers_disclosed_union():

@@ -2,8 +2,9 @@
 
 Local, pre-PR cross-model review skill (v3 vendor squad by trigger point:
 ship-pre = N codex + 1 Claude Agent + 1 Gemini via `agy`; per-slice =
-N codex + agy, no Claude). `SKILL.md` is the entry — a faithful
-transcription of the wiki; merge / grade / drift / termination are agent
+N codex + agy, no Claude). `SKILL.md` is the entry — with `DOC-MODE.md`,
+together a faithful transcription of the wiki (转写 = 两文件并集, see §Wiki
+sync mapping below); merge / grade / drift / termination are agent
 **judgment**, NOT a deterministic engine. Reviewers return a **prose**
 review (no sentinel-JSON; the `lib/extract_json.py` parser was removed in
 0.3.9.0 — it dropped the strongest reviewer's prose as a phantom outage).
