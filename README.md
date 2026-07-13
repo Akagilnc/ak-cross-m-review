@@ -125,6 +125,8 @@ stop, not a round counter.
 
 ```
 SKILL.md                  the engine — the executable wiki transcription
+DOC-MODE.md               doc-mode ②–⑤ discipline (SKILL.md Step 0 requires
+                          Read before doc-mode dispatch)
 skills/ak-cmr-completeness/  the completeness gate (thin named wrapper →
                           engine with --lens completeness)
 skills/ak-cmr-correctness/   the correctness gate (thin named wrapper →
