@@ -31,8 +31,10 @@
   `SKILL.md` Step 7。doc mode 由 `DOC-MODE.md` ⑤扩展为三连。
 - **clear round**：所有存活腿均完成且达到当前 mode 的零 blocking finding
   条件的一轮；权威见 `SKILL.md` Step 5。
-- **qualifying round / confirmation round**：第一轮 clear 只取得资格；下一轮
-  必须 full re-review 再 clear 才收敛。权威见 `SKILL.md` Step 5（终止信号）与
+- **qualifying round / confirmation round**（仅 `CMR_DOUBLE_CLEAR=1` 开关
+  开启时存在）：开关开启时第一轮 clear 只取得资格，下一轮必须 full
+  re-review 再 clear 才收敛；**默认（开关关）单轮 clear 即收敛**
+  （RECORDED 2026-07-14）。权威见 `SKILL.md` Step 5（终止信号）与
   Step 7（loop）；doc-mode 的
   ledger 口径见 `DOC-MODE.md` ②(c)。
 - **能删大于能加**：同等功能优先删除机制而非增加机制；两个 lens prompt 的

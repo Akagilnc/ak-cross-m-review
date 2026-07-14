@@ -5,8 +5,9 @@ disclosed file `DOC-MODE.md` is the standalone authority. It dispatches
 an independent multi-vendor
 reviewer squad against a diff — **ship-pre** in a **two-phase 顺机理
 dispatch** (msg1 = all CLI Bash reviewers in the background; msg2 = the
-Claude Agent), **per-slice** as just the Bash CLIs (`codex + agy`, no
-Claude) — then merges, grades, drift-checks and loops through **agent
+Claude Agent), **per-slice** as just the Bash CLIs (main=Claude:
+`codex + agy`; the host minimum-leg guarantee applies — `SKILL.md`
+Step 1) — then merges, grades, drift-checks and loops through **agent
 judgment** — before code reaches a PR / `main`.
 
 **Status**: v0 prototype. Evolving.
@@ -46,7 +47,9 @@ longer `codex + agy`); any other host → at least one of codex / Claude.
 `--reasoning-effort high`, local `grok` CLI; xAI, not Google-family
 diversity — `SKILL.md` Step 3). Against the same diff:
 
-- **1 × Claude reviewer** (**ship-pre only**) — via the `Agent` tool as
+- **1 × Claude reviewer** (**ship-pre via `Agent`**; main=Codex also
+  carries a per-slice Claude leg in the headless `claude -p` Bash form —
+  `SKILL.md` 宿主替换表) — via the `Agent` tool as
   an independent subagent (zero context contamination), model =
   **`claude-opus-4-8`** (Opus 4.8). **cmr does not use Fable** (quota
   scarcity) — a user-adjudicated rule recorded in `SKILL.md` Step 2

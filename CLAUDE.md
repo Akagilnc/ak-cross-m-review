@@ -4,10 +4,7 @@ Local, pre-PR cross-model review skill. `SKILL.md` is the entry — with
 `DOC-MODE.md`, its disclosed file, the two form the standalone authority
 for cmr in this environment: squad / dispatch / degradation / termination
 rules ALL live there, never here (the user-adjudication ledger = RECORDED
-markers + git history). Working principles for this repo: merge / grade /
-drift / termination are agent **judgment**, NOT a deterministic engine;
-reviewers return **prose** reviews — do not reintroduce sentinel-JSON or
-parsers. `backends/` holds the reviewer invocations; `prompts/` the two
+markers + git history). `backends/` holds the reviewer invocations; `prompts/` the two
 review lenses (`cmr-reviewer.md`, `cmr-completeness.md`) plus
 `cmr-fixer.md`. See `README.md` for architecture. The historical origin is
 `~/WorkSpace/vault/ak-cc-wiki/wiki/concepts/cross-model-review.md`.

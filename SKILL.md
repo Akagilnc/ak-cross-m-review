@@ -113,8 +113,9 @@ Pre-flight gates:
   to converge, each catching a real spec-level hole like a
   poison-payload soft-lock that no code read would surface.) Doc mode
   ALSO carries its own loop discipline — constitution kill-axis (①
-  below); fix-classification ledger, bloat audit line, full
-  confirmation-round early stop, round-10 escalation gate (②–⑤ in
+  below); fix-classification ledger, bloat audit line, clear-round
+  termination form (single-clear default, double-clear opt-in),
+  round-10 escalation gate (②–⑤ in
   `DOC-MODE.md`) — the
   additive-runaway defense. Code-diff mode is untouched by that section
   — EXCEPT its ①: the constitution packet + kill-axis applies to EVERY
@@ -181,7 +182,8 @@ guarantee below; the shapes survive where they already satisfy it):
   two-phase dispatch (Step 2).
 
 Strongest review model (both scenarios): Claude leg = `opus` (Opus 4.8) —
-cmr does not use Fable (Step 2 recorded rule; ship-pre only); codex
+cmr does not use Fable (Step 2 recorded rule; the `Agent` Claude leg is
+ship-pre — main=Codex per-slice uses `claude -p`, 宿主替换表); codex
 `gpt-5.6-sol`; Gemini = `agy` locked to
 3.5 Flash (the documented exception). **agy unavailable → the leg is
 substituted by grok `grok-4.5` at `--reasoning-effort high`** (RECORDED
@@ -215,8 +217,9 @@ size (the agy/Claude legs are always ×1 on the full diff).
 > handles 500 lines fine, and premature splitting hits anti-pattern #1
 > (N codex all on the full diff = duplicate coverage, no gain). New:
 > 500 / 1500. Roll back to the old values if findings start slipping.
-> (For per-slice the totals lose the Claude leg → `N+1` not `N+1+1`; a
-> small per-slice diff = codex(full) + agy.)
+> (For **main=Claude** per-slice the totals lose the Claude leg → `N+1`
+> not `N+1+1`; a small per-slice diff = codex(full) + agy. main=Codex
+> per-slice carries the mandatory `claude -p` leg — 宿主替换表.)
 
 **Strongest review model only** — Anthropic = **`claude-opus-4-8`**
 (Opus 4.8; Step 2 is the authority — **cmr does not use Fable**, recorded
@@ -233,13 +236,15 @@ it into review).
 > cannot spawn the `Agent` tool (Claude Code does not expose it to
 > subagents). So **ship-pre** review (which includes the Claude leg) is
 > run by the **main session** as `N codex + Claude(Agent) + agy` =
-> N+1+1. **per-slice** review is **NOT** run by the main session and has
-> **no Claude**: every slice is implemented by a clean-context subagent
+> N+1+1. **per-slice** review is **NOT** run by the main session and
+> carries **no Claude `Agent` leg** (main=Claude: no Claude leg at all;
+> main=Codex: the mandatory Claude leg is the headless `claude -p` Bash
+> form — 宿主替换表): every slice is implemented by a clean-context subagent
 > (2026-06-19: the old main-session-self-run-small-slices exception is
 > removed), so per-slice review **always** runs inside that subagent — a
-> **nested layer** — as `N codex + agy` (N+1) with **every leg a Bash
-> CLI** (nested reviewer-subagent spawning is forbidden). See Step 1 /
-> the recorded orchestration decision.
+> **nested layer** — with **every leg a Bash CLI** (main=Claude `N codex
+> + agy` = N+1; nested reviewer-subagent spawning is forbidden). See
+> Step 1 / the recorded orchestration decision.
 
 ## main=Codex 宿主替换表
 
@@ -260,8 +265,9 @@ Codex 宿主进场先读本节；之后走同一条按 main=Claude 写成的主�
 
 > **Two-phase applies ONLY to ship-pre** (main session orchestrates,
 > Claude leg via the `Agent` tool). **per-slice does NOT use two-phase**
-> — it is `N codex + agy` = 2-vendor, no Claude / no `Agent`, just the
-> Bash CLIs run concurrently in the background (per the orchestration decision). For
+> — no `Agent` leg, just the Bash CLIs run concurrently in the background
+> (main=Claude: `N codex + agy`; main=Codex adds the mandatory headless
+> `claude -p` Bash leg — 宿主替换表; per the orchestration decision). For
 > per-slice, do msg1 only (the bg Bash batch); there is no msg2.
 
 The old "all reviewers in ONE assistant message" rule **fights the tool
@@ -530,7 +536,11 @@ requires by squad shape:
 
 - ship-pre / main=Claude default: **3/3 concur** (all reviewers approve).
 - Upgraded 1+N+1, 3 vendors present: **(N+2)/(N+2) concur**.
-- One vendor degraded (1+1+1 → 2 reviewers): **2/2 concur + flag**.
+- One vendor degraded (1+1+1 → 2 reviewers): **2/2 concur + flag** —
+  applies only when the lost leg has **no substitute**. A substituted leg
+  is NOT a degrade: agy down + grok up = still 3 legs → **3/3 concur +
+  flag `agy down → grok-4.5 high 顶替`** (the grok vote counts as a
+  successful leg, §Step 3).
 - **By-design 2-vendor (main=Claude per-slice)**: fixed `N codex + agy`
   (the codex leg meets the host minimum-leg guarantee, Step 1) →
   **(N+1)/(N+1) concur + flag `per-slice 双腿 by design`**, scored the
@@ -539,7 +549,7 @@ requires by squad shape:
   main=Codex 的 per-slice 亦不适用 — 它带强制 `claude -p` 腿，见宿主
   替换表。)
 - Upgraded-state single-vendor loss (1+N+1):
-  - Claude **or** Gemini missing → N+1 reviewers: **(N+1)/(N+1) concur + flag**.
+  - Claude missing, or Gemini missing **with grok also unavailable** → N+1 reviewers: **(N+1)/(N+1) concur + flag**. (agy down + grok up = no leg lost: **(N+2)/(N+2) + substitution flag**.)
   - **All codex missing** → falls back to 1+0+1 = 2 reviewers (Claude + Gemini): **2/2 concur + flag `升级态缺 codex，已退化`**.
   - codex partial-instance loss (N→N′): **(N′+2)/(N′+2) concur + flag `codex 实例数 N→N′`**.
 - Only 1 vendor ran (no outside voice — e.g. codex+gemini both down → Claude only): **NOT positive** — no cross-family check; needs human review or wait for vendor recovery.
@@ -789,7 +799,7 @@ review can only ever make the text longer.
 3. Self-scan instead of an independent subagent — author bias, high miss rate. Self-check ≠ review.
 4. Same-family different-size as "outside voice" (Opus + Sonnet) — not cross-vendor.
 5. Hardcoded N=3 ignoring diff size.
-6. **Two-phase dispatch violations** (**ship-pre only** — the two-phase rule governs the main-session-orchestrated case where Claude runs via `Agent`; per-slice is `codex + agy` 2-Bash with no Agent, so it doesn't apply) — peeking at any CLI output between msg1 and msg2, or emitting anything other than the Agent call as msg2's first content, or mixing Agent + Bash in a single message (the old 逆机理 rule the two-phase replaced). All collapse to silent serialization.
+6. **Two-phase dispatch violations** (**ship-pre only** — the two-phase rule governs the main-session-orchestrated case where Claude runs via `Agent`; per-slice is all-Bash legs with no `Agent` — main=Codex's Claude leg is the `claude -p` Bash form — so it doesn't apply) — peeking at any CLI output between msg1 and msg2, or emitting anything other than the Agent call as msg2's first content, or mixing Agent + Bash in a single message (the old 逆机理 rule the two-phase replaced). All collapse to silent serialization.
 7. Drift hit → rationalize "one more round" — the infinite-loop entrance.
 8. Silent vendor degrade — always flag "本轮缺 X".
 9. v2 N × Claude (opus) split sections — violates current quota allocation.
