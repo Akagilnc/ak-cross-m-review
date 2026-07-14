@@ -431,7 +431,15 @@ per-slice is correctness only.
 v3 requires all 3 vendors. If one is unavailable, run with the rest and
 **flag explicitly in the round report** — never silent-degrade to 1+1.
 
-| Down (main = Claude) | Continue with | Flag |
+**The table below is the main=Claude ship-pre shape** (its rows carry a
+Claude leg). **per-slice (main=Claude, `N codex + agy`) degrades in
+place** — no Claude leg exists there to fall back on: agy down → grok
+substitutes the same seat (`N codex + grok`, flag `agy down → grok-4.5
+high 顶替`); codex down → agy (or its grok substitute) alone = single
+vendor, **NOT positive** per Step 5's sole-vendor row. main=Codex
+degrade rows live in the 宿主替换表.
+
+| Down (main = Claude ship-pre) | Continue with | Flag |
 |---|---|---|
 | codex (all) | Claude + Gemini | `本轮缺 codex`（宿主最低腿保证被 outage 打破——仅真 outage 可走此行） |
 | gemini | Claude + codex + **grok 顶替** | `agy down → grok-4.5 high 顶替` (agy outage reason: rate / quota-429 (agy individual quota exhausted, + "Resets in …" from agy's --log-file) / agy auth-race after retry×3 / sandbox write denied). agy hides 429/quota in its --log-file and exits rc=0 empty — `gemini.sh` greps the log so the reason is named, not a bare "empty output". grok 亦不可用 → Claude + codex，flag `本轮缺 gemini（grok 亦不可用）`。 |
