@@ -165,8 +165,8 @@ For **each finding**, give (in whatever prose layout is clearest):
 If you raised no **critical / high / medium** defect, **say so plainly**.
 An explicit "no blocking findings / converged" is a valid and expected
 answer — it is how you vote **approve** (the loop terminates positively
-when every reviewer raises no blocking defect for two consecutive
-rounds). A `low` / `clarity` you noticed is still owed to the fixer under
+when every reviewer raises no blocking defect). A `low` / `clarity` you
+noticed is still owed to the fixer under
 the submission contract — report it — but it does **not** cost you the
 approve vote. Do NOT invent nitpicks to look thorough.
 

@@ -34,37 +34,28 @@ the roots fail.
   by original-defect fixes → legitimate: note it in the round report and
   continue (a genuinely complex design may lawfully grow). Growth driven
   by fix-fix / invention → STOP, escalate to the user with the ledger.
-- **(c) Early stop via a FULL confirmation round (no #14 exception).**
+- **(c) Doc-mode clear form + termination (no #14 exception).**
   A round where the **majority of legs judge `complete`** AND the ledger —
   **aggregating ALL legs' findings, including any leg dissenting from the
   majority-complete vote** — shows **zero blocking (P0/P1/P2/P3) findings
-  regardless of classification** (any classification — original-defect,
-  fix-fix, or invention all count toward blocking; the
-  original-defect/fix-fix/invention split is for ②(b)'s
+  regardless of classification** (original-defect, fix-fix, and invention
+  all count toward blocking; the split is for ②(b)'s
   bloat-line/ledger-audit trigger only, never for filtering the
   clear/convergence gate) (only P4 exempt; P4 clarity
-  reported-but-Deferred, doesn't block the confirmation round) → the next
-  round is a **confirmation round that is still a FULL re-review**
-  (SKILL.md anti-pattern #14 stays fully intact — the spot-check variant
-  was considered and rejected: one full round costs nothing against the
-  ~30 wasted ones it prevents, and it keeps the fresh-full-read guarantee).
-  Confirmation round again majority-complete **AND the ledger (again
-  spanning ALL legs, dissenters included) again showing zero blocking
-  (P0/P1/P2/P3) findings regardless of classification** (any
-  classification — original-defect, fix-fix, or invention all count toward
-  blocking; the split is ②(b)'s bloat-line/ledger-audit trigger only, never
-  the clear/convergence gate) (only P4 exempt; P4 clarity
-  reported-but-Deferred, doesn't block the confirmation round) →
-  **converged, stop** (a confirmation round that itself makes any edit is
-  not terminal — see SKILL.md Step 7's carve-out; its edit is new diff
-  needing its own full re-review). Because the zero-blocking check spans every leg AND
-  counts blocking findings of every classification, a single dissenting
-  leg's blocking finding (original-defect, fix-fix, or invention — all
-  count) keeps the ledger non-zero → NOT converged **regardless of the
-  majority-complete vote**:
-  fix it and the loop continues (the early-stop arm must re-qualify from
-  scratch — bare majority-complete never converges on its own, or the
-  dissenting leg's real finding gets swallowed).
+  reported-but-Deferred, doesn't block the round) → the round is
+  **clear**; by default (single-clear termination, SKILL.md Step 5) →
+  **converged, stop**. Under `CMR_DOUBLE_CLEAR=1` the clear round is only
+  qualifying and the next round is a **confirmation round that is still a
+  FULL re-review** (SKILL.md anti-pattern #14 stays fully intact — the
+  spot-check variant was considered and rejected: one full round costs
+  nothing against the ~30 wasted ones it prevents, and it keeps the
+  fresh-full-read guarantee); clear again by the same form → **converged,
+  stop**; a blocking finding → NOT converged: fix it and re-qualify from
+  scratch. Because the zero-blocking check spans every leg AND counts
+  blocking findings of every classification, a single dissenting leg's
+  blocking finding keeps the ledger non-zero → NOT clear **regardless of
+  the majority-complete vote** — bare majority-complete never converges
+  on its own, or the dissenting leg's real finding gets swallowed.
 - **(d) Round gate at 10 — an escalation checkpoint, NOT a hard cap.**
   Doc mode reaching **round 10** without convergence → stop dispatching
   and **escalate to the user with the ledger + current state**; the user

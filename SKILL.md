@@ -490,18 +490,24 @@ doc mode P3 **is** blocking and **does** cost the concur vote (see the
 first half of this paragraph — only P4 is exempt there). **P4 never
 blocks in any mode.**
 
-**Positive termination = two consecutive clear rounds** (ALL modes, not
-just doc — 2026-07-12 user ratification). A round is **clear** when it
-has no blocking finding, i.e. every non-degraded leg concurs by the
-fractions below. One clear round no longer converges on its own: it is
-the **qualifying round**, and the next round is a **full re-review
-confirmation round**. Two consecutive clear rounds (qualifying +
-confirmation) → converged, stop (a confirmation round that itself makes
-any edit is not terminal — see the Step-7 loop's carve-out; its edit is
-new diff needing its own full re-review). A blocking finding in the confirmation
-round → NOT converged: fix it and the early-stop arm **re-qualifies from
-scratch** (a single clear round again becomes merely qualifying). The
-fractions below describe what **one fully-concurring (clear) round**
+**Positive termination = one clear round** (RECORDED 2026-07-14; reverses
+the 2026-07-12 two-consecutive ratification — double-clear is now an
+opt-in switch, default OFF). A round is **clear** when it has no blocking
+finding, i.e. every non-degraded leg concurs by the fractions below; a
+clear round → converged, stop. The same ruling DELETED the old
+confirmation-round edit carve-out ("any edit in a clear round voids
+terminal status") as over-design — a clear round that fixed a
+non-blocking P3/P4 inline still terminates.
+
+> **Double-clear switch — `CMR_DOUBLE_CLEAR=1` (default off/unset).**
+> When set (or the user asks for it at dispatch), a clear round is only
+> the **qualifying round**; the next round is a **full re-review
+> confirmation round**, and two consecutive clear rounds → converged,
+> stop. A blocking finding in the confirmation round → NOT converged:
+> fix it and **re-qualify from scratch** (a single clear round becomes
+> merely qualifying again). Nothing else changes with the switch.
+
+The fractions below describe what **one fully-concurring (clear) round**
 requires by squad shape:
 
 > **Doc mode is the explicit exception to all-legs-concur.** In
@@ -516,8 +522,9 @@ requires by squad shape:
 > gate)**. Because the ledger clause
 > spans **every** leg, a single dissenting leg's blocking finding keeps the
 > ledger non-zero → the round is **NOT clear**, even under a majority-complete
-> vote; the dissent cannot be swallowed. Both forms still need the two
-> consecutive clear rounds above (doc mode's per-round form is defined in
+> vote; the dissent cannot be swallowed. Both forms feed the same
+> termination rule above (one clear round by default; two consecutive
+> under `CMR_DOUBLE_CLEAR=1`; doc mode's per-round form is defined in
 > DOC-MODE.md ②(c)); the two forms are stated so they do not
 > contradict.
 
@@ -569,16 +576,11 @@ blocking finding (P0/P1/P2; doc mode also P3)
   → FIX → MANDATORY self-check二连 (see below) → commit
           (note "自查二连 done") → next round (FULL re-review)
 no blocking finding (round is CLEAR)
-  → confirmation round (FULL re-review); two consecutive clear rounds
-    (this one + the confirmation) → STOP (normal convergence).
-    A blocking finding in the confirmation round → re-qualify from
-    scratch (FIX, then a fresh clear round is needed again).
-    A "clear" round that itself makes any edit (e.g. fixing a
-    non-blocking P3/P4 per SHOULD-fix-by-default below) is not a
-    terminal confirming round — that edit is new diff and needs its
-    own full re-review round before two-consecutive-clear can close
-    (same "the fix is itself new diff" principle below applies here
-    too).
+  → STOP (normal convergence — default single-clear).
+    CMR_DOUBLE_CLEAR=1 only: this clear round is qualifying → run a
+    confirmation round (FULL re-review); clear again → STOP; a
+    blocking finding in it → re-qualify from scratch (FIX, then a
+    fresh clear round is needed again).
 P3/P4 only  → do NOT block, do NOT by themselves trigger another fix
               round — a round with only P3/P4 (P4 in doc mode) counts as
               CLEAR regardless. That CLEAR status is ORTHOGONAL to whether
