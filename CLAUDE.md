@@ -2,7 +2,11 @@
 
 Local, pre-PR cross-model review skill (v3 vendor squad by trigger point:
 ship-pre = N codex + 1 Claude Agent + 1 Gemini via `agy`; per-slice =
-N codex + agy, no Claude). `SKILL.md` is the entry — with `DOC-MODE.md`,
+N codex + agy under main=Claude — every squad must meet the host
+minimum-leg guarantee (SKILL.md Step 1, RECORDED 2026-07-14: main=Claude
+→ ≥1 codex leg; main=Codex → ≥1 Claude opus leg; other hosts → ≥1 of
+codex/Claude); agy down → grok-4.5 high substitutes, Step 3). `SKILL.md`
+is the entry — with `DOC-MODE.md`,
 its disclosed file, the two form the standalone authority for cmr in this
 environment; merge / grade / drift / termination are agent
 **judgment**, NOT a deterministic engine. Reviewers return a **prose**

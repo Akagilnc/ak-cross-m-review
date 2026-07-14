@@ -32,12 +32,19 @@ user-adjudication ledger; only the user may change them.
 
 ## The vendor squad — N+1+1 (ship-pre) / N+1 (per-slice)
 
-The squad depends on the trigger point (recorded decision, 2026-06-18):
-**ship-pre** = the full `N codex + Claude + agy` (N+1+1), dispatched
-two-phase by the main session; **per-slice** = `N codex + agy` (2-vendor,
-**no Claude** — `claude -p` credit is too tight for the high-frequency
-per-slice gate, so Claude is concentrated to the single ship-pre run).
-Against the same diff:
+The squad depends on the trigger point (recorded decision, 2026-06-18;
+its old credit rationale is superseded 2026-07-14 by the **host
+minimum-leg guarantee**, `SKILL.md` Step 1): **ship-pre** = the full
+`N codex + Claude + agy` (N+1+1), dispatched two-phase by the main
+session; **per-slice** = `N codex + agy` (2-vendor **by design** — the
+codex leg satisfies the main=Claude minimum). Every squad must carry at
+least one strong other-family leg: main=Claude → a codex `gpt-5.6-sol`
+leg; main=Codex → a Claude `opus` leg (headless `claude -p` in nested
+contexts — so main=Codex per-slice / Step-6 correctness is 1+1+1, no
+longer `codex + agy`); any other host → at least one of codex / Claude.
+**agy unavailable → the Gemini leg is substituted by grok** (`grok-4.5`,
+`--reasoning-effort high`, local `grok` CLI; xAI, not Google-family
+diversity — `SKILL.md` Step 3). Against the same diff:
 
 - **1 × Claude reviewer** (**ship-pre only**) — via the `Agent` tool as
   an independent subagent (zero context contamination), model =
