@@ -183,15 +183,18 @@ CMR-VERDICT: converged
 CMR-VERDICT: findings
 ```
 
-- `CMR-VERDICT: converged` — use when you raised **no critical / high /
-  medium defect** this round (P0 / P1 / P2 in the recorded scale; Step 4
-  maps your words to those levels). This is your approve vote. You MAY
-  have raised `low` / `clarity` (P3 / P4) findings — you still report
-  them (submission contract), but they do **not** block and do **not**
-  cost your converged vote.
-- `CMR-VERDICT: findings` — use when you raised **at least one critical /
-  high / medium** (P0 / P1 / P2) defect above. A round with only `low` /
-  `clarity` findings is still `converged`.
+- `CMR-VERDICT: converged` — use when you raised **no blocking defect**
+  this round: no critical / high / medium (P0 / P1 / P2 in the recorded
+  scale; Step 4 maps your words to those levels), **and in doc mode also
+  no `low`** (a doc-mode `low` blocks and costs this vote). This is your
+  approve vote. Non-blocking findings you raised (`low` in code mode;
+  `clarity` in any mode) are still reported (submission contract) but do
+  **not** cost your converged vote.
+- `CMR-VERDICT: findings` — use when you raised **at least one blocking
+  defect** by the mode threshold above: critical / high / medium (P0 /
+  P1 / P2), **or, in doc mode, a `low`**. A round with only `low` /
+  `clarity` findings is still `converged` **in code mode only**; in doc
+  mode a `low`-bearing round is `findings`.
 
 That verdict line is the *only* fixed-format ask; everything above it is
 free prose. It lets the orchestrator tell an approve from a

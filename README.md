@@ -4,11 +4,10 @@ Local, pre-PR **cross-model review** skill. `SKILL.md` together with its
 disclosed file `DOC-MODE.md` is the standalone authority. It dispatches
 an independent multi-vendor
 reviewer squad against a diff — **ship-pre** in a **two-phase 顺机理
-dispatch** (main=Claude: msg1 = all CLI Bash reviewers in the background;
-msg2 = the Claude Agent; main=Codex swaps per `SKILL.md` 宿主替换表),
-**per-slice** as just the Bash CLIs (main=Claude:
-`codex + agy`; the host minimum-leg guarantee applies — `SKILL.md`
-Step 1) — then merges, grades, drift-checks and loops through **agent
+dispatch** (main=Claude; contract in `SKILL.md` Step 2, main=Codex swaps
+per 宿主替换表), **per-slice** as just the Bash CLIs (shape + host
+minimum-leg guarantee: `SKILL.md` Step 1) — then merges, grades,
+drift-checks and loops through **agent
 judgment** — before code reaches a PR / `main`.
 
 **Status**: v0 prototype. Evolving.
