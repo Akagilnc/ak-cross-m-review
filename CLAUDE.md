@@ -1,20 +1,12 @@
 # ak-cross-m-review
 
-Local, pre-PR cross-model review skill (v3 vendor squad by trigger point:
-ship-pre = N codex + 1 Claude Agent + 1 Gemini via `agy`; per-slice =
-N codex + agy, no Claude). `SKILL.md` is the entry — with `DOC-MODE.md`,
-its disclosed file, the two form the standalone authority for cmr in this
-environment; merge / grade / drift / termination are agent
-**judgment**, NOT a deterministic engine. Reviewers return a **prose**
-review (no sentinel-JSON; the `lib/extract_json.py` parser was removed in
-0.3.9.0 — it dropped the strongest reviewer's prose as a phantom outage).
-`backends/` holds the corrected reviewer invocations (pass a successful
-review through verbatim, degrade only on a true outage); `prompts/` the
-two review lenses — `cmr-reviewer.md` (correctness, P0–P4) and
-`cmr-completeness.md` (was the spec fully delivered? — added 0.3.14.0; it
-was prose-only before, so ship-pre's Step-5 gate never actually ran) —
-plus `cmr-fixer.md`. See `README.md` for architecture. The historical
-origin is
+Local, pre-PR cross-model review skill. `SKILL.md` is the entry — with
+`DOC-MODE.md`, its disclosed file, the two form the standalone authority
+for cmr in this environment: squad / dispatch / degradation / termination
+rules ALL live there, never here (the user-adjudication ledger = RECORDED
+markers + git history). `backends/` holds the reviewer invocations; `prompts/` the two
+review lenses (`cmr-reviewer.md`, `cmr-completeness.md`) plus
+`cmr-fixer.md`. See `README.md` for architecture. The historical origin is
 `~/WorkSpace/vault/ak-cc-wiki/wiki/concepts/cross-model-review.md`.
 
 ## Testing

@@ -4,6 +4,71 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.3.23.0 — 2026-07-15
+
+Squad-composition and termination rules re-adjudicated (owner rulings
+RECORDED 2026-07-14): the credit doctrine gives way to a host-keyed
+minimum-leg guarantee, agy outages get a real substitute leg, and the
+loop converges on a single clear round by default. Ship-pre 双闸 on this
+campaign: completeness converged round 4 (3/3 `complete`), correctness
+round 5 (3/3 `converged`) — 9 rounds, 21 fix-groups (19 original-defect,
+2 fix-fix, 0 invention), 3 recorded rejections. agy went
+standing-DEGRADED after two dead rounds and grok-4.5 high substituted
+throughout — the first live exercise of the new substitution rule, which
+caught its own scoring hole (r1-M2) in the process.
+
+### Changed
+
+- **Host minimum-leg guarantee** (`SKILL.md` Step 1, RECORDED
+  2026-07-14). Every review squad — per-slice and ship-pre, both
+  lenses — now carries at least one strong other-family leg, keyed on
+  the host: main=Claude → ≥1 codex `gpt-5.6-sol` leg; main=Codex → ≥1
+  Claude `opus` leg (headless `claude -p` in nested contexts; 一律
+  `claude -p` under that host); any other host → at least one of
+  codex / Claude. Replaces the 2026-06-18 credit doctrine; the old flag
+  `不用 Claude (credit)` is repealed (main=Claude per-slice now flags
+  `per-slice 双腿 by design`). The main=Codex 固定双腿 and codex-solo
+  positive-termination exceptions are repealed with it.
+- **agy outage → grok substitution** (`SKILL.md` Step 3, RECORDED
+  2026-07-14). The Gemini leg is substituted — not dropped — when agy is
+  down: `grok --prompt-file <packet> -m grok-4.5 --reasoning-effort
+  high` (local Grok Build CLI). grok is xAI — never counted as
+  Google-family diversity, but it counts as a successful leg in the
+  concur denominator (agy down + grok up = still a full squad, 3/3 or
+  (N+2)/(N+2) + substitution flag). The Step 3 degrade table is now
+  explicitly the main=Claude ship-pre shape; per-slice degrades in
+  place (`N codex + grok`); grok itself failing falls back to the old
+  rows, never silently.
+- **Single-clear termination by default** (`SKILL.md` Step 5, RECORDED
+  2026-07-14; reverses the 2026-07-12 two-consecutive ratification).
+  One clear round → converged, ALL modes. The qualifying + confirmation
+  discipline survives only behind the opt-in **`CMR_DOUBLE_CLEAR=1`**
+  switch (default off/unset). The doc-mode clear form is now
+  lens-neutral (approve = `complete` / `converged` per the dispatched
+  lens) and `cmr-reviewer.md`'s approve/verdict contract is
+  mode-dependent (doc mode: `low` blocks → `findings`).
+- **缺钉闸 scoped to executable surfaces** (`prompts/cmr-completeness.md`
+  + `CONTEXT.md`, ADR 0003 alignment). The missing-nail gate no longer
+  demands contract tests for prose/design-text surfaces — the prose
+  ledger is RECORDED markers + git history; demanding a doc test is
+  itself a constitution violation.
+- **Step 0 doc-review lens exclusivity is per-pass, not per-change.**
+  The doc-review pass feeds only `cmr-completeness.md`, but a finished
+  design-text change still runs the ship-pre 两闸 in order — the Step-6
+  correctness gate runs `cmr-reviewer.md` in doc mode.
+
+### Removed
+
+- **Confirmation-round edit carve-out** ("any edit in a clear round
+  voids terminal status") — deleted everywhere as over-design; a clear
+  round that fixed a non-blocking P3/P4 inline still terminates.
+- **Rule content outside the authority.** Project `CLAUDE.md` is back to
+  an operating manual (squad / dispatch / degradation / termination
+  rules live in `SKILL.md` only), and README's squad/dispatch narration
+  is cut to identity + pointer level per ADR 0001 ("pointer 只能指向
+  权威，不得重述足以独立执行的规则") — the campaign's own four rounds of
+  qualifier whack-a-mole in README were the incident basis.
+
 ## 0.3.22.0 — 2026-07-14
 
 Architecture deletion campaign W2+W3 (umbrella #35; issues #36 / #41 / #39).
