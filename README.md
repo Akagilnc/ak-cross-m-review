@@ -148,6 +148,10 @@ prompts/cmr-completeness.md  completeness lens — was the spec fully
                           reference chain, exercise behavioral keys;
                           ship-pre Step 5 + design-doc review
 prompts/cmr-fixer.md      fixer prompt template (defer protocol)
+CONTEXT.md                domain glossary (ubiquitous language for the
+                          skill's terms of art)
+CHANGELOG.md              release history (Keep a Changelog, 4-digit
+                          gstack versioning)
 ```
 
 That is the whole surface. Reviewers return a **prose** review and the
