@@ -31,13 +31,14 @@ is no automatic sync since 2026-07-13 (ADR 0002), and both sides may
 diverge. Blocks marked ⚠ RECORDED RULE / RECORDED divergence are the
 user-adjudication ledger; only the user may change them.
 
-## The vendor squad — N+1+1 (ship-pre) / N+1 (per-slice)
+## The vendor squad — N+1+1 (ship-pre) / N+1 (main=Claude per-slice)
 
 The squad depends on the trigger point (recorded decision, 2026-06-18;
 its old credit rationale is superseded 2026-07-14 by the **host
 minimum-leg guarantee**, `SKILL.md` Step 1): **ship-pre** = the full
 `N codex + Claude + agy` (N+1+1), dispatched two-phase by the main
-session; **per-slice** = `N codex + agy` (2-vendor **by design** — the
+session (main=Claude — main=Codex swaps per `SKILL.md` 宿主替换表);
+**per-slice (main=Claude)** = `N codex + agy` (2-vendor **by design** — the
 codex leg satisfies the main=Claude minimum). Every squad must carry at
 least one strong other-family leg: main=Claude → a codex `gpt-5.6-sol`
 leg; main=Codex → a Claude `opus` leg (headless `claude -p` in nested
@@ -49,14 +50,16 @@ diversity — `SKILL.md` Step 3). Against the same diff:
 
 - **1 × Claude reviewer** (**ship-pre via `Agent`**; main=Codex also
   carries a per-slice Claude leg in the headless `claude -p` Bash form —
-  `SKILL.md` 宿主替换表) — via the `Agent` tool as
+  `SKILL.md` 宿主替换表) — under main=Claude via the `Agent` tool as
   an independent subagent (zero context contamination), model =
-  **`claude-opus-4-8`** (Opus 4.8). **cmr does not use Fable** (quota
+  **`claude-opus-4-8`** (Opus 4.8) in **every** form (`Agent` and
+  `claude -p` alike). **cmr does not use Fable** (quota
   scarcity) — a user-adjudicated rule recorded in `SKILL.md` Step 2
   (historically a skill-vs-wiki divergence). Set the model explicitly —
   it does not inherit the session
-  model. This is why the skill MUST run in the
-  **main session**: Claude Code does not expose `Agent` to subagents.
+  model. This is why the **main=Claude ship-pre** run MUST happen in the
+  **main session**: Claude Code does not expose `Agent` to subagents
+  (main=Codex needs no `Agent` — its Claude leg is the `claude -p` CLI).
 - **N × Codex** (`gpt-5.6-sol`, via `backends/codex-review.sh`) — N scales
   with the diff's **effective** (core-logic) line count, excluding
   test/fixture/lock/doc noise (1 / 2 / 3 for `<500` / `500–1500` /
@@ -188,7 +191,8 @@ lineage is the wiki's cross-model-review step.
 ## Dependencies
 
 - [Claude Code](https://claude.com/claude-code) CLI (`claude`) — the
-  Claude reviewer runs via the `Agent` tool
+  Claude reviewer runs via the `Agent` tool (main=Claude ship-pre) or
+  headless `claude -p` (main=Codex — `SKILL.md` 宿主替换表)
 - [OpenAI Codex](https://github.com/openai/codex) CLI (`codex`)
 - [Google Antigravity](https://github.com/google-antigravity/antigravity-cli)
   CLI (`agy`) — Gemini leg, the in-kind replacement after Google's

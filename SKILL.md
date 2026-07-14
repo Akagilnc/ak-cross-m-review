@@ -547,7 +547,10 @@ requires by squad shape:
   same as a "missing 1 vendor" round. (ship-pre 两闸 — Step 5
   completeness 与 Step 6 correctness — 无论宿主一律 1+1+1，不适用本行；
   main=Codex 的 per-slice 亦不适用 — 它带强制 `claude -p` 腿，见宿主
-  替换表。)
+  替换表。) The **Step-0 small-diff exception** scores by the same
+  principle: its by-design reduced 2-vendor squad → **2/2 concur**,
+  marked by the mandatory commit annotation (`小 diff 例外`), **not** a
+  degrade flag — nothing degraded.
 - Upgraded-state single-vendor loss (1+N+1):
   - Claude missing, or Gemini missing **with grok also unavailable** → N+1 reviewers: **(N+1)/(N+1) concur + flag**. (agy down + grok up = no leg lost: **(N+2)/(N+2) + substitution flag**.)
   - **All codex missing** → falls back to 1+0+1 = 2 reviewers (Claude + Gemini): **2/2 concur + flag `升级态缺 codex，已退化`**.
