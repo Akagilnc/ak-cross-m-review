@@ -134,9 +134,13 @@ after an earlier one is closed — is expected, not a contract breach.
 
 ---
 
-## 缺钉闸 (missing-nail gate — ADR 0130)
+## 缺钉闸 (missing-nail gate — ADR 0130; executable surfaces ONLY)
 
-Judging any spec-surface **DONE** has a **precondition: that surface's
+**Scope: executable code surfaces only.** Doc tests are permanently
+abolished (ADR 0003) — for a prose/design-text surface the ledger is
+RECORDED markers + git history, and demanding a doc test is itself a
+constitution violation, never a finding. For executable surfaces:
+judging a spec-surface **DONE** has a **precondition: that surface's
 contract test is already in the repo.** A missing nail is itself a
 **blocking** finding — category **缺钉 (missing-nail)** — and you name a
 **suggested nail point** (the assertion + where it lands) so the fixer can
@@ -168,8 +172,9 @@ the dispatch header):
   P0 / P1 / P2 / P3**; only **P4** defers (reported-but-Deferred).
 - **P4 never blocks in any mode.**
 
-A **missing nail (缺钉)** is blocking regardless — treat it as P0/P1 per
-the surface it guards. Every gap is still **reported** under the
+A **missing nail (缺钉)** on an executable surface is blocking
+regardless — treat it as P0/P1 per the surface it guards (no nail
+obligation exists for prose surfaces, ADR 0003 — see §缺钉闸 scope). Every gap is still **reported** under the
 submission contract; "does not block" means "goes to Deferred", never
 "silently dropped".
 

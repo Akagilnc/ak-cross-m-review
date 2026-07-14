@@ -4,8 +4,9 @@ Local, pre-PR **cross-model review** skill. `SKILL.md` together with its
 disclosed file `DOC-MODE.md` is the standalone authority. It dispatches
 an independent multi-vendor
 reviewer squad against a diff — **ship-pre** in a **two-phase 顺机理
-dispatch** (msg1 = all CLI Bash reviewers in the background; msg2 = the
-Claude Agent), **per-slice** as just the Bash CLIs (main=Claude:
+dispatch** (main=Claude: msg1 = all CLI Bash reviewers in the background;
+msg2 = the Claude Agent; main=Codex swaps per `SKILL.md` 宿主替换表),
+**per-slice** as just the Bash CLIs (main=Claude:
 `codex + agy`; the host minimum-leg guarantee applies — `SKILL.md`
 Step 1) — then merges, grades, drift-checks and loops through **agent
 judgment** — before code reaches a PR / `main`.
@@ -74,7 +75,8 @@ diversity — `SKILL.md` Step 3). Against the same diff:
   full diff. (Not the old `agy -p --sandbox`: agy 1.0.7 made `-p`
   swallow `--sandbox` as the prompt value, so sandbox never engaged.)
 
-The dispatch is **two-phase**: msg1 sends every CLI Bash reviewer in one
+The **main=Claude ship-pre** dispatch is **two-phase** (main=Codex swaps
+per `SKILL.md` 宿主替换表): msg1 sends every CLI Bash reviewer in one
 assistant message, all `run_in_background: true`; msg2 (immediately,
 first content) sends the Claude `Agent`. No peeking at CLI output
 between — the orchestrating session has zero results in hand when the
@@ -199,10 +201,14 @@ lineage is the wiki's cross-model-review step.
   `gemini` CLI 2026-06-18 EOL. Locked to Gemini 3.5 Flash; has a
   documented keychain auth-race the backend works around with warm +
   retry × 4 (upstream issue google-antigravity/antigravity-cli#51).
+- Grok Build CLI (`grok`) — the agy-outage **substitute** for the Gemini
+  leg (`-m grok-4.5 --reasoning-effort high`; xAI, not Google-family
+  diversity — `SKILL.md` Step 3). Optional while agy is healthy; required
+  to honor the substitution rule when agy is down.
 - `python3` ≥ 3.12 — **tests only** (`pytest`); the backends no longer
   call Python at runtime (the `extract_json.py` parser was removed)
 
-All three CLIs are subscription-authed in the author's setup; no API
+All four CLIs are subscription-authed in the author's setup; no API
 keys needed.
 
 ## Limitations / boundary

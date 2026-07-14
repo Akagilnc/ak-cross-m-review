@@ -20,7 +20,8 @@
   RECORDED marker（如适用）。权威实例见 `SKILL.md` Step 2。
 - **待补守护**：已裁定但尚无可执行测试的行为叙事；在守护补齐前不得删除，
   权威见 `SKILL.md` Step 2 `### 待补守护（暂不得删）`。
-- **缺钉闸**：缺失必要测试/守护本身即 blocking finding；权威见
+- **缺钉闸**（仅限可执行代码面；ADR 0003 废止文档测试，prose 面无缺钉
+  义务）：可执行面缺失必要测试/守护本身即 blocking finding；权威见
   `prompts/cmr-completeness.md` §缺钉闸。
 - **交卷契约**：reviewer 对每条 finding 提交可核验、可裁定的完整论证；两个
   lens prompt 的 §Submission contract 各自为权威，有意重复。
