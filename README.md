@@ -32,56 +32,38 @@ is no automatic sync since 2026-07-13 (ADR 0002), and both sides may
 diverge. Blocks marked ⚠ RECORDED RULE / RECORDED divergence are the
 user-adjudication ledger; only the user may change them.
 
-## The vendor squad — N+1+1 (ship-pre) / N+1 (main=Claude per-slice)
+## The vendor squad
 
-The squad depends on the trigger point (recorded decision, 2026-06-18;
-its old credit rationale is superseded 2026-07-14 by the **host
-minimum-leg guarantee**, `SKILL.md` Step 1): **ship-pre** = the full
-`N codex + Claude + agy` (N+1+1), dispatched two-phase by the main
-session (main=Claude — main=Codex swaps per `SKILL.md` 宿主替换表);
-**per-slice (main=Claude)** = `N codex + agy` (2-vendor **by design** — the
-codex leg satisfies the main=Claude minimum). Every squad must carry at
-least one strong other-family leg: main=Claude → a codex `gpt-5.6-sol`
-leg; main=Codex → a Claude `opus` leg (headless `claude -p` in nested
-contexts — so main=Codex per-slice / Step-6 correctness is 1+1+1, no
-longer `codex + agy`); any other host → at least one of codex / Claude.
-**agy unavailable → the Gemini leg is substituted by grok** (`grok-4.5`,
-`--reasoning-effort high`, local `grok` CLI; xAI, not Google-family
-diversity — `SKILL.md` Step 3). Against the same diff:
+The squad shape — how many legs, which vendors, per trigger point and
+host — is **rule content and lives in `SKILL.md` only**: Step 1 (squad +
+N table + the host minimum-leg guarantee, RECORDED 2026-07-14), the
+main=Codex 宿主替换表, and Step 3 (degradation + the agy→grok
+substitution). Architecture-level shape: a cross-family multi-vendor
+panel against the same diff —
 
-- **1 × Claude reviewer** (**ship-pre via `Agent`**; main=Codex also
-  carries a per-slice Claude leg in the headless `claude -p` Bash form —
-  `SKILL.md` 宿主替换表) — under main=Claude via the `Agent` tool as
-  an independent subagent (zero context contamination), model =
-  **`claude-opus-4-8`** (Opus 4.8) in **every** form (`Agent` and
-  `claude -p` alike). **cmr does not use Fable** (quota
-  scarcity) — a user-adjudicated rule recorded in `SKILL.md` Step 2
-  (historically a skill-vs-wiki divergence). Set the model explicitly —
-  it does not inherit the session
-  model. This is why the **main=Claude ship-pre** run MUST happen in the
-  **main session**: Claude Code does not expose `Agent` to subagents
-  (main=Codex needs no `Agent` — its Claude leg is the `claude -p` CLI).
-- **N × Codex** (`gpt-5.6-sol`, via `backends/codex-review.sh`) — N scales
-  with the diff's **effective** (core-logic) line count, excluding
-  test/fixture/lock/doc noise (1 / 2 / 3 for `<500` / `500–1500` /
-  `1500+`; thresholds raised ×2.5–3 on 2026-06-18); for N≥2 each codex
-  takes a distinct file-section slice. Operational authority:
-  `SKILL.md` Step 2 **Reasoning-effort contract**. To override, set
-  `CMR_CODEX_EFFORT=<value>`.
-- **1 × Gemini** (via `backends/gemini.sh`, which internally calls
-  `agy --sandbox --print ''` — Antigravity CLI, the in-kind replacement
-  after the original `gemini` CLI's 2026-06-18 EOL; locked to Gemini
-  3.5 Flash, the explicit exception to "strongest review model") —
-  full diff. (Not the old `agy -p --sandbox`: agy 1.0.7 made `-p`
-  swallow `--sandbox` as the prompt value, so sandbox never engaged.)
+- **Claude reviewer** — model **`claude-opus-4-8`** (Opus 4.8) in every
+  form; **cmr does not use Fable** (quota scarcity) — a user-adjudicated
+  rule recorded in `SKILL.md` Step 2. The invocation form depends on the
+  host (`Agent` subagent vs headless `claude -p` — `SKILL.md` Step 1 /
+  宿主替换表).
+- **N × Codex** (`gpt-5.6-sol`, via `backends/codex-review.sh`) — N
+  scales with the diff's **effective** (core-logic) line count
+  (`SKILL.md` Step 1 N table); effort contract + `CMR_CODEX_EFFORT`
+  override: `SKILL.md` Step 2 **Reasoning-effort contract**.
+- **1 × Gemini** (via `backends/gemini.sh` → `agy`, the Antigravity CLI,
+  in-kind replacement after the original `gemini` CLI's 2026-06-18 EOL;
+  locked to Gemini 3.5 Flash, the documented exception to "strongest
+  review model") — full diff; invocation form + footguns live in the
+  backend header and `SKILL.md` Step 2. agy outage → grok substitution
+  (`SKILL.md` Step 3).
 
 The **main=Claude ship-pre** dispatch is **two-phase** (main=Codex swaps
-per `SKILL.md` 宿主替换表): msg1 sends every CLI Bash reviewer in one
-assistant message, all `run_in_background: true`; msg2 (immediately,
-first content) sends the Claude `Agent`. No peeking at CLI output
-between — the orchestrating session has zero results in hand when the
-Claude reviewer is dispatched, preserving both concurrency and
-independence. The older "all reviewers in one message" rule fought the
+per `SKILL.md` 宿主替换表): the CLI legs go out as one async background
+batch, the Claude `Agent` follows immediately, and a no-peek rule keeps
+the phases from silently serializing — preserving both concurrency and
+cross-vendor independence. (The executable contract — message shapes,
+no-peek invariant, invocation forms — is `SKILL.md` Step 2 only.) The
+older "all reviewers in one message" rule fought the
 Agent / Bash tool asymmetry (Agent is foreground / blocking, Bash with
 `run_in_background` is async) and kept silently serializing in practice.
 
@@ -202,9 +184,9 @@ lineage is the wiki's cross-model-review step.
   documented keychain auth-race the backend works around with warm +
   retry × 4 (upstream issue google-antigravity/antigravity-cli#51).
 - Grok Build CLI (`grok`) — the agy-outage **substitute** for the Gemini
-  leg (`-m grok-4.5 --reasoning-effort high`; xAI, not Google-family
-  diversity — `SKILL.md` Step 3). Optional while agy is healthy; required
-  to honor the substitution rule when agy is down.
+  leg (invocation form + family accounting: `SKILL.md` Step 3). Optional
+  while agy is healthy; required to honor the substitution rule when agy
+  is down.
 - `python3` ≥ 3.12 — **tests only** (`pytest`); the backends no longer
   call Python at runtime (the `extract_json.py` parser was removed)
 

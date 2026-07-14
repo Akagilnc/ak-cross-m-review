@@ -162,11 +162,15 @@ For **each finding**, give (in whatever prose layout is clearest):
 - if the same wrong value/concept recurs **elsewhere** in the diff, name
   every location — the fixer fixes them all, not just the first.
 
-If you raised no **critical / high / medium** defect, **say so plainly**.
-An explicit "no blocking findings / converged" is a valid and expected
-answer — it is how you vote **approve** (the loop terminates positively
-when every reviewer raises no blocking defect). A `low` / `clarity` you
-noticed is still owed to the fixer under
+If you raised no **blocking** defect, **say so plainly**. An explicit
+"no blocking findings / converged" is a valid and expected answer — it
+is how you vote **approve** (the loop terminates positively when every
+reviewer raises no blocking defect). **Blocking is mode-dependent** (the
+dispatch header names the mode): code mode = `critical` / `high` /
+`medium`; **doc mode** (the reviewed thing is a design text) **also
+counts `low`** — a `low` there costs the approve vote and your verdict
+is `findings`. A non-blocking finding you noticed (`low` in code mode;
+`clarity` in any mode) is still owed to the fixer under
 the submission contract — report it — but it does **not** cost you the
 approve vote. Do NOT invent nitpicks to look thorough.
 

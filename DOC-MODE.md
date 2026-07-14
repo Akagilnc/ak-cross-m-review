@@ -35,9 +35,10 @@ the roots fail.
   continue (a genuinely complex design may lawfully grow). Growth driven
   by fix-fix / invention → STOP, escalate to the user with the ledger.
 - **(c) Doc-mode clear form + termination (no #14 exception).**
-  A round where the **majority of legs judge `complete`** AND the ledger —
+  A round where the **majority of legs approve**（`complete` /
+  `converged`，按所派 lens 的 verdict 词表）AND the ledger —
   **aggregating ALL legs' findings, including any leg dissenting from the
-  majority-complete vote** — shows **zero blocking (P0/P1/P2/P3) findings
+  majority-approve vote** — shows **zero blocking (P0/P1/P2/P3) findings
   regardless of classification** (original-defect, fix-fix, and invention
   all count toward blocking; the split is for ②(b)'s
   bloat-line/ledger-audit trigger only, never for filtering the
@@ -54,7 +55,7 @@ the roots fail.
   scratch. Because the zero-blocking check spans every leg AND counts
   blocking findings of every classification, a single dissenting leg's
   blocking finding keeps the ledger non-zero → NOT clear **regardless of
-  the majority-complete vote** — bare majority-complete never converges
+  the majority-approve vote** — bare majority-approve never converges
   on its own, or the dissenting leg's real finding gets swallowed.
 - **(d) Round gate at 10 — an escalation checkpoint, NOT a hard cap.**
   Doc mode reaching **round 10** without convergence → stop dispatching
