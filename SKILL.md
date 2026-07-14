@@ -103,10 +103,14 @@ Pre-flight gates:
   it**, without waiting to be asked. Doc-mode dispatches the same way as
   code (per §Step 1 — per-slice runner = all Bash CLI;
   ship-pre / main-session runner = two-phase + Claude via `Agent`);
-  concretely: feed **`prompts/cmr-completeness.md`** (the completeness
-  lens — NOT the correctness `cmr-reviewer.md`) + the doc, dispatched the
+  concretely: the doc-review pass feeds **`prompts/cmr-completeness.md`**
+  (the completeness lens — this pass never feeds `cmr-reviewer.md`) + the
+  doc, dispatched the
   same way (per-slice runner = all Bash CLI; ship-pre = two-phase + Claude
-  via `Agent`). For a design doc the completeness lens reads as: contract
+  via `Agent`). This exclusivity is per-pass, not per-change: a finished
+  design-text change still runs the ship-pre 两闸 in order (completeness
+  first, then the Step-6 correctness gate — `cmr-reviewer.md` in doc
+  mode, where `low` blocks per Step 5). For a design doc the completeness lens reads as: contract
   holes / state-machine deadlocks / uncovered boundary cases / undefined
   invariants / contradictions with existing ADRs. (Evidence:
   ming-salvage-sim ADR 0008 — a *design doc* — took multiple cmr rounds
@@ -356,10 +360,11 @@ the hung instance's own pid tree, never global pkill.
   agy-served Claude（同 Anthropic 家族），合并判定不得计为 Google-family
   diversity，round report 必须带旗。
   **⚠ RECORDED divergence（新建）— agy warm+retry：** 相对 wiki“agy 1.0.8 无需 warm+retry”的历史结论，本 skill 仍保留每次预热 + 共 4 次尝试；此用户裁定存续，仅用户可改。
-- **Claude reviewer** — **入口：** only via the main session's `Agent`
+- **Claude reviewer**（main=Claude — main=Codex 的 Claude 腿一律
+  `claude -p`，宿主替换表）— **入口：** only via the main session's `Agent`
   tool with the full-diff prompt and explicit model = **`opus` (Claude
   Opus 4.8)**; it never inherits the session model. **硬禁令：** Never use
-  headless `claude -p` for this leg. **降级旗：** `本轮缺 claude` means the
+  headless `claude -p` for this leg (main=Claude). **降级旗：** `本轮缺 claude` means the
   orchestrator could not dispatch or obtain a result from the Agent leg;
   report the flag rather than silently shrinking the squad.
   **⚠ RECORDED RULE（存续）— Fable 禁用：** cmr 不在任何腿使用 Fable；Claude 腿显式固定为 `opus`（Claude Opus 4.8）。这有意不同于 wiki 的最强可用 Claude 历史规则；此用户裁定存续，仅用户可重新引入 Fable。
@@ -371,8 +376,9 @@ the hung instance's own pid tree, never global pkill.
 - agy 的 `--sandbox` 不能硬阻止 workspace 写入；no-modify/no-fix prompt
   是纪律层而非 sandbox-hard 保证，reviewer 仍可运行检查/验证命令。
 - 大 diff 的 agy timeout 需为 15m（默认 5m 可能不足）。
-- Claude reviewer 必须由有 `Agent` 能力的 main session 派发；subagent
-  不能再嵌套派发该 Agent 腿。
+- （main=Claude）Claude reviewer 必须由有 `Agent` 能力的 main session
+  派发；subagent 不能再嵌套派发该 Agent 腿（main=Codex 的 Claude 腿是
+  `claude -p` Bash 形式，不受此条约束——宿主替换表）。
 
 Findings channel: reviewers return their review as **prose** (this
 skill's contract; lineage: wiki §「.result 是 review 文本」— a reviewer
