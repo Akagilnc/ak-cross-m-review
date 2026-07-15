@@ -100,30 +100,30 @@ Default panel: `CMR_PANEL=codex,grok`.
 
 Supported tokens, adapters, and real transport families:
 
-| token | adapter and selected model | family |
+| token | adapter | family |
 |---|---|---|
-| `codex` | `backends/codex-review.sh`; `gpt-5.6-sol`, effort `medium` (or explicit `low`) | OpenAI |
-| `grok` | `backends/grok-review.sh`; `grok-4.5`, effort `high` | xAI |
-| `claude` | independent host Claude Agent, Opus 4.8 only | Anthropic |
-| `gemini` / `agy` | `backends/gemini.sh`; Gemini 3.5 Flash | Google |
-| `opencode` | `backends/opencode-review.sh`; default `opencode-go/glm-5.2` | actual model vendor |
+| `codex` | `backends/codex-review.sh` | OpenAI |
+| `grok` | `backends/grok-review.sh` | xAI |
+| `claude` | independent host Agent | Anthropic |
+| `gemini` / `agy` | `backends/gemini.sh` | Google |
+| `opencode` | `backends/opencode-review.sh` | actual model vendor |
 
-`gemini` and `agy` are aliases for one transport; selecting both is a duplicate.
-For CMR, set `AGY_MODEL='Gemini 3.5 Flash'` so that transport runs its one formal
-CMR model. A backend message such as
-`NO Google voice this round` means the successful leg is not Google-family.
+Transport configuration:
 
-`claude` means exactly an independent host Claude Agent running Opus 4.8. If the
-host cannot explicitly dispatch that model, record the leg unavailable or
-degraded; Sonnet and other Claude models cannot substitute. There is no
-one-shot CLI path.
+- Codex uses `CMR_CODEX_MODEL` / `CMR_CODEX_EFFORT` (defaults `gpt-5.6-sol` /
+  `medium`; explicit `low` allowed).
+- Grok uses `CMR_GROK_MODEL` / `CMR_GROK_EFFORT` (defaults `grok-4.5` / `high`).
+- Claude means exactly an independent host Agent running Opus 4.8. If the host
+  cannot explicitly dispatch it, record the leg unavailable or degraded;
+  Sonnet and other models cannot substitute. There is no one-shot CLI path.
+- `gemini` and `agy` alias one transport; selecting both is a duplicate. Set
+  `AGY_MODEL='Gemini 3.5 Flash'` for its formal CMR model. `NO Google voice this
+  round` means the successful leg is not Google-family.
+- OpenCode uses `CMR_OPENCODE_MODEL` (default `opencode-go/glm-5.2`) and optional
+  `CMR_OPENCODE_VARIANT`.
 
-Transport configuration: Codex uses `CMR_CODEX_MODEL` / `CMR_CODEX_EFFORT`
-(defaults `gpt-5.6-sol` / `medium`; explicit `low` allowed); Grok uses
-`CMR_GROK_MODEL` / `CMR_GROK_EFFORT` (defaults `grok-4.5` / `high`); OpenCode
-uses `CMR_OPENCODE_MODEL` (default `opencode-go/glm-5.2`) and optional
-`CMR_OPENCODE_VARIANT`. Observe family from the actual vendor, never a
-`*_FAMILY` variable: OpenCode GLM is Z.AI; OpenAI is not distinct from Codex.
+Observe family from the actual vendor, never a `*_FAMILY` variable: OpenCode
+GLM is Z.AI; OpenAI is not distinct from Codex.
 
 Preflight `CMR_PANEL` before launch. Unknown tokens, repeated tokens, aliases
 that resolve to the same transport twice, or fewer than two selected transports
@@ -135,7 +135,7 @@ member, choose a unique `LEG_ROOT` outside the target and create an independent
 writable clone at `PRE_HEAD`:
 
 ```bash
-git clone --no-local --no-hardlinks --no-checkout "$REPO_ROOT" "$LEG_ROOT"
+git clone --no-local --no-checkout "$REPO_ROOT" "$LEG_ROOT"
 git -C "$LEG_ROOT" checkout --detach "$PRE_HEAD"
 git -C "$LEG_ROOT" remote remove origin
 LEG_ROOT="$(cd "$LEG_ROOT" && pwd -P)"
