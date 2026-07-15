@@ -105,8 +105,9 @@ def test_model_and_effort_overrides_pass_through_as_single_arguments(tmp_path):
     assert argv[argv.index("--reasoning-effort") + 1] == "xhigh"
 
 
-def test_prompt_allows_local_verification_writes_but_forbids_delivery_actions(tmp_path):
+def test_review_packet_passes_to_grok_verbatim(tmp_path):
     prompt_dump = tmp_path / "prompt"
+    packet = "review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n"
     _stub_grok(
         tmp_path / "bin",
         'prompt_file=""\n'
@@ -126,17 +127,7 @@ def test_prompt_allows_local_verification_writes_but_forbids_delivery_actions(tm
     assert result.returncode == 0, (
         f"stdout={result.stdout!r}\nstderr={result.stderr!r}"
     )
-    prompt = prompt_dump.read_text()
-    assert "REVIEW ONLY" in prompt
-    assert "isolated writable checkout" in prompt
-    assert "run tests and builds" in prompt
-    assert "install local dependencies" in prompt
-    assert "create local probes or artifacts" in prompt
-    assert "Do NOT implement or apply fixes, commit, push" in prompt
-    assert "remote side effects" in prompt
-    assert "Your ONLY output is your grounded prose review" in prompt
-    assert "Do NOT modify, create, rename, or delete any file" not in prompt
-    assert "review prompt\n--- BEGIN DIFF ---" in prompt
+    assert prompt_dump.read_text() == packet
 
 
 def test_invalid_mode_degrades_before_grok_runs(tmp_path):

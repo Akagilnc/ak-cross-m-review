@@ -21,11 +21,7 @@ OUTPUT_FILE="$(mktemp)"
 ERROR_FILE="$(mktemp)"
 trap 'rm -f "$PROMPT_FILE" "$OUTPUT_FILE" "$ERROR_FILE"' EXIT
 
-FULL_PROMPT="$(cat)"
-OPENCODE_PROMPT="REVIEW ONLY — HARD CONSTRAINT. This is an isolated writable checkout. You MAY run tests and builds, install local dependencies, and create local probes or artifacts for verification. Do NOT implement or apply fixes, commit, push, or cause remote side effects. Your ONLY output is your grounded prose review.
-
-$FULL_PROMPT"
-printf '%s' "$OPENCODE_PROMPT" > "$PROMPT_FILE"
+cat > "$PROMPT_FILE"
 
 cd "$REVIEW_ROOT"
 set +e

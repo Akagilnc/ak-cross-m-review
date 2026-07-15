@@ -42,9 +42,8 @@ def _env_with_stub(stub_dir: Path) -> dict[str, str]:
     env["PATH"] = f"{stub_dir}{os.pathsep}{env['PATH']}"
     # Tests should never wait between retries.
     env["GEMINI_RETRY_WARM_SLEEP"] = "0"
-    # Don't let an inherited AGY_MODEL collapse the ladder to one rung and
-    # perturb the ladder tests (Claude C1). Tests that want a pin set it
-    # explicitly after this.
+    # Keep default-model tests deterministic. Tests that want a caller-selected
+    # model set it explicitly after this.
     env.pop("AGY_MODEL", None)
     return env
 
@@ -197,56 +196,35 @@ def test_degrades_with_clear_flag_when_agy_not_installed(tmp_path):
     assert "本轮缺 gemini" in r.stderr
 
 
-def test_prompt_allows_local_verification_writes_but_forbids_delivery_actions(tmp_path):
-    # The isolated checkout may be written for verification, while review-only
-    # still forbids implementing fixes and every delivery/remote side effect.
+def test_review_packet_passes_to_agy_verbatim(tmp_path):
+    packet = "review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n"
+    prompt_dump = tmp_path / "prompt"
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
-        'prompt="$(cat)"\n'
-        'echo "===CMR-FINDINGS-BEGIN==="\n'
-        'if echo "$prompt" | grep -q "REVIEW ONLY" '
-        '&& echo "$prompt" | grep -q "isolated writable checkout" '
-        '&& echo "$prompt" | grep -q "run tests and builds" '
-        '&& echo "$prompt" | grep -q "install local dependencies" '
-        '&& echo "$prompt" | grep -q "create local probes or artifacts" '
-        '&& echo "$prompt" | grep -q "Do NOT implement or apply fixes, commit, push" '
-        '&& echo "$prompt" | grep -q "remote side effects" '
-        '&& echo "$prompt" | grep -q "Your ONLY output is your grounded prose review" '
-        '&& ! echo "$prompt" | grep -q "Do NOT modify, create, rename, or delete any file"; then\n'
-        '  echo \'{"reviewer":"gemini","mode":"code","findings":['
-        '{"id":"WRITABLE_REVIEW_MARKER_PRESENT"}]}\'\n'
-        'else\n'
-        '  echo \'{"reviewer":"gemini","mode":"code","findings":['
-        '{"id":"WRITABLE_REVIEW_MARKER_ABSENT"}]}\'\n'
-        'fi\n'
-        'echo "===CMR-FINDINGS-END==="\n'
+        'cat > "$AGY_PROMPT_DUMP"\n'
+        'echo "grounded prose review"\n'
         'exit 0\n'
     ))
+    env = _env_with_stub(tmp_path / "bin")
+    env["AGY_PROMPT_DUMP"] = str(prompt_dump)
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=packet,
         capture_output=True, text=True,
-        env=_env_with_stub(tmp_path / "bin"),
+        env=env,
         timeout=60,
     )
     assert r.returncode == 0, (
         f"expected exit 0, got {r.returncode}\n"
         f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     )
-    assert "WRITABLE_REVIEW_MARKER_PRESENT" in r.stdout, (
-        "gemini.sh did not prepend the writable-verification/review-only instruction to the agy "
-        f"prompt. stdout={r.stdout!r}"
-    )
-    assert "WRITABLE_REVIEW_MARKER_ABSENT" not in r.stdout
+    assert prompt_dump.read_text() == packet
 
 
-def test_invocation_passes_sandbox_flag_and_empty_print_value(tmp_path):
-    # Regression for the agy 1.0.7 flag-parse change. `--print`/`-p`
-    # became a string flag that takes its value from the NEXT token, so
-    # the old `agy -p --sandbox` made `-p` swallow `--sandbox` as the
-    # prompt value — `--sandbox` never engaged. Pin the corrected form:
-    # `--sandbox` is a standalone flag and `--print`'s value is the
-    # empty string (the diff rides in on stdin, no ARG_MAX limit).
+def test_default_invocation_pins_gemini_and_keeps_checkout_writable(tmp_path):
+    # The transport chooses one explicit default model but does not impose a
+    # read-only CLI sandbox. The reviewer receives the writable isolated
+    # checkout selected by the orchestrator and may use its normal tools.
     dump = tmp_path / "argv.txt"
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
@@ -269,30 +247,20 @@ def test_invocation_passes_sandbox_flag_and_empty_print_value(tmp_path):
     if argv and argv[-1] == b"":
         argv = argv[:-1]  # drop the trailing-delimiter artifact only
     argv = [a.decode() for a in argv]
-    assert "--sandbox" in argv, f"--sandbox missing from agy argv: {argv}"
-    assert "--print" in argv, f"--print missing (regressed to -p?): {argv}"
-    # cross-model review R1 (codex#1 R2): the weak form of this test
-    # (--sandbox present + --print present + token-after-first-print
-    # empty) is satisfied even by a regressed `['-p','--sandbox',
-    # '--print','']` where -p still swallows --sandbox. Assert the real
-    # invariant: the short `-p` is never used, and NO `--print`/`-p`
-    # occurrence has `--sandbox` as its value token.
-    assert "-p" not in argv, (
-        f"short `-p` must not be used (agy 1.0.7 makes it swallow the "
-        f"next token as the prompt value): {argv}"
-    )
-    for i, tok in enumerate(argv):
-        if tok in ("--print", "-p"):
-            assert i + 1 < len(argv) and argv[i + 1] != "--sandbox", (
-                f"`{tok}` swallows --sandbox as its value — the 1.0.7 "
-                f"flag-eat bug has regressed. argv={argv}"
-            )
-    pi = argv.index("--print")
-    assert pi + 1 < len(argv), f"--print has no following token: {argv}"
-    assert argv[pi + 1] == "", (
-        "--print value must be the empty string (diff rides on stdin); "
-        f"got {argv[pi + 1]!r}. argv={argv}"
-    )
+    log_path = argv[argv.index("--log-file") + 1]
+    argv[argv.index("--log-file") + 1] = "<log-file>"
+    assert Path(log_path).is_absolute()
+    assert argv == [
+        "--model",
+        "Gemini 3.5 Flash (High)",
+        "--print",
+        "",
+        "--print-timeout",
+        "15m",
+        "--log-file",
+        "<log-file>",
+    ]
+    assert "--sandbox" not in argv
 
 
 def test_surfaces_quota_reason_when_agy_swallows_429_to_logfile(tmp_path):
@@ -514,7 +482,7 @@ def test_quota_reason_resets_not_doubled_when_agy_logs_error_twice(tmp_path):
         'exit 0\n'
     ))
     env = _env_with_stub(tmp_path / "bin")
-    env["AGY_MODEL"] = "x-single-rung"  # pin to one rung so no ladder step-down noise
+    env["AGY_MODEL"] = "x-explicit-model"
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
         input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
@@ -527,83 +495,48 @@ def test_quota_reason_resets_not_doubled_when_agy_logs_error_twice(tmp_path):
     assert "Resets in 64h24m36s" in r.stderr
 
 
-def test_agy_steps_down_to_sonnet_when_gemini_quota_exhausted(tmp_path):
-    # agy model-degradation ladder: Gemini 3.5 Flash (no --model) quota-
-    # 429s → the leg steps DOWN to `Claude Sonnet 4.6 (Thinking)` (a
-    # separate quota bucket) rather than degrading the whole leg, so a
-    # 3rd voice survives. Stub: default call (no --model) → quota; a
-    # --model call → valid findings.
+def test_gemini_quota_degrades_without_trying_another_model(tmp_path):
+    # One panel token is one caller-selected model. A Gemini quota failure is
+    # visible degradation; the transport must not silently replace it with a
+    # Sonnet review from a different family/quota bucket.
+    calls = tmp_path / "calls"
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
-        'logf=""; model=""\n'
+        'logf=""\n'
+        'n=$(cat "$AGY_CALLS" 2>/dev/null || echo 0); n=$((n + 1))\n'
+        'echo "$n" > "$AGY_CALLS"\n'
         'while [ $# -gt 0 ]; do\n'
         '  case "$1" in\n'
         '    --log-file) logf="$2"; shift 2 ;;\n'
-        '    --model) model="$2"; shift 2 ;;\n'
         '    *) shift ;;\n'
         '  esac\n'
         'done\n'
-        'if [ -n "$model" ]; then\n'
-        '  echo "===CMR-FINDINGS-BEGIN==="\n'
-        '  echo "CMR-VERDICT: converged"\n'
-        '  echo "===CMR-FINDINGS-END==="\n'
-        '  exit 0\n'
-        'fi\n'
         '[ -n "$logf" ] && printf \'%s\\n\' '
         '"E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$logf"\n'
         'exit 0\n'
     ))
+    env = _env_with_stub(tmp_path / "bin")
+    env["AGY_CALLS"] = str(calls)
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
         input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
         capture_output=True, text=True,
-        env=_env_with_stub(tmp_path / "bin"),
-        timeout=60,
-    )
-    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert "CMR-VERDICT: converged" in r.stdout  # fallback review passed through
-    assert "stepping down to next agy model" in r.stderr
-    assert "Claude Sonnet 4.6 (Thinking)" in r.stderr  # the fallback note
-    assert "NO Google voice this round" in r.stderr
-
-
-def test_agy_leg_degrades_only_when_every_model_quota_exhausted(tmp_path):
-    # Both rungs (Gemini 3.5 AND the Sonnet fallback) quota-429 → the agy
-    # leg steps down entirely → degrade `本轮缺 gemini` with the quota
-    # reason. The "stepping down" warn proves the fallback rung was tried.
-    _stub_agy(tmp_path / "bin", (
-        '#!/bin/sh\n'
-        'logf=""\n'
-        'while [ $# -gt 0 ]; do\n'
-        '  case "$1" in --log-file) logf="$2"; shift 2 ;; *) shift ;; esac\n'
-        'done\n'
-        '[ -n "$logf" ] && printf \'%s\\n\' '
-        '"E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$logf"\n'
-        'exit 0\n'  # every model: quota, empty stdout
-    ))
-    r = subprocess.run(
-        ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
-        capture_output=True, text=True,
-        env=_env_with_stub(tmp_path / "bin"),
+        env=env,
         timeout=60,
     )
     assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     assert r.stdout == ""
-    assert "stepping down to next agy model" in r.stderr  # tried the fallback
+    assert calls.read_text().strip() == "1"
     assert "本轮缺 gemini" in r.stderr
     assert "quota" in r.stderr
+    assert "Sonnet" not in r.stderr
+    assert "stepping down" not in r.stderr
 
 
-def test_final_rung_quota_with_nonempty_banner_still_degrades(tmp_path):
-    # codex online R (P2): a quota-exhausted FINAL ladder rung that exits 0
-    # but prints a NON-EMPTY banner on stdout must NOT be passed through as
-    # a real review. The empty-output gate doesn't catch it (RAW non-empty)
-    # and the per-rung step-down doesn't fire on the last rung — so the
-    # degrade gate must key on the quota LOG (agy_log_has_quota), not on
-    # rc/emptiness alone. (Before the prose-passthrough rewrite, the old
-    # extract_json sentinel gate caught this incidentally; the fix restores
-    # the protection via the correct signal.) AGY_MODEL pins ONE rung.
+def test_quota_with_nonempty_banner_still_degrades(tmp_path):
+    # agy can return zero and print a non-empty diagnostic banner even when
+    # the selected model exhausted quota. The fatal log, not stdout shape,
+    # distinguishes that outage from a real prose review.
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
         'logf=""\n'
@@ -616,14 +549,14 @@ def test_final_rung_quota_with_nonempty_banner_still_degrades(tmp_path):
         'exit 0\n'
     ))
     env = _env_with_stub(tmp_path / "bin")
-    env["AGY_MODEL"] = "x-single-rung"  # one rung → no step-down masking it
+    env["AGY_MODEL"] = "x-explicit-model"
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
         input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
         capture_output=True, text=True, env=env, timeout=60,
     )
     assert r.returncode == 1, (
-        f"a quota-exhausted final rung with a non-empty banner must degrade, "
+        f"a quota-exhausted model with a non-empty banner must degrade, "
         f"not pass the banner through as a review; got {r.returncode}\n"
         f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     )
@@ -631,13 +564,11 @@ def test_final_rung_quota_with_nonempty_banner_still_degrades(tmp_path):
     assert "quota" in r.stderr
     assert r.stdout == ""
     assert "some diagnostic banner" not in r.stdout, (
-        "the quota-rung banner was passed through as if it were a review"
+        "the quota banner was passed through as if it were a review"
     )
 
 
-def test_agy_does_not_step_down_when_gemini_works(tmp_path):
-    # Happy path: Gemini 3.5 Flash (no --model) returns valid findings →
-    # the ladder must NOT step down (Sonnet never tried, no fallback note).
+def test_default_gemini_review_passes_through(tmp_path):
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
         'echo "===CMR-FINDINGS-BEGIN==="\n'
@@ -654,15 +585,12 @@ def test_agy_does_not_step_down_when_gemini_works(tmp_path):
     )
     assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     assert "CMR-VERDICT: converged" in r.stdout  # Gemini's review passed through
-    assert "stepping down" not in r.stderr
-    assert "NO Google voice" not in r.stderr
+    assert "NO Google family" not in r.stderr
 
 
 def test_agy_explicit_override_note_when_non_google_model_used(tmp_path):
-    # The other branch of the no-Google-voice note (AGY_STEPPED_DOWN=0):
-    # an explicit AGY_MODEL=Claude override that succeeds on the first try
-    # must flag the EXPLICIT-override wording, NOT the quota-step-down one
-    # (coderabbit R1).
+    # A caller may choose a different model, but the adapter must report its
+    # actual non-Google family rather than pretending the leg was Gemini.
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
         'echo "===CMR-FINDINGS-BEGIN==="\n'
@@ -679,11 +607,11 @@ def test_agy_explicit_override_note_when_non_google_model_used(tmp_path):
     )
     assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     assert "explicit AGY_MODEL override" in r.stderr
-    assert "stepped down" not in r.stderr  # not the quota-step-down note
-    assert "stepping down to next agy model" not in r.stderr
+    assert "NO Google family this round" in r.stderr
+    assert "3rd voice" not in r.stderr
 
 
-def test_gpt_oss_override_is_flagged_as_non_google_voice(tmp_path):
+def test_gpt_oss_override_is_flagged_as_non_google_family(tmp_path):
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
         'echo "review from GPT-OSS"\n'
@@ -700,7 +628,7 @@ def test_gpt_oss_override_is_flagged_as_non_google_voice(tmp_path):
         timeout=60,
     )
     assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert "NO Google voice this round" in r.stderr
+    assert "NO Google family this round" in r.stderr
     assert "GPT-OSS 120B" in r.stderr
 
 
