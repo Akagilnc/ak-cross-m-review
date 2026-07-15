@@ -4,6 +4,45 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.4.0.0 — 2026-07-15
+
+CMR returns to one job: review a fixed target against fixed authority, judge the
+cross-model candidates, report once, and stop. ADR 0004 records the owner
+supersession of the embedded repair engine.
+
+### Changed
+
+- Replaced the 831-line procedure with a five-step review-only engine: pin
+  target, pin authority, choose one lens, dispatch the panel, judge and stop.
+- Defaulted `CMR_PANEL` to Codex + Grok. Claude is optional; legacy agy remains
+  selectable and its backend remains for external consumers. Panel members get
+  the same full diff, run one configured model each, and count only when their
+  actual successful families are distinct.
+- Replaced panel voting with candidate union plus an evidence-checking judge.
+  Defect and remedy are adjudicated separately under the four lawful rejection
+  reasons; reviewer agreement and grounding no longer raise severity.
+- Rewrote correctness as Trace–Break–Prove and completeness as
+  Clause–Wire–Exercise. Review legs submit candidates and clause evidence, not
+  terminal verdicts.
+- Reduced both named gate skills to preset wrappers that select one lens,
+  return the root result unchanged, and stop.
+
+### Removed
+
+- Removed reviewer-count formulas, host-specific composition, panel fallback,
+  vote thresholds, multi-pass termination policy, and all in-CMR repair/commit
+  behavior.
+- Removed `DOC-MODE.md` and `prompts/cmr-fixer.md`; their provenance remains in
+  this changelog and git history.
+- Removed the universal missing-test gate, required suggested remedies, and
+  per-reviewer verdicts from the lens prompts.
+
+### Preserved
+
+- Kept the incident-backed Codex transport/selftest and legacy agy backend
+  behavior tests. Grok invocation behavior lives in its thin adapter and
+  adapter tests rather than duplicated skill prose.
+
 ## 0.3.23.0 — 2026-07-15
 
 Squad-composition and termination rules re-adjudicated (owner rulings

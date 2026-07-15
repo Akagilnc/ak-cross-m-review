@@ -15,13 +15,13 @@
 #        -o <last-message-file> - 2>&1
 #      - stdin pipe (the `-` means "read prompt from stdin")
 #      - `-o <file>` (--output-last-message): codex writes ONLY its final
-#        message (the review: findings + verification + CMR-VERDICT) to
+#        message (the review candidates + verification) to
 #        this file. We emit THAT, not stdout. `codex exec`'s stdout is the
 #        full prompt echo + reasoning trace — 1.5MB on a real diff, ~99%
 #        of it noise the orchestrator already has. `-o` is codex's native
 #        "last message only" output: a few KB, complete, no parser needed.
-#      - `--ephemeral`: do NOT persist a session rollout file. cmr runs
-#        N codex in parallel (1+N+1); without it concurrent instances
+#      - `--ephemeral`: do NOT persist a session rollout file. CMR and other
+#        callers may run Codex reviewers in parallel; without it instances
 #        collide on ~/.codex/session → cross-talk (prompt A surfaces in
 #        instance B's context). Recorded rule; evidence: codex#11435.
 #      - `-c model_reasoning_effort=<effort>`: pass the effort in effect
@@ -50,7 +50,7 @@
 # Invocation:
 #   <stdin: full review prompt incl. diff> | codex-review.sh <mode> [<label>]
 #     mode  : doc | code   (review lens)
-#     label : optional diagnostic tag (e.g. "section-2of3")
+#     label : optional diagnostic tag (e.g. "full")
 #
 #   CMR_CODEX_MODEL   override review model (default: gpt-5.6-sol). Any
 #                     value (e.g. luna) is passed through verbatim.
