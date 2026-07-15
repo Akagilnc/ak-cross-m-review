@@ -197,25 +197,27 @@ def test_degrades_with_clear_flag_when_agy_not_installed(tmp_path):
     assert "本轮缺 gemini" in r.stderr
 
 
-def test_injects_no_modify_no_fix_but_commands_allowed_instruction(tmp_path):
-    # Reviewers may run inspection/verification commands, including tests and
-    # behavioral exercises. The injected discipline forbids modifying the
-    # reviewed repo or fixing findings, without reinstating the withdrawn
-    # blanket command ban.
+def test_prompt_allows_local_verification_writes_but_forbids_delivery_actions(tmp_path):
+    # The isolated checkout may be written for verification, while review-only
+    # still forbids implementing fixes and every delivery/remote side effect.
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
         'prompt="$(cat)"\n'
         'echo "===CMR-FINDINGS-BEGIN==="\n'
         'if echo "$prompt" | grep -q "REVIEW ONLY" '
-        '&& echo "$prompt" | grep -q "Do NOT modify, create, rename, or delete any file" '
-        '&& echo "$prompt" | grep -q "do NOT fix findings yourself" '
-        '&& echo "$prompt" | grep -q "MAY run read-only inspection and verification commands" '
-        '&& ! echo "$prompt" | grep -q "Do NOT run any shell command"; then\n'
+        '&& echo "$prompt" | grep -q "isolated writable checkout" '
+        '&& echo "$prompt" | grep -q "run tests and builds" '
+        '&& echo "$prompt" | grep -q "install local dependencies" '
+        '&& echo "$prompt" | grep -q "create local probes or artifacts" '
+        '&& echo "$prompt" | grep -q "Do NOT implement or apply fixes, commit, push" '
+        '&& echo "$prompt" | grep -q "remote side effects" '
+        '&& echo "$prompt" | grep -q "Your ONLY output is your grounded prose review" '
+        '&& ! echo "$prompt" | grep -q "Do NOT modify, create, rename, or delete any file"; then\n'
         '  echo \'{"reviewer":"gemini","mode":"code","findings":['
-        '{"id":"RO_MARKER_PRESENT"}]}\'\n'
+        '{"id":"WRITABLE_REVIEW_MARKER_PRESENT"}]}\'\n'
         'else\n'
         '  echo \'{"reviewer":"gemini","mode":"code","findings":['
-        '{"id":"RO_MARKER_ABSENT"}]}\'\n'
+        '{"id":"WRITABLE_REVIEW_MARKER_ABSENT"}]}\'\n'
         'fi\n'
         'echo "===CMR-FINDINGS-END==="\n'
         'exit 0\n'
@@ -231,11 +233,11 @@ def test_injects_no_modify_no_fix_but_commands_allowed_instruction(tmp_path):
         f"expected exit 0, got {r.returncode}\n"
         f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     )
-    assert "RO_MARKER_PRESENT" in r.stdout, (
-        "gemini.sh did not prepend the no-modify/no-fix, commands-allowed instruction to the agy "
+    assert "WRITABLE_REVIEW_MARKER_PRESENT" in r.stdout, (
+        "gemini.sh did not prepend the writable-verification/review-only instruction to the agy "
         f"prompt. stdout={r.stdout!r}"
     )
-    assert "RO_MARKER_ABSENT" not in r.stdout
+    assert "WRITABLE_REVIEW_MARKER_ABSENT" not in r.stdout
 
 
 def test_invocation_passes_sandbox_flag_and_empty_print_value(tmp_path):

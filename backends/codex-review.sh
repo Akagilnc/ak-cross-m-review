@@ -220,6 +220,9 @@ if [ -z "$FULL_PROMPT" ]; then
   echo "codex-review: error: empty prompt on stdin" >&2
   exit 1
 fi
+CODEX_PROMPT="REVIEW ONLY — HARD CONSTRAINT. This is an isolated writable checkout. You MAY run tests and builds, install local dependencies, and create local probes or artifacts for verification. Do NOT implement or apply fixes, commit, push, or cause remote side effects. Your ONLY output is your grounded prose review.
+
+$FULL_PROMPT"
 
 if [ "${CMR_DRY_RUN:-0}" = "1" ]; then
   echo "codex-review: NON-REVIEW DRY_RUN — no Codex reviewer ran; 本轮缺 codex (NON-REVIEW DRY_RUN); command: printf %s \"\$PROMPT\" | ${CODEX_CMD[*]} 2>&1" >&2
@@ -249,7 +252,7 @@ echo "codex-review: model=${MODEL} mode=${MODE} label=${LABEL} idle-timeout=${ID
 PROMPT_TMP="$(mktemp)"
 TMP_OUT="$(mktemp)"
 trap 'rm -f "$PROMPT_TMP" "$LASTMSG" "$TMP_OUT"' EXIT
-printf '%s' "$FULL_PROMPT" > "$PROMPT_TMP"
+printf '%s' "$CODEX_PROMPT" > "$PROMPT_TMP"
 
 "${CODEX_CMD[@]}" < "$PROMPT_TMP" > "$TMP_OUT" 2>&1 &
 CODEX_PID=$!

@@ -151,10 +151,9 @@ if ! command -v agy >/dev/null 2>&1; then
   exit 1
 fi
 
-# Reviewer discipline (recorded contract). `--sandbox` is not a write-hard
-# guarantee, so prepend the no-modify/no-fix contract while preserving the
-# user decision 2026-07-13 REVIEW-ONLY verification-command relaxation.
-AGY_PROMPT="REVIEW ONLY — HARD CONSTRAINT. Do NOT modify, create, rename, or delete any file in the reviewed repo, and do NOT fix findings yourself. You MAY run read-only inspection and verification commands, including tests/builds and exercises with injected defects in a throwaway copy or fixture. Your ONLY output is your grounded prose review.
+# Reviewer discipline (recorded contract). The checkout is writable for local
+# verification, while review-only still forbids fixes and delivery side effects.
+AGY_PROMPT="REVIEW ONLY — HARD CONSTRAINT. This is an isolated writable checkout. You MAY run tests and builds, install local dependencies, and create local probes or artifacts for verification. Do NOT implement or apply fixes, commit, push, or cause remote side effects. Your ONLY output is your grounded prose review.
 
 $FULL_PROMPT"
 

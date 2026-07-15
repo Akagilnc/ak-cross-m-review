@@ -82,6 +82,35 @@ def _run_codex(stub_dir, mode="code", **env_extra):
     )
 
 
+def test_prompt_allows_local_verification_writes_but_forbids_delivery_actions(tmp_path):
+    prompt_dump = tmp_path / "prompt"
+    _codex_stub(
+        tmp_path / "bin",
+        'cat > "$CODEX_PROMPT_DUMP"\n'
+        '[ -n "$OUT" ] && printf "grounded prose review\\n" > "$OUT"\n'
+        "exit 0\n",
+    )
+
+    result = _run_codex(
+        tmp_path / "bin", CODEX_PROMPT_DUMP=str(prompt_dump)
+    )
+
+    assert result.returncode == 0, (
+        f"stdout={result.stdout!r}\nstderr={result.stderr!r}"
+    )
+    prompt = prompt_dump.read_text()
+    assert "REVIEW ONLY" in prompt
+    assert "isolated writable checkout" in prompt
+    assert "run tests and builds" in prompt
+    assert "install local dependencies" in prompt
+    assert "create local probes or artifacts" in prompt
+    assert "Do NOT implement or apply fixes, commit, push" in prompt
+    assert "remote side effects" in prompt
+    assert "Your ONLY output is your grounded prose review" in prompt
+    assert "Do NOT modify, create, rename, or delete any file" not in prompt
+    assert "review prompt\n--- BEGIN DIFF ---" in prompt
+
+
 def test_dry_run_is_unmistakably_non_review_and_nonzero(tmp_path):
     r = _run_codex(tmp_path / "bin", CMR_DRY_RUN="1")
     assert r.returncode == 2
