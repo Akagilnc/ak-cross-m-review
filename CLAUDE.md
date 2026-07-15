@@ -9,6 +9,10 @@ not separate engines. ADR 0004 records the owner-approved v0.4 boundary.
 repair, or choose another model. `backends/gemini.sh` is the formal optional
 agy/Gemini transport; the default CMR panel remains Codex + Grok.
 
+Review-only is not filesystem read-only. Each reviewer runs in its own writable
+`LEG_ROOT` at the pinned HEAD for tests and probes; it never receives the
+original target and may not repair, commit, push, or mutate remote state.
+
 ## Testing
 
 Run: `pytest` (or `.venv/bin/pytest`). Then run:

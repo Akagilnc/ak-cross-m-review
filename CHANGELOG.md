@@ -18,9 +18,10 @@ supersession of the embedded repair engine.
   Opus, agy/Gemini 3.5 Flash, and OpenCode. Panel members get the same full
   diff, run one configured model each, and count only when their actual
   successful families are distinct.
-- Sealed the reviewed repository before and after dispatch, resolved adapters
-  from the loaded skill directory while holding transport cwd at the reviewed
-  repository, and required real `path:line` evidence for every candidate.
+- Sealed the original reviewed repository before and after dispatch, resolved
+  adapters from the loaded skill directory, and gave each panel leg an isolated
+  writable checkout for tests and probes. Clean scratch is removed; dirty or
+  moved scratch is preserved without reset or cleanup.
 - Replaced panel voting with candidate union plus an evidence-checking judge.
   Defect and remedy are adjudicated separately under the four lawful rejection
   reasons; reviewer agreement and grounding no longer raise severity.

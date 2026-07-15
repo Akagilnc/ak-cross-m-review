@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: Run one read-only cross-model review pass against a fixed base-to-HEAD diff. Use per-slice, before a PR, or for design-document review; the named completeness and correctness skills are the preferred entry points.
+description: Run one review-only cross-model pass against a fixed base-to-HEAD diff, using isolated writable checkouts for evidence work. Use per-slice, before a PR, or for design-document review; the named completeness and correctness skills are the preferred entry points.
 allowed-tools:
   - Bash
   - Read
@@ -15,9 +15,9 @@ This repository's CMR authority is this file plus the selected lens prompt.
 The wiki is lineage, not an override (ADR 0002); ADR 0004 supersedes the prior
 procedure.
 
-**REVIEW ONLY.** One invocation pins one target, one authority set, one lens,
-and one independent panel pass. It returns a judged report and stops. It does
-not edit, repair, commit, dispatch another pass, or invoke the other lens.
+**REVIEW ONLY.** One invocation pins one target, authority set, lens, and panel
+pass, then reports once and stops: no repair, commit, push, another pass, or
+other lens. This constrains the outcome, not writable reviewer scratch space.
 
 Prefer the named presets `ak-cmr-completeness` and `ak-cmr-correctness`.
 Direct engine invocation must provide every required input explicitly:
@@ -33,7 +33,7 @@ without conflating them:
 - `SKILL_ROOT` — the absolute physical directory containing this loaded
   `SKILL.md`; prompts and backends resolve from here.
 - `REPO_ROOT` — `git rev-parse --show-toplevel` from the repository the caller
-  asked to review; all review commands and reviewer transports run here.
+  asked to review; pin and judge the target here, but never hand it to a reviewer.
 
 The user-supplied fixed point and the current committed `HEAD` define the whole
 review. There is no implicit `main`, range, worktree-diff, or small-change
@@ -96,11 +96,7 @@ persists cross-call state nor calls its sibling lens.
 
 ## Step 4 — Dispatch the panel
 
-Default panel:
-
-```text
-CMR_PANEL=codex,grok
-```
+Default panel: `CMR_PANEL=codex,grok`.
 
 Supported tokens and their real transport families:
 
@@ -133,13 +129,20 @@ Preflight `CMR_PANEL` before launch. Unknown tokens, repeated tokens, aliases
 that resolve to the same transport twice, or fewer than two selected transports
 hard-stop. Do not probe quota: make the real calls and report real failures.
 
-Build one packet outside `REPO_ROOT` containing the endpoint SHAs, diff
-checksum, authority, selected lens prompt, candidate contract, and materialized
-diff. Launch all selected members in one parallel batch, with no other member's
-output in any prompt. Each member runs exactly one configured model; CMR does
-not replace a failed member or choose a fallback panel. Resolve every prompt
-and backend from `SKILL_ROOT`; invoke every transport with cwd fixed to
-`REPO_ROOT`. The reviewed repository is never assumed to contain `backends/`.
+Build one packet outside `REPO_ROOT` with the endpoint SHAs, checksum,
+authority, lens prompt, candidate contract, and materialized diff. For each
+member, create a unique writable detached checkout at `PRE_HEAD` outside it:
+
+`git -C "$REPO_ROOT" worktree add --detach "$LEG_ROOT" "$PRE_HEAD"`
+
+Record token → absolute `LEG_ROOT`; verify HEAD and clean status. Resolve prompts
+and backends from `SKILL_ROOT`; run each transport at its own `LEG_ROOT`. Never
+expose `REPO_ROOT`. Launch one parallel batch with the same packet and no peer
+output; do not replace failed members or choose fallbacks.
+
+A reviewer may install dependencies, test, and create probes or local artifacts
+in `LEG_ROOT`, but must not repair, commit, push, or mutate remote state.
+Checkout mutations are evidence only; judge against the pinned target.
 
 A successful CLI member has exit code zero and non-empty review stdout; a host
 Agent must return non-empty review text. Record every failed/empty member as
@@ -150,6 +153,12 @@ resolved retry in two correctly labelled parts: a copyable shell line beginning
 with `export CMR_PANEL=...`, followed by a copyable **agent-chat skill
 invocation** repeating the actual base, scenario, lens, and authority values.
 Placeholders are forbidden; never present a skill invocation as a shell binary.
+
+After output, record each leg's HEAD and `status --porcelain=v1
+--untracked-files=all`. Only when HEAD equals `PRE_HEAD` and status is empty,
+run `git -C "$REPO_ROOT" worktree remove "$LEG_ROOT"`; otherwise preserve and
+report its path, HEAD, and status. Never reset, clean, or remove a dirty/moved
+leg; scratch state does not alter the target verdict.
 
 ## Step 5 — Judge and stop
 
@@ -190,22 +199,26 @@ outside the authority. Difficulty is not a rejection reason. A real defect
 stays live when only its proposed remedy is rejected. Deletion/simplification
 outranks adding an equivalent mechanism.
 
+Before marking a claim live, prove its exact trigger, state taxonomy, and owner
+are inside the cited clause. Similar states, adjacent retries, and other
+components cannot widen authority: use `not_established` or `scope_creep`.
+
 Reviewer agreement may raise confidence, never severity. Grounding decides
 whether the claim is established, never its impact. A test finding is live only
 with evidence such as wrong behavior remaining green, the system under test
 being mocked out, a material assertion being removed/relaxed, or the relevant
 failure path being unable to turn red.
 
-Report every live finding and every refuted/rejected disposition with its
-evidence. Before writing the terminal line, seal the snapshot:
+Report every live and refuted/rejected disposition with evidence. Before the
+terminal line, seal only the original target:
 
 1. compare `git -C "$REPO_ROOT" rev-parse 'HEAD^{commit}'` with `PRE_HEAD`;
 2. rerun `git -C "$REPO_ROOT" status --porcelain=v1 --untracked-files=all`.
 
 Any HEAD change or status output overrides the lens result with
 `CMR-VERDICT: hard-stop`. Show the before/after HEAD and status evidence. Never
-reset, checkout, remove, or clean anything; preserve every reviewer-produced
-file and modification exactly for the caller to decide.
+reset, checkout, remove, or clean `REPO_ROOT`; preserve unexpected target
+changes. Step 4 leg cleanup never substitutes for this seal.
 
 With the snapshot still sealed, end with exactly one terminal line:
 

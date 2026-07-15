@@ -19,11 +19,14 @@ verify candidate findings; report once.
 
 1. CMR is review-only. One invocation performs one fixed-target, one-lens,
    one-panel pass and stops after judgment. The caller owns every repair,
-   commit, retry, and later gate.
+   commit, retry, and later gate. Review-only is an outcome boundary, not
+   filesystem read-only inside isolated reviewer checkouts.
 2. The target is one user-supplied base-to-HEAD diff from a clean committed
    repository, materialized once. Record HEAD and status before dispatch and
-   recheck both before the terminal verdict. Mutation hard-stops with evidence;
-   preserve all outputs and never reset, checkout, remove, or clean them. The
+   recheck both before the terminal verdict. Each panel member receives a
+   separate writable checkout at the recorded HEAD; never expose the original
+   target. Original-target mutation hard-stops with evidence. Preserve dirty or
+   moved scratch and unexpected target changes without reset or cleanup. The
    authority set is frozen before dispatch. Completeness without enumerable
    authority hard-stops.
 3. Per-slice uses correctness. Ship-pre and design-document work call
@@ -50,9 +53,10 @@ verify candidate findings; report once.
 9. CLI invocation contracts have executable behavior tests. Markdown wording
    does not gain golden or phrase-pinning tests (ADR 0003).
 10. Prompts and adapters resolve from the physical directory containing the
-    loaded `SKILL.md`; every transport runs with cwd fixed to the reviewed
-    repository. Candidate locations are actual `path:line` anchors.
-    Completeness gaps require both authority and consumer anchors.
+    loaded `SKILL.md`; every transport runs with cwd at its own writable scratch
+    checkout. Reviewers may install, test, and probe there, but may not repair,
+    commit, push, or mutate remotes. Candidate locations are actual `path:line`
+    anchors. Completeness gaps require both authority and consumer anchors.
 
 This decision expressly supersedes the active CMR behavior recorded in ADR
 0001/0002 where it requires host-specific squads, disclosed document repair
@@ -66,5 +70,7 @@ from the active skill; provenance remains in git history.
 - Model-family diversity remains, but panel size, quota choice, and retry are
   explicit caller decisions rather than hidden substitutions.
 - A live defect can survive rejection of a bad proposed remedy.
+- Evidence work may write freely without granting reviewers the target or
+  turning CMR into a repair engine.
 - Review reports become inputs to an outer workflow instead of instructions to
   mutate the reviewed target.

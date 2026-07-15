@@ -14,13 +14,14 @@ and completeness lenses. ADR 0004 records the owner-approved boundary.
 2. **Pin authority** — freeze owner decisions, ADRs, spec/issue clauses, and
    repository contracts.
 3. **Choose one lens** — completeness or correctness, never both in one call.
-4. **Dispatch panel** — send the same packet and full diff to all selected
-   transports in parallel.
+4. **Dispatch panel** — give every transport the same packet plus its own
+   writable checkout of the pinned HEAD, then run them in parallel.
 5. **Judge and stop** — verify the union of candidates; report live findings
    and evidence-backed rejections; return one terminal verdict.
 
-The skill never edits, repairs, commits, launches another pass, or invokes the
-other lens. Those decisions belong to the outer development workflow.
+The skill never repairs the target, commits, pushes, launches another pass, or
+invokes the other lens. Reviewers may write only inside isolated scratch
+checkouts to run tests and probes; repair decisions belong to the outer workflow.
 
 ## Named entry points
 
@@ -143,12 +144,14 @@ tests (ADR 0003).
   checks.
 - User-facing factual claims still need grounded source verification outside
   this repository.
-- Review-only behavior is prompt-enforced, not a filesystem sandbox guarantee;
-  the engine requires clean status before dispatch and rechecks HEAD plus all
-  tracked/untracked status before its terminal verdict. It preserves any
-  unexpected reviewer output for the caller instead of cleaning it.
-- Backends resolve from the installed skill directory and run with cwd fixed to
-  the reviewed repository; the target repository need not contain `backends/`.
+- Review-only is an outcome boundary, not filesystem read-only. Every reviewer
+  gets a separate writable `LEG_ROOT` at the pinned HEAD; it may install, test,
+  and probe there, but may not repair, commit, push, or mutate remotes.
+- Backends resolve from the installed skill directory and run with cwd at their
+  own `LEG_ROOT`; reviewers never receive the original target path.
+- Before the verdict, the engine seals only the original target. Clean,
+  unmoved scratch worktrees are removed; dirty or moved scratch is preserved
+  verbatim and reported without reset or cleanup.
 - The caller owns every edit, commit, retry, and subsequent gate.
 
 ## Installation
