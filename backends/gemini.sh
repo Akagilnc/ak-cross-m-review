@@ -83,11 +83,11 @@ case "$REVIEW_ROOT" in
     ;;
 esac
 
-# Single source for "is $AGY_LOG a quota/429 exhaustion?". Patterns are
-# pinned to agy's fatal-line shapes, not a bare "quota"/"429". grep reads
-# the file directly (no `printf | grep -q` SIGPIPE under `set -o pipefail`).
+# Single source for "is $AGY_LOG a quota/429 exhaustion?". Match explicit
+# quota/429 shapes: bare RESOURCE_EXHAUSTED may describe non-quota pressure.
+# grep reads the file directly (no `printf | grep -q` SIGPIPE under pipefail).
 agy_log_has_quota() {
-  grep -qiE 'RESOURCE_EXHAUSTED|\(code 429\)|quota reached|quota exceeded|individual quota' "$AGY_LOG"
+  grep -qiE '\(code 429\)|quota reached|quota exceeded|individual quota' "$AGY_LOG"
 }
 
 # On a degrade, surface WHY by scanning ONLY agy's --log-file — that is

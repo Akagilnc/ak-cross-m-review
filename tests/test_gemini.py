@@ -439,6 +439,41 @@ def test_primary_quota_falls_back_once_to_second_pool(tmp_path):
     assert "NO Google family this round" in r.stderr
 
 
+def test_bare_resource_exhausted_does_not_use_quota_fallback(tmp_path):
+    models = tmp_path / "models"
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'logf=""; model=""\n'
+        'while [ $# -gt 0 ]; do\n'
+        '  case "$1" in\n'
+        '    --log-file) logf="$2"; shift 2 ;;\n'
+        '    --model) model="$2"; shift 2 ;;\n'
+        '    *) shift ;;\n'
+        '  esac\n'
+        'done\n'
+        'echo "$model" >> "$AGY_MODELS"\n'
+        'if [ "$model" = "primary-probe" ]; then\n'
+        '  printf \'%s\\n\' "E agent executor error: RESOURCE_EXHAUSTED: backend worker pool exhausted" > "$logf"\n'
+        '  exit 1\n'
+        'fi\n'
+        'echo "fallback review"\n'
+        'exit 0\n'
+    ))
+    env = _env_with_stub(tmp_path / "bin")
+    env["AGY_MODELS"] = str(models)
+    env["AGY_MODEL"] = "primary-probe"
+    env["AGY_FALLBACK_MODEL"] = "fallback-probe"
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n",
+        capture_output=True, text=True, env=env, timeout=60,
+    )
+    assert models.read_text().splitlines() == ["primary-probe"]
+    assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert r.stdout == ""
+    assert "本轮缺 gemini" in r.stderr
+
+
 def test_both_quota_pools_degrade_after_exactly_two_calls(tmp_path):
     models = tmp_path / "models"
     _stub_agy(tmp_path / "bin", (
