@@ -27,7 +27,7 @@ decisions become clauses too. Lower-level prose cannot override a higher source.
 For each clause record:
 
 ```text
-clause: exact quote or stable reference
+clause: authority path:line + exact quote
 kind: feature | constraint | delegation | exemption | design-decision
 status: delivered | partial | missing | violated | unverifiable
 evidence: path:line, command/probe, or the exact missing surface
@@ -82,14 +82,18 @@ Create a candidate only for a ledger row proved partial, missing, violated, or
 hollow at its real consumer. Each candidate contains:
 
 ```text
-location: path:line or the expected authoritative surface
+location: nearest actual affected or expected consumer path:line
 claim: what required delivery is absent, contradicted, or hollow
 failure scenario: trigger → consumer/path → missing or wrong observable effect
-authority: exact clause violated
+authority: actual authority path:line + exact clause violated
 evidence: ledger row, files read, commands/probes, and observed result
 severity_hint: impact if the judge establishes the gap
 remedy: optional; omit when uncertain
 ```
+
+Even an absence needs both real anchors: the authority `path:line` that requires
+the behavior and the nearest affected/expected consumer `path:line`. A proposed
+filename, stable symbol, or unlocated summary is not admissible evidence.
 
 Check the project's constitution as authority. A mechanism that conflicts with
 a ratified ADR or owner decision can be a gap-by-violation even when fully

@@ -14,10 +14,13 @@ supersession of the embedded repair engine.
 
 - Replaced the 831-line procedure with a five-step review-only engine: pin
   target, pin authority, choose one lens, dispatch the panel, judge and stop.
-- Defaulted `CMR_PANEL` to Codex + Grok. Claude is optional; legacy agy remains
-  selectable and its backend remains for external consumers. Panel members get
-  the same full diff, run one configured model each, and count only when their
-  actual successful families are distinct.
+- Defaulted `CMR_PANEL` to Codex + Grok. Optional legs are host-Agent Claude
+  Opus, agy/Gemini 3.5 Flash, and OpenCode. Panel members get the same full
+  diff, run one configured model each, and count only when their actual
+  successful families are distinct.
+- Sealed the reviewed repository before and after dispatch, resolved adapters
+  from the loaded skill directory while holding transport cwd at the reviewed
+  repository, and required real `path:line` evidence for every candidate.
 - Replaced panel voting with candidate union plus an evidence-checking judge.
   Defect and remedy are adjudicated separately under the four lawful rejection
   reasons; reviewer agreement and grounding no longer raise severity.
@@ -39,8 +42,8 @@ supersession of the embedded repair engine.
 
 ### Preserved
 
-- Kept the incident-backed Codex transport/selftest and legacy agy backend
-  behavior tests. Grok invocation behavior lives in its thin adapter and
+- Kept the incident-backed Codex transport/selftest and formal optional agy
+  backend behavior tests. Grok invocation behavior lives in its thin adapter and
   adapter tests rather than duplicated skill prose.
 
 ## 0.3.23.0 — 2026-07-15

@@ -20,15 +20,21 @@ verify candidate findings; report once.
 1. CMR is review-only. One invocation performs one fixed-target, one-lens,
    one-panel pass and stops after judgment. The caller owns every repair,
    commit, retry, and later gate.
-2. The target is one user-supplied base-to-HEAD diff materialized once. The
+2. The target is one user-supplied base-to-HEAD diff from a clean committed
+   repository, materialized once. Record HEAD and status before dispatch and
+   recheck both before the terminal verdict. Mutation hard-stops with evidence;
+   preserve all outputs and never reset, checkout, remove, or clean them. The
    authority set is frozen before dispatch. Completeness without enumerable
    authority hard-stops.
 3. Per-slice uses correctness. Ship-pre and design-document work call
    completeness first and correctness later as separate outer invocations.
-4. The default panel is Codex + Grok. Claude is optional, not required. Legacy
-   agy remains selectable and its backend remains available to external
-   consumers. Every member sees the same full packet; at least two actually
-   successful, distinct transport families are required.
+4. The default panel is Codex + Grok. Optional legs are exactly Claude Opus 4.8
+   through an independent host Agent, agy/Gemini 3.5 Flash, and OpenCode. If
+   Opus 4.8 cannot be explicitly dispatched, the Claude leg is unavailable or
+   degraded; Sonnet and other Claude models cannot substitute, and there is no
+   CLI fallback. OpenCode GLM is Z.AI; an OpenAI model through OpenCode is the
+   same family as Codex. Every member sees the same full packet; at least two
+   actually successful, distinct transport families are required.
 5. Panel outputs are candidate findings, never votes. The judge verifies their
    union, separates defect adjudication from remedy adjudication, and may reject
    only as `unconstitutional`, `over_defense`, `not_established`, or
@@ -43,6 +49,10 @@ verify candidate findings; report once.
    rationale remains in git and the changelog, not in the active skill.
 9. CLI invocation contracts have executable behavior tests. Markdown wording
    does not gain golden or phrase-pinning tests (ADR 0003).
+10. Prompts and adapters resolve from the physical directory containing the
+    loaded `SKILL.md`; every transport runs with cwd fixed to the reviewed
+    repository. Candidate locations are actual `path:line` anchors.
+    Completeness gaps require both authority and consumer anchors.
 
 This decision expressly supersedes the active CMR behavior recorded in ADR
 0001/0002 where it requires host-specific squads, disclosed document repair

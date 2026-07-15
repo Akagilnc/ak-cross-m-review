@@ -9,8 +9,8 @@ and completeness lenses. ADR 0004 records the owner-approved boundary.
 
 ## Five-step shape
 
-1. **Pin target** — resolve the user-supplied base and `HEAD`; materialize one
-   non-empty full diff.
+1. **Pin target** — require a clean committed repository, resolve the
+   user-supplied base and `HEAD`, and materialize one non-empty full diff.
 2. **Pin authority** — freeze owner decisions, ADRs, spec/issue clauses, and
    repository contracts.
 3. **Choose one lens** — completeness or correctness, never both in one call.
@@ -35,18 +35,18 @@ and stop.
 ## Usage
 
 Every call needs a fixed point, scenario, and authority. There is no implicit
-base.
+base. Panel configuration is shell environment; skill invocation happens in
+the agent chat. They are different surfaces.
 
 ```bash
-CMR_PANEL=codex,grok /ak-cmr-completeness \
-  --base main \
-  --scenario ship-pre \
-  --authority docs/spec.md
+export CMR_PANEL=codex,grok
+```
 
-CMR_PANEL=codex,grok /ak-cmr-correctness \
-  --base HEAD~1 \
-  --scenario per-slice \
-  --authority docs/adr/0004-review-only-cmr.md
+Then, in agent chat:
+
+```text
+ak-cmr-completeness --base main --scenario ship-pre --authority docs/spec.md
+ak-cmr-correctness --base HEAD~1 --scenario per-slice --authority docs/adr/0004-review-only-cmr.md
 ```
 
 For ship-pre or a design document, the outer workflow calls completeness
@@ -55,12 +55,8 @@ the same resolved base/HEAD pair.
 
 Direct engine use is available when the lens must be explicit:
 
-```bash
-CMR_PANEL=codex,grok /ak-cross-m-review \
-  --base HEAD~1 \
-  --scenario per-slice \
-  --lens correctness \
-  --authority docs/adr/0004-review-only-cmr.md
+```text
+ak-cross-m-review --base HEAD~1 --scenario per-slice --lens correctness --authority docs/adr/0004-review-only-cmr.md
 ```
 
 ## Panel and quota switching
@@ -71,45 +67,54 @@ The default is deliberately small and does not require Claude:
 CMR_PANEL=codex,grok
 ```
 
-Supported panel tokens are `codex`, `grok`, optional `claude`, and legacy
-`gemini`/`agy`. A panel needs at least two successful, actually distinct model
-families. Unknown or repeated tokens fail before dispatch. Models are explicit;
-CMR never replaces a failed member with another model.
+Supported panel tokens are `codex`, `grok`, optional `claude`, formal optional
+`gemini`/`agy`, and optional `opencode`. A panel needs at least two successful,
+actually distinct model families. Unknown or repeated tokens fail before
+dispatch. Models are explicit; CMR never replaces a failed member with another
+model.
 
 Transport overrides:
 
 | transport | model/effort controls |
 |---|---|
-| Codex | `CMR_CODEX_MODEL`, `CMR_CODEX_EFFORT` |
-| Grok | `CMR_GROK_MODEL`, `CMR_GROK_EFFORT` |
-| Claude | `CMR_CLAUDE_MODEL` |
-| legacy agy | one explicit `AGY_MODEL` for CMR |
+| Codex | `gpt-5.6-sol`, `CMR_CODEX_EFFORT=medium` by default; `low` allowed |
+| Grok | `grok-4.5`, effort `high` |
+| Claude | Opus 4.8 via an independent host Claude Agent only |
+| agy | `AGY_MODEL='Gemini 3.5 Flash'` |
+| OpenCode | `CMR_OPENCODE_MODEL` defaults to `opencode-go/glm-5.2`; optional `CMR_OPENCODE_VARIANT` |
 
 Family is derived from the model/vendor actually used, not a configurable
-`FAMILY` label. CMR does not spend calls probing quota: the real review call
-either succeeds or is reported as degraded.
+`FAMILY` label. Default OpenCode GLM counts as Z.AI; an OpenCode model served by
+OpenAI is the same family as Codex. `claude` means exactly an independent host
+Claude Agent running Opus 4.8; if that model cannot be explicitly dispatched,
+the leg is unavailable/degraded. Sonnet and other Claude models cannot
+substitute. CMR does not spend calls probing quota: the real review call either
+succeeds or is reported as degraded.
 
-If Grok is out of quota, the caller can start a new invocation explicitly:
+For a lower-cost Codex leg, set:
 
 ```bash
-CMR_PANEL=codex,claude \
-CMR_CLAUDE_MODEL=claude-opus-4-8 \
-/ak-cmr-correctness \
-  --base HEAD~1 \
-  --scenario per-slice \
-  --authority docs/adr/0004-review-only-cmr.md
+export CMR_CODEX_EFFORT=low
 ```
 
-Legacy agy remains selectable and available to external consumers. CMR pins it
-to one explicit model:
+If Grok is unavailable, switch explicitly to the tested agy transport:
 
 ```bash
-AGY_MODEL='Gemini 3.5 Flash' \
-CMR_PANEL=codex,gemini \
-/ak-cmr-correctness \
-  --base HEAD~1 \
-  --scenario per-slice \
-  --authority docs/adr/0004-review-only-cmr.md
+export AGY_MODEL='Gemini 3.5 Flash'
+export CMR_PANEL=codex,gemini
+```
+
+Or use the OpenCode GLM leg:
+
+```bash
+export CMR_PANEL=codex,opencode
+export CMR_OPENCODE_MODEL='opencode-go/glm-5.2'
+```
+
+Then start the new review in agent chat, not the shell:
+
+```text
+ak-cmr-correctness --base HEAD~1 --scenario per-slice --authority docs/adr/0004-review-only-cmr.md
 ```
 
 ## What ships
@@ -122,14 +127,14 @@ skills/ak-cmr-completeness/      completeness preset
 skills/ak-cmr-correctness/       correctness preset
 backends/codex-review.sh         incident-backed Codex transport
 backends/grok-review.sh          thin Grok transport
-backends/gemini.sh               retained legacy agy transport
+backends/gemini.sh               agy / Gemini 3.5 Flash transport
+backends/opencode-review.sh      thin OpenCode transport
 scripts/install-skills.sh        installs the engine and both presets
 docs/adr/0004-review-only-cmr.md owner supersession decision
 ```
 
-The Codex and Grok invocation forms have executable behavior tests. The legacy
-agy transport and its existing tests remain because other consumers still use
-it. Prompt prose is governed by review and git history, not phrase-pinning
+The CLI invocation forms have executable behavior tests in their adapter
+slices. Prompt prose is governed by review and git history, not phrase-pinning
 tests (ADR 0003).
 
 ## Boundary
@@ -139,7 +144,11 @@ tests (ADR 0003).
 - User-facing factual claims still need grounded source verification outside
   this repository.
 - Review-only behavior is prompt-enforced, not a filesystem sandbox guarantee;
-  inspect repository status after third-party agentic transports run.
+  the engine requires clean status before dispatch and rechecks HEAD plus all
+  tracked/untracked status before its terminal verdict. It preserves any
+  unexpected reviewer output for the caller instead of cleaning it.
+- Backends resolve from the installed skill directory and run with cwd fixed to
+  the reviewed repository; the target repository need not contain `backends/`.
 - The caller owns every edit, commit, retry, and subsequent gate.
 
 ## Installation

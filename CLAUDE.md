@@ -6,8 +6,8 @@ two executable lenses. The named skills under `skills/` are preset entry points,
 not separate engines. ADR 0004 records the owner-approved v0.4 boundary.
 
 `backends/` contains transport adapters only. A transport does not judge,
-repair, or choose another model. `backends/gemini.sh` remains for legacy
-consumers even though the default CMR panel is Codex + Grok.
+repair, or choose another model. `backends/gemini.sh` is the formal optional
+agy/Gemini transport; the default CMR panel remains Codex + Grok.
 
 ## Testing
 
@@ -21,7 +21,7 @@ Full conventions are in [TESTING.md](./TESTING.md).
 
 - Tests cover executable backend behavior, not Markdown wording (ADR 0003).
 - New executable behavior or error paths require behavioral coverage.
-- Preserve the incident-backed Codex invocation guard and legacy agy tests.
+- Preserve the incident-backed Codex invocation guard and agy transport tests.
 - Grok invocation behavior belongs to its thin adapter and adapter tests, not
   duplicated prose in `SKILL.md`.
 - Never commit with a red test or selftest.

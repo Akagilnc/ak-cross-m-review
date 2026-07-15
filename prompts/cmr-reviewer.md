@@ -75,7 +75,7 @@ wrong behavior that the suite still accepts.
 For every candidate, provide all fields below in clear prose:
 
 ```text
-location: path:line or stable symbol
+location: actual affected path:line
 claim: what is wrong
 failure scenario: trigger → execution path → wrong observable outcome
 authority: exact clause, invariant, API contract, or test promise violated
@@ -87,7 +87,8 @@ remedy: optional; omit when uncertain
 Evidence must point to the fixed target. Quote only the minimum needed. If the
 same trigger creates distinct wrong outcomes, report distinct candidates; if
 multiple reviewers would merely restate one counterexample, one candidate is
-enough.
+enough. A symbol, hunk header, or path without a real line number is not a
+location and must not be submitted.
 
 Severity describes consequence, not confidence. Do not raise it because a
 claim is well grounded or likely to be repeated by another reviewer.
