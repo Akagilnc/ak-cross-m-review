@@ -81,7 +81,7 @@ Transport overrides:
 | Codex | `gpt-5.6-sol`, `CMR_CODEX_EFFORT=medium` by default; `low` allowed |
 | Grok | `grok-4.5`, effort `high` |
 | Claude | Opus 4.8 via an independent host Claude Agent only |
-| agy | `AGY_MODEL='Gemini 3.5 Flash'` |
+| agy | `AGY_MODEL='Gemini 3.5 Flash (High)'` |
 | OpenCode | `CMR_OPENCODE_MODEL` defaults to `opencode-go/glm-5.2`; optional `CMR_OPENCODE_VARIANT` |
 
 Family is derived from the model/vendor actually used, not a configurable
@@ -101,7 +101,7 @@ export CMR_CODEX_EFFORT=low
 If Grok is unavailable, switch explicitly to the tested agy transport:
 
 ```bash
-export AGY_MODEL='Gemini 3.5 Flash'
+export AGY_MODEL='Gemini 3.5 Flash (High)'
 export CMR_PANEL=codex,gemini
 ```
 

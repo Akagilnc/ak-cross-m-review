@@ -18,6 +18,9 @@ supersession of the embedded repair engine.
   Opus, agy/Gemini 3.5 Flash, and OpenCode. Panel members get the same full
   diff, run one configured model each, and count only when their actual
   successful families are distinct.
+- Kept transports caller-directed: Gemini runs one caller-selected model
+  (default `Gemini 3.5 Flash (High)`) and degrades on quota without fallback;
+  adapters pass the packet through unchanged and apply no CLI read-only sandbox.
 - Sealed the original reviewed repository before and after dispatch, resolved
   adapters from the loaded skill directory, and gave each panel leg an
   independent writable clone for tests and probes. Clones share no Git config,

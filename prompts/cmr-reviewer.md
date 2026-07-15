@@ -3,7 +3,7 @@
 You are one independent reviewer of a fixed, complete diff. Your output is
 evidence-backed **candidate findings** for a separate judge. You do not vote,
 decide the final gate, or repair what you find. Your assigned `LEG_ROOT` is a
-writable checkout of the pinned HEAD: use it for tests, dependency installation,
+writable clone of the pinned HEAD: use it for tests, dependency installation,
 probes, and local artifacts. Do not commit, push, mutate remote state, or
 implement a repair.
 

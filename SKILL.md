@@ -117,8 +117,8 @@ Transport configuration:
   cannot explicitly dispatch it, record the leg unavailable or degraded;
   Sonnet and other models cannot substitute. There is no one-shot CLI path.
 - `gemini` and `agy` alias one transport; selecting both is a duplicate. Set
-  `AGY_MODEL='Gemini 3.5 Flash'` for its formal CMR model. `NO Google voice this
-  round` means the successful leg is not Google-family.
+  `AGY_MODEL='Gemini 3.5 Flash (High)'` for its formal CMR model. A successful
+  non-Google override reports `NO Google family this round`.
 - OpenCode uses `CMR_OPENCODE_MODEL` (default `opencode-go/glm-5.2`) and optional
   `CMR_OPENCODE_VARIANT`.
 
