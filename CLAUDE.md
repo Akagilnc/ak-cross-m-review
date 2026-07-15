@@ -10,8 +10,10 @@ repair, or choose another model. `backends/gemini.sh` is the formal optional
 agy/Gemini transport; the default CMR panel remains Codex + Grok.
 
 Review-only is not filesystem read-only. Each reviewer runs in its own writable
-`LEG_ROOT` at the pinned HEAD for tests and probes; it never receives the
-original target and may not repair, commit, push, or mutate remote state.
+independent clone at `LEG_ROOT` for tests and probes; it never receives the
+original target and may not repair, commit, push, or mutate remote state. Never
+use a linked worktree: remove the clone's source remote before dispatch, and do
+not share Git config, refs, or objects with the target.
 
 ## Testing
 

@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: Run one review-only cross-model pass against a fixed base-to-HEAD diff, using isolated writable checkouts for evidence work. Use per-slice, before a PR, or for design-document review; the named completeness and correctness skills are the preferred entry points.
+description: Run one review-only cross-model pass against a fixed base-to-HEAD diff, using isolated writable clones for evidence work. Use per-slice, before a PR, or for design-document review; the named completeness and correctness skills are the preferred entry points.
 allowed-tools:
   - Bash
   - Read
@@ -98,15 +98,15 @@ persists cross-call state nor calls its sibling lens.
 
 Default panel: `CMR_PANEL=codex,grok`.
 
-Supported tokens and their real transport families:
+Supported tokens, adapters, and real transport families:
 
-| token | transport | family |
+| token | adapter and selected model | family |
 |---|---|---|
-| `codex` | `stdin packet \| "$SKILL_ROOT/backends/codex-review.sh" <mode> <label>`; `gpt-5.6-sol`, effort `medium` (or explicit `low`) | OpenAI |
-| `grok` | `stdin packet \| "$SKILL_ROOT/backends/grok-review.sh" <mode> <label>`; `grok-4.5` | xAI |
+| `codex` | `backends/codex-review.sh`; `gpt-5.6-sol`, effort `medium` (or explicit `low`) | OpenAI |
+| `grok` | `backends/grok-review.sh`; `grok-4.5`, effort `high` | xAI |
 | `claude` | independent host Claude Agent, Opus 4.8 only | Anthropic |
-| `gemini` / `agy` | `stdin packet \| "$SKILL_ROOT/backends/gemini.sh" <mode>`; Gemini 3.5 Flash | Google |
-| `opencode` | `stdin packet \| "$SKILL_ROOT/backends/opencode-review.sh" <mode> <label>`; default `opencode-go/glm-5.2` | actual model vendor |
+| `gemini` / `agy` | `backends/gemini.sh`; Gemini 3.5 Flash | Google |
+| `opencode` | `backends/opencode-review.sh`; default `opencode-go/glm-5.2` | actual model vendor |
 
 `gemini` and `agy` are aliases for one transport; selecting both is a duplicate.
 For CMR, set `AGY_MODEL='Gemini 3.5 Flash'` so that transport runs its one formal
@@ -131,14 +131,27 @@ hard-stop. Do not probe quota: make the real calls and report real failures.
 
 Build one packet outside `REPO_ROOT` with the endpoint SHAs, checksum,
 authority, lens prompt, candidate contract, and materialized diff. For each
-member, create a unique writable detached checkout at `PRE_HEAD` outside it:
+member, choose a unique `LEG_ROOT` outside the target and create an independent
+writable clone at `PRE_HEAD`:
 
-`git -C "$REPO_ROOT" worktree add --detach "$LEG_ROOT" "$PRE_HEAD"`
+```bash
+git clone --no-local --no-hardlinks --no-checkout "$REPO_ROOT" "$LEG_ROOT"
+git -C "$LEG_ROOT" checkout --detach "$PRE_HEAD"
+git -C "$LEG_ROOT" remote remove origin
+LEG_ROOT="$(cd "$LEG_ROOT" && pwd -P)"
+```
 
-Record token → absolute `LEG_ROOT`; verify HEAD and clean status. Resolve prompts
-and backends from `SKILL_ROOT`; run each transport at its own `LEG_ROOT`. Never
-expose `REPO_ROOT`. Launch one parallel batch with the same packet and no peer
-output; do not replace failed members or choose fallbacks.
+Do not use a linked worktree, shared object store, reference clone, or
+alternates: the leg's `.git` config, refs, and objects must be independent of
+the target. Before dispatch, verify that `git -C "$LEG_ROOT" rev-parse
+--path-format=absolute --git-common-dir` is inside `LEG_ROOT`, HEAD equals
+`PRE_HEAD`, status is empty, and `git -C "$LEG_ROOT" remote` prints nothing.
+Any failed check hard-stops before that reviewer runs.
+
+Record token → absolute `LEG_ROOT`; resolve prompts and backends from
+`SKILL_ROOT`, and run each transport at its own `LEG_ROOT`. Never expose
+`REPO_ROOT`. Launch one parallel batch with the same packet and no peer output;
+do not replace failed members or choose fallbacks.
 
 A reviewer may install dependencies, test, and create probes or local artifacts
 in `LEG_ROOT`, but must not repair, commit, push, or mutate remote state.
@@ -154,11 +167,12 @@ with `export CMR_PANEL=...`, followed by a copyable **agent-chat skill
 invocation** repeating the actual base, scenario, lens, and authority values.
 Placeholders are forbidden; never present a skill invocation as a shell binary.
 
-After output, record each leg's HEAD and `status --porcelain=v1
---untracked-files=all`. Only when HEAD equals `PRE_HEAD` and status is empty,
-run `git -C "$REPO_ROOT" worktree remove "$LEG_ROOT"`; otherwise preserve and
-report its path, HEAD, and status. Never reset, clean, or remove a dirty/moved
-leg; scratch state does not alter the target verdict.
+After output, record each leg's HEAD, `status --porcelain=v1
+--untracked-files=all`, and remotes. Discard the independent clone only when
+HEAD still equals `PRE_HEAD`, status is empty, and no remote exists. Preserve
+and report the path, HEAD, status, and remotes of every dirty, moved, or
+remote-changed leg. Never reset, clean, or remove such a leg; scratch state does
+not alter the target verdict.
 
 ## Step 5 — Judge and stop
 

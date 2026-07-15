@@ -20,14 +20,17 @@ verify candidate findings; report once.
 1. CMR is review-only. One invocation performs one fixed-target, one-lens,
    one-panel pass and stops after judgment. The caller owns every repair,
    commit, retry, and later gate. Review-only is an outcome boundary, not
-   filesystem read-only inside isolated reviewer checkouts.
+   filesystem read-only inside isolated reviewer clones.
 2. The target is one user-supplied base-to-HEAD diff from a clean committed
    repository, materialized once. Record HEAD and status before dispatch and
-   recheck both before the terminal verdict. Each panel member receives a
-   separate writable checkout at the recorded HEAD; never expose the original
-   target. Original-target mutation hard-stops with evidence. Preserve dirty or
-   moved scratch and unexpected target changes without reset or cleanup. The
-   authority set is frozen before dispatch. Completeness without enumerable
+   recheck both before the terminal verdict. Each panel member receives an
+   independent writable clone detached at the recorded HEAD; never expose the
+   original target. The clone does not share the target's Git config, refs, or
+   object store, and its source remote is removed before dispatch.
+   Original-target mutation hard-stops with evidence. Only clean, unmoved,
+   remote-free scratch may be discarded; preserve every dirty, moved, or
+   remote-changed leg and unexpected target change without reset or cleanup.
+   The authority set is frozen before dispatch. Completeness without enumerable
    authority hard-stops.
 3. Per-slice uses correctness. Ship-pre and design-document work call
    completeness first and correctness later as separate outer invocations.
@@ -54,7 +57,7 @@ verify candidate findings; report once.
    does not gain golden or phrase-pinning tests (ADR 0003).
 10. Prompts and adapters resolve from the physical directory containing the
     loaded `SKILL.md`; every transport runs with cwd at its own writable scratch
-    checkout. Reviewers may install, test, and probe there, but may not repair,
+    clone. Reviewers may install, test, and probe there, but may not repair,
     commit, push, or mutate remotes. Candidate locations are actual `path:line`
     anchors. Completeness gaps require both authority and consumer anchors.
 
@@ -70,7 +73,7 @@ from the active skill; provenance remains in git history.
 - Model-family diversity remains, but panel size, quota choice, and retry are
   explicit caller decisions rather than hidden substitutions.
 - A live defect can survive rejection of a bad proposed remedy.
-- Evidence work may write freely without granting reviewers the target or
-  turning CMR into a repair engine.
+- Evidence work may write freely in independent clones without granting
+  reviewers the target or turning CMR into a repair engine.
 - Review reports become inputs to an outer workflow instead of instructions to
   mutate the reviewed target.

@@ -19,9 +19,11 @@ supersession of the embedded repair engine.
   diff, run one configured model each, and count only when their actual
   successful families are distinct.
 - Sealed the original reviewed repository before and after dispatch, resolved
-  adapters from the loaded skill directory, and gave each panel leg an isolated
-  writable checkout for tests and probes. Clean scratch is removed; dirty or
-  moved scratch is preserved without reset or cleanup.
+  adapters from the loaded skill directory, and gave each panel leg an
+  independent writable clone for tests and probes. Clones share no Git config,
+  refs, or object store with the target and have no remote during review. Only
+  clean, unmoved, remote-free scratch is discarded; dirty, moved, or
+  remote-changed scratch is preserved without reset or cleanup.
 - Replaced panel voting with candidate union plus an evidence-checking judge.
   Defect and remedy are adjudicated separately under the four lawful rejection
   reasons; reviewer agreement and grounding no longer raise severity.

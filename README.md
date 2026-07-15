@@ -15,13 +15,13 @@ and completeness lenses. ADR 0004 records the owner-approved boundary.
    repository contracts.
 3. **Choose one lens** — completeness or correctness, never both in one call.
 4. **Dispatch panel** — give every transport the same packet plus its own
-   writable checkout of the pinned HEAD, then run them in parallel.
+   independent writable clone of the pinned HEAD, then run them in parallel.
 5. **Judge and stop** — verify the union of candidates; report live findings
    and evidence-backed rejections; return one terminal verdict.
 
 The skill never repairs the target, commits, pushes, launches another pass, or
-invokes the other lens. Reviewers may write only inside isolated scratch
-checkouts to run tests and probes; repair decisions belong to the outer workflow.
+invokes the other lens. Reviewers may write only inside isolated scratch clones
+to run tests and probes; repair decisions belong to the outer workflow.
 
 ## Named entry points
 
@@ -145,13 +145,15 @@ tests (ADR 0003).
 - User-facing factual claims still need grounded source verification outside
   this repository.
 - Review-only is an outcome boundary, not filesystem read-only. Every reviewer
-  gets a separate writable `LEG_ROOT` at the pinned HEAD; it may install, test,
-  and probe there, but may not repair, commit, push, or mutate remotes.
+  gets a separate writable clone at `LEG_ROOT`; it may install, test, and probe
+  there, but may not repair, commit, push, or mutate remotes.
+- A leg is not a linked worktree: its Git config, refs, and object store are
+  independent, and its source remote is removed before dispatch.
 - Backends resolve from the installed skill directory and run with cwd at their
   own `LEG_ROOT`; reviewers never receive the original target path.
-- Before the verdict, the engine seals only the original target. Clean,
-  unmoved scratch worktrees are removed; dirty or moved scratch is preserved
-  verbatim and reported without reset or cleanup.
+- Before the verdict, the engine seals only the original target. Only clean,
+  unmoved, remote-free scratch clones are discarded; dirty, moved, or
+  remote-changed scratch is preserved and reported without reset or cleanup.
 - The caller owns every edit, commit, retry, and subsequent gate.
 
 ## Installation

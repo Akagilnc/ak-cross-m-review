@@ -5,8 +5,9 @@
   resealed against HEAD and status before the terminal verdict.
 - **skill root** — the physical directory containing the loaded `SKILL.md`.
   Prompts and adapters resolve from here.
-- **leg root** — one writable detached checkout at `PRE_HEAD`, unique to a
-  panel member. Its transport runs here; reviewers never receive `REPO_ROOT`.
+- **leg root** — one independent writable clone detached at `PRE_HEAD`, unique
+  to a panel member. It has its own Git config, refs, and objects, and no remote.
+  Its transport runs here; reviewers never receive `REPO_ROOT`.
 - **authority set** — the ordered owner decisions, ADR/spec/issue clauses, and
   repository contracts frozen before dispatch. Changed code is evidence, not
   authority for itself.
@@ -39,7 +40,8 @@
   returns `converged|findings`; either may return `escalate|hard-stop`.
 - **review only** — CMR reports and stops. The caller owns edits, commits,
   retries, and later gates. Reviewers may write evidence inside `LEG_ROOT`, but
-  never repair, commit, push, or mutate remote state. Dirty/moved legs and any
-  unexpected target mutation are preserved without reset or cleanup.
+  never repair, commit, push, or mutate remote state. Dirty, moved, or
+  remote-changed legs and any unexpected target mutation are preserved without
+  reset or cleanup.
 - **deletion outranks addition** — for equivalent behavior, remove or simplify
   before adding another mechanism.
