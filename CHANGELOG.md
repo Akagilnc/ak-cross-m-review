@@ -16,11 +16,14 @@ supersession of the embedded repair engine.
   target, pin authority, choose one lens, dispatch the panel, judge and stop.
 - Defaulted `CMR_PANEL` to Codex + Grok. Optional legs are host-Agent Claude
   Opus, agy/Gemini 3.5 Flash, and OpenCode. Panel members get the same full
-  diff, run one configured model each, and count only when their actual
-  successful families are distinct.
-- Kept transports caller-directed: Gemini runs one caller-selected model
-  (default `Gemini 3.5 Flash (High)`) and degrades on quota without fallback;
-  adapters pass the packet through unchanged and apply no CLI read-only sandbox.
+  diff, follow their declared transport policy, and count only when their
+  actual successful model families are distinct.
+- Kept transports caller-directed: agy calls one primary model (default
+  `Gemini 3.5 Flash (High)`) and may call one declared second quota pool
+  (default `Claude Sonnet 4.6 (Thinking)`) only after confirmed quota/429. Auth
+  and other failures do not retry; empty `AGY_FALLBACK_MODEL` disables the
+  second pool. Adapters pass the packet unchanged and apply no CLI read-only
+  sandbox.
 - Sealed the original reviewed repository before and after dispatch, resolved
   adapters from the loaded skill directory, and gave each panel leg an
   independent writable clone for tests and probes. Clones share no Git config,
@@ -38,9 +41,9 @@ supersession of the embedded repair engine.
 
 ### Removed
 
-- Removed reviewer-count formulas, host-specific composition, panel fallback,
-  vote thresholds, multi-pass termination policy, and all in-CMR repair/commit
-  behavior.
+- Removed reviewer-count formulas, host-specific composition, automatic panel
+  replacement, vote thresholds, multi-pass termination policy, and all in-CMR
+  repair/commit behavior.
 - Removed `DOC-MODE.md` and `prompts/cmr-fixer.md`; their provenance remains in
   this changelog and git history.
 - Removed the universal missing-test gate, required suggested remedies, and

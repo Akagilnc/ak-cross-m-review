@@ -71,8 +71,8 @@ CMR_PANEL=codex,grok
 Supported panel tokens are `codex`, `grok`, optional `claude`, formal optional
 `gemini`/`agy`, and optional `opencode`. A panel needs at least two successful,
 actually distinct model families. Unknown or repeated tokens fail before
-dispatch. Models are explicit; CMR never replaces a failed member with another
-model.
+dispatch. Models are explicit. A degraded member is not replaced by another
+panel leg; the agy member has the declared quota-only second pool below.
 
 Transport overrides:
 
@@ -80,17 +80,21 @@ Transport overrides:
 |---|---|
 | Codex | `gpt-5.6-sol`, `CMR_CODEX_EFFORT=medium` by default; `low` allowed |
 | Grok | `grok-4.5`, effort `high` |
-| Claude | Opus 4.8 via an independent host Claude Agent only |
-| agy | `AGY_MODEL='Gemini 3.5 Flash (High)'` |
+| Claude preset | explicitly requests Opus 4.8 via an independent host Agent |
+| agy | `AGY_MODEL` primary; `AGY_FALLBACK_MODEL` quota-only second pool (empty disables) |
 | OpenCode | `CMR_OPENCODE_MODEL` defaults to `opencode-go/glm-5.2`; optional `CMR_OPENCODE_VARIANT` |
 
 Family is derived from the model/vendor actually used, not a configurable
 `FAMILY` label. Default OpenCode GLM counts as Z.AI; an OpenCode model served by
-OpenAI is the same family as Codex. `claude` means exactly an independent host
-Claude Agent running Opus 4.8; if that model cannot be explicitly dispatched,
-the leg is unavailable/degraded. Sonnet and other Claude models cannot
-substitute. CMR does not spend calls probing quota: the real review call either
-succeeds or is reported as degraded.
+OpenAI is the same family as Codex. The `claude` preset explicitly requests
+Opus 4.8 through an independent host Agent and never inherits the host default
+or Fable routing. If unavailable, the leg degrades; the caller may explicitly
+select another panel transport/model.
+
+agy calls `AGY_MODEL` once (default `Gemini 3.5 Flash (High)`). Only a confirmed
+quota/429 may call `AGY_FALLBACK_MODEL` once (default `Claude Sonnet 4.6
+(Thinking)`); set it to an empty value to disable the second pool. Auth and
+other failures do not retry. The successful model's actual family counts.
 
 For a lower-cost Codex leg, set:
 
@@ -102,6 +106,7 @@ If Grok is unavailable, switch explicitly to the tested agy transport:
 
 ```bash
 export AGY_MODEL='Gemini 3.5 Flash (High)'
+export AGY_FALLBACK_MODEL='Claude Sonnet 4.6 (Thinking)'
 export CMR_PANEL=codex,gemini
 ```
 

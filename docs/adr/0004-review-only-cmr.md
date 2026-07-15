@@ -34,13 +34,17 @@ verify candidate findings; report once.
    authority hard-stops.
 3. Per-slice uses correctness. Ship-pre and design-document work call
    completeness first and correctness later as separate outer invocations.
-4. The default panel is Codex + Grok. Optional legs are exactly Claude Opus 4.8
-   through an independent host Agent, agy/Gemini 3.5 Flash, and OpenCode. If
-   Opus 4.8 cannot be explicitly dispatched, the Claude leg is unavailable or
-   degraded; Sonnet and other Claude models cannot substitute, and there is no
-   CLI fallback. OpenCode GLM is Z.AI; an OpenAI model through OpenCode is the
-   same family as Codex. Every member sees the same full packet; at least two
-   actually successful, distinct transport families are required.
+4. The default panel is Codex + Grok. The optional `claude` preset explicitly
+   requests Opus 4.8 through an independent host Agent and never inherits the
+   host default or Fable routing. If unavailable, the leg degrades and the
+   caller may explicitly select another panel transport/model. Other optional
+   legs are agy and OpenCode. agy makes one primary call and, only when its log
+   confirms quota/429, may make one configured second-pool call; an empty
+   fallback disables it. Auth and other failures do not retry. The successful
+   model's actual family counts. OpenCode GLM is Z.AI; an OpenAI model through
+   OpenCode is the same family as Codex. CMR does not replace degraded panel
+   members. Every member sees the same full packet; at least two actually
+   successful, distinct actual model families are required.
 5. Panel outputs are candidate findings, never votes. The judge verifies their
    union, separates defect adjudication from remedy adjudication, and may reject
    only as `unconstitutional`, `over_defense`, `not_established`, or
@@ -70,8 +74,9 @@ from the active skill; provenance remains in git history.
 ## Consequences
 
 - `SKILL.md` plus the selected lens prompt is the complete active authority.
-- Model-family diversity remains, but panel size, quota choice, and retry are
-  explicit caller decisions rather than hidden substitutions.
+- Model-family diversity remains. Panel membership and review-pass retries are
+  caller decisions; agy's declared quota-only second pool is the sole
+  adapter-local fallback.
 - A live defect can survive rejection of a bad proposed remedy.
 - Evidence work may write freely in independent clones without granting
   reviewers the target or turning CMR into a repair engine.

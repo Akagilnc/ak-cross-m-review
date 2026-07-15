@@ -1,23 +1,4 @@
-"""Regression tests for backends/gemini.sh (the Gemini reviewer leg).
-
-The script now calls `agy` (Antigravity CLI) — the in-kind
-replacement after the original `gemini` CLI's 2026-06-18 EOL — with
-this skill's RECORDED keychain-warm + retry × 4 rule (kept by user
-decision against the wiki's later "no longer needed" conclusion).
-
-Pinned behaviors:
-
-1. A successful agy run (exit 0, non-empty output) is a REAL review —
-   prose OR JSON — and is passed through verbatim for the orchestrator
-   to read with judgment. Degrade happens ONLY on a true outage: agy
-   not installed, auth-race after retries, empty output, or agy exiting
-   non-zero (quota/crash). The script does NOT gate on output FORMAT —
-   demanding sentinel-JSON dropped a valid PROSE review as "本轮缺
-   gemini" (the divergence from the wiki, which returns review prose).
-
-2. agy keeps hitting the keychain auth-race signature → the script
-   retries up to 4 attempts (initial 1 + 3 retries), then degrades
-   with the auth-race-specific flag. Never silent."""
+"""Behavioral tests for agy's primary call and quota-only second pool."""
 
 import os
 import stat
@@ -40,16 +21,14 @@ def _stub_agy(stub_dir: Path, body: str) -> None:
 def _env_with_stub(stub_dir: Path) -> dict[str, str]:
     env = dict(os.environ)
     env["PATH"] = f"{stub_dir}{os.pathsep}{env['PATH']}"
-    # Tests should never wait between retries.
-    env["GEMINI_RETRY_WARM_SLEEP"] = "0"
     # Keep default-model tests deterministic. Tests that want a caller-selected
     # model set it explicitly after this.
     env.pop("AGY_MODEL", None)
+    env.pop("AGY_FALLBACK_MODEL", None)
     return env
 
 
 def test_degrades_when_agy_exits_nonzero_with_salvageable_body(tmp_path):
-    # No auth-race signature (so the retry loop breaks on attempt 1).
     # agy exits non-zero = a real outage (quota/crash). Even with a
     # non-empty body, a non-zero exit must degrade — never count as a
     # review (the G_RC gate).
@@ -90,65 +69,33 @@ def test_invalid_mode_degrades_with_empty_stdout(tmp_path):
     assert "should not run" not in r.stdout
 
 
-def test_retries_on_auth_race_then_degrades_after_4_attempts(tmp_path):
-    # Every attempt prints the auth-race signature → script retries the
-    # max 3 times (after the initial attempt), warns each retry, then
-    # degrades with the auth-race-specific flag. Visible, never silent.
+def test_auth_failure_degrades_after_one_agy_call(tmp_path):
+    calls = tmp_path / "calls"
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
+        'n=$(cat "$AGY_CALLS" 2>/dev/null || echo 0); n=$((n + 1))\n'
+        'echo "$n" > "$AGY_CALLS"\n'
         'echo "Authentication required"\n'
         'exit 1\n'
     ))
+    env = _env_with_stub(tmp_path / "bin")
+    env["AGY_CALLS"] = str(calls)
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
         input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
         capture_output=True, text=True,
-        env=_env_with_stub(tmp_path / "bin"),
+        env=env,
         timeout=60,
     )
     assert r.returncode == 1
     assert r.stdout == ""
-    assert "auth race after retry×3" in r.stderr
-    # 3 retry-warn lines (after attempts 1, 2, 3) before the final
-    # degrade on attempt 4 — confirms the loop actually iterated, did
-    # not short-circuit.
-    assert r.stderr.count("agy auth-race on attempt") == 3
-
-
-def test_large_auth_race_output_still_retries_without_sigpipe(tmp_path):
-    counter = tmp_path / "attempt_n"
-    _stub_agy(tmp_path / "bin", (
-        '#!/bin/sh\n'
-        'n=$(cat "$AGY_ATTEMPT_COUNTER" 2>/dev/null || echo 0)\n'
-        'n=$((n + 1)); echo "$n" > "$AGY_ATTEMPT_COUNTER"\n'
-        'if [ "$n" = 1 ]; then\n'
-        '  printf "Authentication required\\n"\n'
-        '  yes x | head -c 1600000\n'
-        '  printf "\\n"\n'
-        '  exit 1\n'
-        'fi\n'
-        'echo "review after auth retry"\n'
-        'exit 0\n'
-    ))
-    env = _env_with_stub(tmp_path / "bin")
-    env["AGY_ATTEMPT_COUNTER"] = str(counter)
-    r = subprocess.run(
-        ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
-        capture_output=True,
-        text=True,
-        env=env,
-        timeout=60,
-    )
-    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert counter.read_text().strip() == "2"
-    assert "review after auth retry" in r.stdout
+    assert calls.read_text().strip() == "1"
+    assert "本轮缺 gemini" in r.stderr
 
 
 def test_does_not_false_degrade_when_model_output_contains_auth_string(tmp_path):
     # If agy exits 0, even if the model output contains "Authentication required"
-    # (because the reviewed diff touches auth logic), it should NOT be treated
-    # as an auth race. It should parse and pass successfully.
+    # (because the reviewed diff touches auth logic), it remains a real review.
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
         'echo "===CMR-FINDINGS-BEGIN==="\n'
@@ -172,7 +119,6 @@ def test_does_not_false_degrade_when_model_output_contains_auth_string(tmp_path)
     # (here a clean zero-finding result) reaches the orchestrator.
     assert "CMR-VERDICT: converged" in r.stdout
     assert "本轮缺 gemini" not in r.stderr
-    assert "auth race" not in r.stderr
 
 
 def test_degrades_with_clear_flag_when_agy_not_installed(tmp_path):
@@ -181,9 +127,8 @@ def test_degrades_with_clear_flag_when_agy_not_installed(tmp_path):
     (tmp_path / "bin").mkdir()
     env = dict(os.environ)
     # Override PATH to ONLY contain the (empty) stub dir + system minimal
-    # bin paths so `agy` is missing but `security`/coreutils still work.
+    # bin paths so `agy` is missing but coreutils still work.
     env["PATH"] = f"{tmp_path / 'bin'}{os.pathsep}/usr/bin{os.pathsep}/bin"
-    env["GEMINI_RETRY_WARM_SLEEP"] = "0"
 
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
@@ -424,46 +369,6 @@ def test_execerr_reason_is_not_truncated_at_colon(tmp_path):
     )
 
 
-def test_log_truncated_per_attempt_no_stale_reason_leak(tmp_path):
-    # Online R1 (sourcery): AGY_LOG is reused across retry attempts; the
-    # script truncates it before each attempt so the degrade reason
-    # reflects ONLY the final attempt. Here attempt 1 writes a 429 to the
-    # log AND emits the auth-race signature (→ retry); attempt 2 is a
-    # clean empty success. Without per-attempt truncation, attempt 1's
-    # 429 would leak into attempt 2's empty-output degrade reason.
-    counter = tmp_path / "attempt_n"
-    _stub_agy(tmp_path / "bin", (
-        '#!/bin/sh\n'
-        'logf=""\n'
-        'while [ $# -gt 0 ]; do\n'
-        '  case "$1" in --log-file) logf="$2"; shift 2 ;; *) shift ;; esac\n'
-        'done\n'
-        'n=$(cat "$AGY_ATTEMPT_COUNTER" 2>/dev/null || echo 0); n=$((n + 1))\n'
-        'echo "$n" > "$AGY_ATTEMPT_COUNTER"\n'
-        'if [ "$n" = 1 ]; then\n'
-        '  [ -n "$logf" ] && printf \'%s\\n\' '
-        '"E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$logf"\n'
-        '  echo "Authentication required"\n'  # auth-race signature → retry
-        '  exit 1\n'
-        'fi\n'
-        'exit 0\n'  # attempt 2: clean empty success, writes nothing to log
-    ))
-    env = _env_with_stub(tmp_path / "bin")
-    env["AGY_ATTEMPT_COUNTER"] = str(counter)
-    r = subprocess.run(
-        ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
-        capture_output=True, text=True, env=env, timeout=60,
-    )
-    assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
-    assert "agy auth-race on attempt 1" in r.stderr  # it did retry
-    assert "本轮缺 gemini" in r.stderr
-    assert "quota" not in r.stderr, (
-        "attempt 1's 429 leaked into attempt 2's degrade reason — the "
-        f"per-attempt log truncation is not working. stderr={r.stderr!r}"
-    )
-
-
 def test_quota_reason_resets_not_doubled_when_agy_logs_error_twice(tmp_path):
     # Live-surfaced bug: real agy writes the fatal error TWICE on one log
     # line ("…Resets in X.: …Resets in X."). `grep -m1 -o` caps matching
@@ -495,28 +400,28 @@ def test_quota_reason_resets_not_doubled_when_agy_logs_error_twice(tmp_path):
     assert "Resets in 64h24m36s" in r.stderr
 
 
-def test_gemini_quota_degrades_without_trying_another_model(tmp_path):
-    # One panel token is one caller-selected model. A Gemini quota failure is
-    # visible degradation; the transport must not silently replace it with a
-    # Sonnet review from a different family/quota bucket.
-    calls = tmp_path / "calls"
+def test_primary_quota_falls_back_once_to_second_pool(tmp_path):
+    models = tmp_path / "models"
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
-        'logf=""\n'
-        'n=$(cat "$AGY_CALLS" 2>/dev/null || echo 0); n=$((n + 1))\n'
-        'echo "$n" > "$AGY_CALLS"\n'
+        'logf=""; model=""\n'
         'while [ $# -gt 0 ]; do\n'
         '  case "$1" in\n'
         '    --log-file) logf="$2"; shift 2 ;;\n'
+        '    --model) model="$2"; shift 2 ;;\n'
         '    *) shift ;;\n'
         '  esac\n'
         'done\n'
-        '[ -n "$logf" ] && printf \'%s\\n\' '
-        '"E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$logf"\n'
+        'echo "$model" >> "$AGY_MODELS"\n'
+        'if [ "$model" = "Gemini 3.5 Flash (High)" ]; then\n'
+        '  printf \'%s\\n\' "E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$logf"\n'
+        '  exit 0\n'
+        'fi\n'
+        'echo "review from $model"\n'
         'exit 0\n'
     ))
     env = _env_with_stub(tmp_path / "bin")
-    env["AGY_CALLS"] = str(calls)
+    env["AGY_MODELS"] = str(models)
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
         input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
@@ -524,13 +429,75 @@ def test_gemini_quota_degrades_without_trying_another_model(tmp_path):
         env=env,
         timeout=60,
     )
+    assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert models.read_text().splitlines() == [
+        "Gemini 3.5 Flash (High)",
+        "Claude Sonnet 4.6 (Thinking)",
+    ]
+    assert "review from Claude Sonnet 4.6 (Thinking)" in r.stdout
+    assert "Claude Sonnet 4.6 (Thinking)" in r.stderr
+    assert "NO Google family this round" in r.stderr
+
+
+def test_both_quota_pools_degrade_after_exactly_two_calls(tmp_path):
+    models = tmp_path / "models"
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'logf=""; model=""\n'
+        'while [ $# -gt 0 ]; do\n'
+        '  case "$1" in\n'
+        '    --log-file) logf="$2"; shift 2 ;;\n'
+        '    --model) model="$2"; shift 2 ;;\n'
+        '    *) shift ;;\n'
+        '  esac\n'
+        'done\n'
+        'echo "$model" >> "$AGY_MODELS"\n'
+        'printf \'%s\\n\' "E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$logf"\n'
+        'exit 0\n'
+    ))
+    env = _env_with_stub(tmp_path / "bin")
+    env["AGY_MODELS"] = str(models)
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True, env=env, timeout=60,
+    )
+    assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
+    assert r.stdout == ""
+    assert models.read_text().splitlines() == [
+        "Gemini 3.5 Flash (High)",
+        "Claude Sonnet 4.6 (Thinking)",
+    ]
+    assert "本轮缺 gemini" in r.stderr
+    assert "quota" in r.stderr
+
+
+def test_empty_fallback_disables_second_quota_call(tmp_path):
+    calls = tmp_path / "calls"
+    _stub_agy(tmp_path / "bin", (
+        '#!/bin/sh\n'
+        'logf=""\n'
+        'n=$(cat "$AGY_CALLS" 2>/dev/null || echo 0); n=$((n + 1))\n'
+        'echo "$n" > "$AGY_CALLS"\n'
+        'while [ $# -gt 0 ]; do\n'
+        '  case "$1" in --log-file) logf="$2"; shift 2 ;; *) shift ;; esac\n'
+        'done\n'
+        'printf \'%s\\n\' "E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$logf"\n'
+        'exit 0\n'
+    ))
+    env = _env_with_stub(tmp_path / "bin")
+    env["AGY_CALLS"] = str(calls)
+    env["AGY_FALLBACK_MODEL"] = ""
+    r = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        capture_output=True, text=True, env=env, timeout=60,
+    )
     assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     assert r.stdout == ""
     assert calls.read_text().strip() == "1"
     assert "本轮缺 gemini" in r.stderr
     assert "quota" in r.stderr
-    assert "Sonnet" not in r.stderr
-    assert "stepping down" not in r.stderr
 
 
 def test_quota_with_nonempty_banner_still_degrades(tmp_path):
@@ -653,7 +620,6 @@ def _run_gemini_in_cwd(cwd_dir: Path, tmp_path):
     git_stub.chmod(git_stub.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
     env = dict(os.environ)
     env["PATH"] = f"{bindir}{os.pathsep}/usr/bin{os.pathsep}/bin"
-    env["GEMINI_RETRY_WARM_SLEEP"] = "0"
     env.pop("AGY_MODEL", None)
     return subprocess.run(
         ["bash", str(SCRIPT), "code"],

@@ -5,9 +5,12 @@ authority; `prompts/cmr-reviewer.md` and `prompts/cmr-completeness.md` are the
 two executable lenses. The named skills under `skills/` are preset entry points,
 not separate engines. ADR 0004 records the owner-approved v0.4 boundary.
 
-`backends/` contains transport adapters only. A transport does not judge,
-repair, or choose another model. `backends/gemini.sh` is the formal optional
-agy/Gemini transport; the default CMR panel remains Codex + Grok.
+`backends/` contains transport adapters only. A transport does not judge or
+repair. `backends/gemini.sh` has one declared quota-only second pool; auth and
+other failures do not retry. The `claude` preset explicitly requests host-Agent
+Opus 4.8 and never inherits the host default or Fable routing. If unavailable,
+it degrades until the caller explicitly selects another panel transport/model.
+The default CMR panel remains Codex + Grok.
 
 Review-only is not filesystem read-only. Each reviewer runs in its own writable
 independent clone at `LEG_ROOT` for tests and probes; it never receives the

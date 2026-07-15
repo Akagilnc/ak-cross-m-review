@@ -22,8 +22,12 @@
   engine result unchanged. It has no review procedure of its own.
 - **panel token** — one supported transport selected by `CMR_PANEL`: `codex`,
   `grok`, optional host-Agent `claude`, formal optional `gemini`/`agy`, or
-  optional `opencode`. `claude` is exactly host-Agent Opus 4.8; no other Claude
-  model substitutes.
+  optional `opencode`. The `claude` preset explicitly requests host-Agent Opus
+  4.8 and never inherits the host default or Fable routing; if unavailable, it
+  degrades until the caller explicitly selects another panel transport/model.
+- **agy second pool** — after one `AGY_MODEL` call, and only on confirmed
+  quota/429, the same panel member may call `AGY_FALLBACK_MODEL` once. Empty
+  disables it; auth and other failures do not retry.
 - **actual family** — the vendor family of the model that really produced a
   review. It is transport evidence, never a caller-supplied label. OpenCode
   GLM is Z.AI; an OpenAI model through OpenCode is the same family as Codex.

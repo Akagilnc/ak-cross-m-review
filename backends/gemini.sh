@@ -17,15 +17,11 @@
 #   AGY_PRINT_TIMEOUT        agy's own --print-timeout (default 15m;
 #                            agy's built-in default is 5m which is short
 #                            for large review diffs).
-#   GEMINI_RETRY_WARM_SLEEP  inter-attempt sleep between auth-race
-#                            retries (default 0; production needs none
-#                            — the per-attempt keychain warm is the
-#                            actual mitigation. Tests can set this to 0
-#                            explicitly; non-zero is for debugging).
-#   AGY_MODEL                model for this one review call
-#                            (default: Gemini 3.5 Flash (High)). A failed model is
-#                            reported as degraded; the adapter never chooses
-#                            a substitute.
+#   AGY_MODEL                model for the primary review call
+#                            (default: Gemini 3.5 Flash (High)).
+#   AGY_FALLBACK_MODEL       second agy quota pool tried once only after a
+#                            confirmed quota/429 failure (default: Claude
+#                            Sonnet 4.6 (Thinking)); empty disables it.
 #
 # Hard rules (recorded 2026-06; origin: wiki §并行启动 / §agy auth callout):
 #   Invocation form uses an explicit model plus `--print ''`, with the
@@ -34,15 +30,12 @@
 #   checkout for reviewer tools and probes.
 #   NEVER `--dangerously-skip-permissions` (re-consents a high scope and
 #   breaks headless auth on next run).
-#   ALWAYS 2>&1 (so agy's own diagnostics — auth race etc. — are
+#   ALWAYS 2>&1 (so agy's own diagnostics are
 #   captured into the output rather than silenced). Note: agy routes
 #   fatal backend errors (e.g. RESOURCE_EXHAUSTED / 429 quota) to its
 #   --log-file, NOT stdout/stderr — so a quota-exhausted run looks like
 #   a plain empty success (rc=0, empty stdout). We pass --log-file and
 #   grep it on degrade so the flag names the real reason.
-#   agy keychain auth-race recipe: warm "Antigravity Safe Storage" each
-#   attempt + retry up to 4 attempts total; 4 failed → §降级链 flag
-#   "本轮缺 gemini (auth race after retry×3)", do not block.
 
 set -euo pipefail
 
@@ -68,8 +61,7 @@ REVIEW_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 # agy routes fatal backend errors (RESOURCE_EXHAUSTED / 429 quota, the
 # agent-executor error line) to its --log-file, not to the captured
-# stdout/stderr. (The keychain auth-race is the exception — it surfaces
-# on stdout/stderr and is handled by the retry gate below, not here.)
+# stdout/stderr.
 # Give agy a private log so the degrade paths can name the real reason;
 # clean it up on any exit.
 AGY_LOG="$(mktemp "${TMPDIR:-/tmp}/agy-cmr.XXXXXX")"
@@ -142,34 +134,28 @@ if ! command -v agy >/dev/null 2>&1; then
   exit 1
 fi
 
-# One caller-selected model per leg. Auth-race retries repeat that exact model;
-# quota, crash, and other availability failures degrade instead of changing it.
-AGY_RAN_MODEL="${AGY_MODEL:-Gemini 3.5 Flash (High)}"
-RAW=""; G_RC=0
-for attempt in 1 2 3 4; do
-  security find-generic-password -s "Antigravity Safe Storage" \
-    >/dev/null 2>&1 || true
+# Primary gets one call. A confirmed quota/429 may use the configured second
+# agy quota pool once; auth and every other failure degrade without another call.
+AGY_PRIMARY_MODEL="${AGY_MODEL:-Gemini 3.5 Flash (High)}"
+AGY_FALLBACK_MODEL="${AGY_FALLBACK_MODEL-Claude Sonnet 4.6 (Thinking)}"
+AGY_RAN_MODEL="$AGY_PRIMARY_MODEL"
+AGY_USED_FALLBACK=0
 
-  # Truncate the shared log before each attempt so agy_fatal_reason
-  # reflects ONLY the final attempt (online R1: sourcery).
+run_agy() {
+  local model="$1"
   : > "$AGY_LOG"
-
   set +e
-  RAW="$(cd "$REVIEW_ROOT" && agy --model "$AGY_RAN_MODEL" --print '' --print-timeout "$PRINT_TIMEOUT" --log-file "$AGY_LOG" 2>&1 < "$AGY_PROMPT_FILE")"
+  RAW="$(cd "$REVIEW_ROOT" && agy --model "$model" --print '' --print-timeout "$PRINT_TIMEOUT" --log-file "$AGY_LOG" 2>&1 < "$AGY_PROMPT_FILE")"
   G_RC=$?
   set -e
+}
 
-  if [ "$G_RC" -ne 0 ] && grep -qE "Authentication required|authentication timed out" <<<"$RAW"; then
-    if [ "$attempt" -lt 4 ]; then
-      echo "gemini: warn: agy auth-race on attempt $attempt/4, retrying..." >&2
-      [ "${GEMINI_RETRY_WARM_SLEEP:-0}" != "0" ] && sleep "${GEMINI_RETRY_WARM_SLEEP}"
-      continue
-    fi
-    echo "gemini: degrade — flag '本轮缺 gemini (auth race after retry×3)'" >&2
-    exit 1
-  fi
-  break
-done
+run_agy "$AGY_RAN_MODEL"
+if [ -n "$AGY_FALLBACK_MODEL" ] && agy_log_has_quota; then
+  AGY_RAN_MODEL="$AGY_FALLBACK_MODEL"
+  AGY_USED_FALLBACK=1
+  run_agy "$AGY_RAN_MODEL"
+fi
 
 if [ -z "$RAW" ]; then
   REASON="$(agy_fatal_reason)"
@@ -178,8 +164,8 @@ if [ -z "$RAW" ]; then
 fi
 
 # Past the empty-output degrade above, RAW holds agy's review. Degrade
-# — visibly, never silent — iff agy itself failed (G_RC≠0, a quota/crash
-# non-auth-race exit) OR the selected model's log shows quota
+# — visibly, never silent — iff agy itself failed (G_RC≠0) OR the selected
+# model's log shows quota
 # exhaustion; otherwise pass agy's review THROUGH VERBATIM for the
 # orchestrator to read with judgment.
 #
@@ -204,7 +190,11 @@ fi
 case "$AGY_RAN_MODEL" in
   *[Gg]emini*|*[Gg]oogle*) ;;
   *)
-    echo "gemini: note: agy ran the explicit AGY_MODEL override '$AGY_RAN_MODEL'. Actual model is non-Google; NO Google family this round." >&2
+    if [ "$AGY_USED_FALLBACK" -eq 1 ]; then
+      echo "gemini: note: agy primary '$AGY_PRIMARY_MODEL' exhausted quota; fallback '$AGY_RAN_MODEL' succeeded. Actual model is non-Google; NO Google family this round." >&2
+    else
+      echo "gemini: note: agy ran the explicit AGY_MODEL override '$AGY_RAN_MODEL'. Actual model is non-Google; NO Google family this round." >&2
+    fi
     ;;
 esac
 printf '%s\n' "$RAW"

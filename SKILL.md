@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: Run one review-only cross-model pass against a fixed base-to-HEAD diff, using isolated writable clones for evidence work. Use per-slice, before a PR, or for design-document review; the named completeness and correctness skills are the preferred entry points.
+description: One-pass cross-model review of a fixed base-to-HEAD diff. Use per-slice, before a PR, or for design-document review; prefer the named completeness or correctness preset.
 allowed-tools:
   - Bash
   - Read
@@ -105,20 +105,25 @@ Supported tokens, adapters, and real transport families:
 | `codex` | `backends/codex-review.sh` | OpenAI |
 | `grok` | `backends/grok-review.sh` | xAI |
 | `claude` | independent host Agent | Anthropic |
-| `gemini` / `agy` | `backends/gemini.sh` | Google |
+| `gemini` / `agy` | `backends/gemini.sh` | actual model vendor (Google primary; second pool may differ) |
 | `opencode` | `backends/opencode-review.sh` | actual model vendor |
 
 Transport configuration:
 
 - Codex uses `CMR_CODEX_MODEL` / `CMR_CODEX_EFFORT` (defaults `gpt-5.6-sol` /
   `medium`; explicit `low` allowed).
-- Grok uses `CMR_GROK_MODEL` / `CMR_GROK_EFFORT` (defaults `grok-4.5` / `high`).
-- Claude means exactly an independent host Agent running Opus 4.8. If the host
-  cannot explicitly dispatch it, record the leg unavailable or degraded;
-  Sonnet and other models cannot substitute. There is no one-shot CLI path.
-- `gemini` and `agy` alias one transport; selecting both is a duplicate. Set
-  `AGY_MODEL='Gemini 3.5 Flash (High)'` for its formal CMR model. A successful
-  non-Google override reports `NO Google family this round`.
+- Grok model and effort are configurable with `CMR_GROK_MODEL` /
+  `CMR_GROK_EFFORT`.
+- The `claude` preset explicitly requests Opus 4.8 through an independent host
+  Agent; never inherit the host default or Fable routing. If unavailable,
+  degrade the leg; the caller may explicitly select another panel
+  transport/model.
+- `gemini` and `agy` alias one transport; selecting both is a duplicate. The
+  agy adapter calls `AGY_MODEL` once (default `Gemini 3.5 Flash (High)`). Only a
+  confirmed quota/429 may call `AGY_FALLBACK_MODEL` once (default `Claude
+  Sonnet 4.6 (Thinking)`; empty disables it). Auth and other failures do not
+  retry. Count the model that actually succeeds; a non-Google result reports
+  `NO Google family this round`.
 - OpenCode uses `CMR_OPENCODE_MODEL` (default `opencode-go/glm-5.2`) and optional
   `CMR_OPENCODE_VARIANT`.
 
@@ -151,7 +156,8 @@ Any failed check hard-stops before that reviewer runs.
 Record token → absolute `LEG_ROOT`; resolve prompts and backends from
 `SKILL_ROOT`, and run each transport at its own `LEG_ROOT`. Never expose
 `REPO_ROOT`. Launch one parallel batch with the same packet and no peer output;
-do not replace failed members or choose fallbacks.
+do not replace a degraded panel member. The declared agy quota-only second pool
+above belongs to that one member; it is not a replacement panel leg.
 
 A reviewer may install dependencies, test, and create probes or local artifacts
 in `LEG_ROOT`, but must not repair, commit, push, or mutate remote state.
