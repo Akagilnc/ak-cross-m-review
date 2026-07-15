@@ -60,6 +60,12 @@ Try to produce a concrete counterexample:
 - follow it through the traced path;
 - when runnable, execute the narrowest useful test or safe probe;
 - compare the actual observable result with the required one.
+- distinguish malformed data or upstream failure from a legitimate empty result;
+  submit only if collapsing those states makes a real consumer observe an
+  outcome contrary to the authority;
+- when a field is absent, trace which source supplies the fallback and what state
+  it is anchored to; submit only if that provenance makes a real consumer
+  observe an outcome contrary to the authority.
 
 If execution is unavailable, prove the path from source and state that limit.
 Do not promote a hypothetical risk into a candidate without a reachable trigger
