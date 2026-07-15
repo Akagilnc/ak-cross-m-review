@@ -33,6 +33,12 @@ Start with the tests. Then map the behavior changed by the diff:
 Do not stop at the changed line. Read enough callers and consumers to know
 whether the changed behavior is reachable and observable.
 
+Treat the surface map as a bounded review worklist. A proved candidate accounts
+only for the behavior and boundary it demonstrates; then return to the next
+unexamined item. Submit only after every mapped item has either yielded a proved
+counterexample or been checked without one. Stop on coverage, not finding count.
+Do not add speculative surfaces or lower the proof bar to make the worklist look complete.
+
 ## 2. Trace
 
 For each material behavior, trace:
