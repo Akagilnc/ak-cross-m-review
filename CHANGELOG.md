@@ -38,6 +38,8 @@ supersession of the embedded repair engine.
   terminal verdicts.
 - Reduced both named gate skills to preset wrappers that select one lens,
   return the root result unchanged, and stop.
+- Reduced non-authoritative `README.md`, `CLAUDE.md`, and `CONTEXT.md` runtime
+  prose to pointers to `SKILL.md` and the selected lens prompt.
 
 ### Removed
 

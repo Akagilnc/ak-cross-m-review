@@ -1,22 +1,12 @@
 # ak-cross-m-review
 
-Local, pre-PR, review-only cross-model gate. `SKILL.md` is the five-step engine
-authority; `prompts/cmr-reviewer.md` and `prompts/cmr-completeness.md` are the
-two executable lenses. The named skills under `skills/` are preset entry points,
-not separate engines. ADR 0004 records the owner-approved v0.4 boundary.
+Local, pre-PR, review-only cross-model gate. `SKILL.md` plus the selected prompt
+under `prompts/` is the complete active authority; named skills under `skills/`
+are preset entry points. ADR 0004 records the owner-approved v0.4 boundary.
 
-`backends/` contains transport adapters only. A transport does not judge or
-repair. `backends/gemini.sh` has one declared quota-only second pool; auth and
-other failures do not retry. The `claude` preset explicitly requests host-Agent
-Opus 4.8 and never inherits the host default or Fable routing. If unavailable,
-it degrades until the caller explicitly selects another panel transport/model.
-The default CMR panel remains Codex + Grok.
-
-Review-only is not filesystem read-only. Each reviewer runs in its own writable
-independent clone at `LEG_ROOT` for tests and probes; it never receives the
-original target and may not repair, commit, push, or mutate remote state. Never
-use a linked worktree: remove the clone's source remote before dispatch, and do
-not share Git config, refs, or objects with the target.
+`backends/` only transport the review packet and return output; they do not
+judge or repair. Runtime dispatch and scratch lifecycle live in `SKILL.md` Step
+4; judgment, sealing, and termination live in Step 5.
 
 ## Testing
 
