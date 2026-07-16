@@ -65,8 +65,9 @@ REVIEW_ROOT="$(git rev-parse --show-toplevel)"
 # Give agy a private log so final degrade paths preserve its diagnostics;
 # clean it up on any exit.
 AGY_LOG="$(mktemp "${TMPDIR:-/tmp}/agy-cmr.XXXXXX")"
+AGY_PREVIOUS_LOG="$(mktemp "${TMPDIR:-/tmp}/agy-cmr-previous.XXXXXX")"
 AGY_PROMPT_FILE="$(mktemp "${TMPDIR:-/tmp}/agy-cmr-prompt.XXXXXX")"
-trap 'rm -f "$AGY_LOG" "$AGY_PROMPT_FILE"' EXIT
+trap 'rm -f "$AGY_LOG" "$AGY_PREVIOUS_LOG" "$AGY_PROMPT_FILE"' EXIT
 
 # agy refuses to add a workspace folder whose path has a hidden (dot)
 # component ("... is hidden: ignore uri" in its log) → the Gemini reviewer
@@ -91,7 +92,8 @@ agy_log_has_quota() {
 }
 
 emit_agy_log() {
-  [ -s "$AGY_LOG" ] && cat "$AGY_LOG" >&2
+  local log="$1"
+  [ -s "$log" ] && cat "$log" >&2
   return 0
 }
 
@@ -124,13 +126,15 @@ run_agy() {
 
 run_agy "$AGY_RAN_MODEL"
 if [ -n "$AGY_FALLBACK_MODEL" ] && agy_log_has_quota; then
+  cp "$AGY_LOG" "$AGY_PREVIOUS_LOG"
   AGY_RAN_MODEL="$AGY_FALLBACK_MODEL"
   AGY_USED_FALLBACK=1
   run_agy "$AGY_RAN_MODEL"
 fi
 
 if [ -z "$RAW" ]; then
-  emit_agy_log
+  emit_agy_log "$AGY_PREVIOUS_LOG"
+  emit_agy_log "$AGY_LOG"
   echo "gemini: degrade — flag '本轮缺 gemini' (empty output, agy rc=$G_RC)" >&2
   exit 1
 fi
@@ -150,8 +154,9 @@ fi
 # review over format (prose-review is this skill's contract: review text
 # the agent reads).
 if [ "$G_RC" -ne 0 ] || agy_log_has_quota; then
+  emit_agy_log "$AGY_PREVIOUS_LOG"
   printf '%s\n' "$RAW" >&2
-  emit_agy_log
+  emit_agy_log "$AGY_LOG"
   echo "gemini: degrade — flag '本轮缺 gemini' (agy exit rc=$G_RC)" >&2
   exit 1
 fi

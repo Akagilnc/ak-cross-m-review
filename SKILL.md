@@ -221,21 +221,46 @@ case "$LEG_ROOT" in
   *) printf 'LEG_ROOT must be absolute: %s\n' "$LEG_ROOT" >&2; exit 1 ;;
 esac
 LEG_ROOT="$(cd "$(dirname "$LEG_ROOT")" && pwd -P)/$(basename "$LEG_ROOT")"
-test ! -e "$LEG_ROOT"
+test ! -e "$LEG_ROOT" || {
+  printf 'LEG_ROOT already exists: %s\n' "$LEG_ROOT" >&2
+  exit 1
+}
 case "$LEG_ROOT" in
-  "$REPO_ROOT"|"$REPO_ROOT"/*|*/.*) exit 1 ;;
+  "$REPO_ROOT"|"$REPO_ROOT"/*|*/.*)
+    printf 'LEG_ROOT is inside the target or a hidden path: %s\n' "$LEG_ROOT" >&2
+    exit 1
+    ;;
 esac
 git clone --origin origin --no-local --no-checkout "$REPO_ROOT" "$LEG_ROOT"
 git -C "$LEG_ROOT" checkout --detach "$PRE_HEAD"
 git -C "$LEG_ROOT" remote remove origin
 COMMON_DIR="$(git -C "$LEG_ROOT" rev-parse --path-format=absolute --git-common-dir)"
-case "$COMMON_DIR" in "$LEG_ROOT"/*) ;; *) exit 1 ;; esac
-test "$(git -C "$LEG_ROOT" rev-parse HEAD)" = "$PRE_HEAD"
-git -C "$LEG_ROOT" cat-file -e "${BASE_SHA}^{commit}"
+case "$COMMON_DIR" in
+  "$LEG_ROOT"/*) ;;
+  *)
+    printf 'clone common dir escaped LEG_ROOT: %s\n' "$COMMON_DIR" >&2
+    exit 1
+    ;;
+esac
+LEG_HEAD="$(git -C "$LEG_ROOT" rev-parse HEAD)"
+test "$LEG_HEAD" = "$PRE_HEAD" || {
+  printf 'clone HEAD mismatch: expected %s, got %s\n' "$PRE_HEAD" "$LEG_HEAD" >&2
+  exit 1
+}
+git -C "$LEG_ROOT" cat-file -e "${BASE_SHA}^{commit}" || {
+  printf 'clone cannot read BASE_SHA: %s\n' "$BASE_SHA" >&2
+  exit 1
+}
 LEG_STATUS="$(git -C "$LEG_ROOT" status --porcelain=v1 --untracked-files=all)"
-test -z "$LEG_STATUS"
+test -z "$LEG_STATUS" || {
+  printf 'clone is dirty after preparation:\n%s\n' "$LEG_STATUS" >&2
+  exit 1
+}
 LEG_REMOTES="$(git -C "$LEG_ROOT" remote)"
-test -z "$LEG_REMOTES"
+test -z "$LEG_REMOTES" || {
+  printf 'clone still has remotes after preparation:\n%s\n' "$LEG_REMOTES" >&2
+  exit 1
+}
 )
 ```
 

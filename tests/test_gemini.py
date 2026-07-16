@@ -34,6 +34,8 @@ def _stub_agy(path: Path) -> None:
         '  unknown_log) echo "E UNKNOWN_NATIVE_FATAL: provider imploded" > "$log"; exit 1;;\n'
         '  quota_then_success)\n'
         '    case "$model" in *Gemini*) echo "E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$log";; *) echo "review from $model";; esac;;\n'
+        '  quota_then_auth)\n'
+        '    case "$model" in *Gemini*) echo "E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$log";; *) echo "Authentication required for fallback"; exit 7;; esac;;\n'
         '  quota_all) echo "E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$log";;\n'
         'esac\n'
     )
@@ -158,6 +160,24 @@ def test_both_quota_pools_exhaust_after_exactly_two_calls(tmp_path):
     assert result.returncode == 1 and result.stdout == ""
     assert "E RESOURCE_EXHAUSTED (code 429): Individual quota reached." in result.stderr
     assert "quota/429" not in result.stderr and "本轮缺 gemini" in result.stderr
+
+
+def test_failed_fallback_preserves_primary_quota_and_fallback_error(tmp_path):
+    _stub_agy(tmp_path / "bin")
+    models = tmp_path / "models"
+    result = _run(
+        tmp_path / "bin", SCENARIO="quota_then_auth", MODEL_DUMP=str(models),
+    )
+    assert models.read_text().splitlines() == [
+        "Gemini 3.5 Flash (High)", "Claude Sonnet 4.6 (Thinking)",
+    ]
+    assert result.returncode == 1 and result.stdout == ""
+    assert result.stderr.index(
+        "E RESOURCE_EXHAUSTED (code 429): Individual quota reached."
+    ) < result.stderr.index("Authentication required for fallback")
+    assert result.stderr.index(
+        "Authentication required for fallback"
+    ) < result.stderr.index("gemini: degrade")
 
 
 def test_successful_non_google_override_reports_actual_family(tmp_path):
