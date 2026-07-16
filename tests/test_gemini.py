@@ -8,6 +8,10 @@ from pathlib import Path
 import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "backends" / "gemini.sh"
+REVIEW_TASK = (
+    "Review fixed range 111...222 from this clone; run git diff --binary "
+    "111...222; authority: AGENTS.md.\n"
+)
 
 
 def _stub_agy(stub_dir: Path, body: str) -> None:
@@ -39,7 +43,7 @@ def test_degrades_when_agy_exits_nonzero_with_salvageable_body(tmp_path):
     ))
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True,
         env=_env_with_stub(tmp_path / "bin"),
         timeout=60,
@@ -56,7 +60,7 @@ def test_invalid_mode_degrades_with_empty_stdout(tmp_path):
     _stub_agy(tmp_path / "bin", '#!/bin/sh\necho "should not run"\nexit 0\n')
     r = subprocess.run(
         ["bash", str(SCRIPT), 'bad"\nmode'],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True,
         text=True,
         env=_env_with_stub(tmp_path / "bin"),
@@ -82,7 +86,7 @@ def test_auth_failure_degrades_after_one_agy_call(tmp_path):
     env["AGY_CALLS"] = str(calls)
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True,
         env=env,
         timeout=60,
@@ -95,18 +99,18 @@ def test_auth_failure_degrades_after_one_agy_call(tmp_path):
 
 def test_does_not_false_degrade_when_model_output_contains_auth_string(tmp_path):
     # If agy exits 0, even if the model output contains "Authentication required"
-    # (because the reviewed diff touches auth logic), it remains a real review.
+    # (because the reviewed repository touches auth logic), it remains a review.
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
         'echo "===CMR-FINDINGS-BEGIN==="\n'
         'echo "CMR-VERDICT: converged"\n'
         'echo "===CMR-FINDINGS-END==="\n'
-        'echo "The reviewed diff added: echo Authentication required"\n'
+        'echo "The reviewed source added: echo Authentication required"\n'
         'exit 0\n'
     ))
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+ echo \"Authentication required\"\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True,
         env=_env_with_stub(tmp_path / "bin"),
         timeout=60,
@@ -132,7 +136,7 @@ def test_degrades_with_clear_flag_when_agy_not_installed(tmp_path):
 
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True, env=env, timeout=30,
     )
     assert r.returncode == 1
@@ -142,7 +146,7 @@ def test_degrades_with_clear_flag_when_agy_not_installed(tmp_path):
 
 
 def test_review_packet_passes_to_agy_verbatim(tmp_path):
-    packet = "review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n"
+    packet = REVIEW_TASK
     prompt_dump = tmp_path / "prompt"
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
@@ -184,7 +188,7 @@ def test_default_invocation_pins_gemini_and_keeps_checkout_writable(tmp_path):
     env["AGY_ARGV_DUMP"] = str(dump)
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True, env=env, timeout=60,
     )
     assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
@@ -230,7 +234,7 @@ def test_surfaces_quota_reason_when_agy_swallows_429_to_logfile(tmp_path):
     ))
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True,
         env=_env_with_stub(tmp_path / "bin"),
         timeout=60,
@@ -249,7 +253,7 @@ def test_prose_review_passes_through_not_degraded(tmp_path):
     # natural output), and must be passed through verbatim with exit 0,
     # NOT degraded to "本轮缺 gemini" as if Gemini were down. The old
     # extract_json sentinel gate dropped exactly this. The review body
-    # here even quotes the reviewed diff's `check_user_quota()/429` — that
+    # here even quotes reviewed source containing `check_user_quota()/429` — that
     # must NOT trigger any false quota attribution either (there is no
     # degrade path to attribute, and the reason scan only reads agy's log,
     # never $RAW).
@@ -261,7 +265,7 @@ def test_prose_review_passes_through_not_degraded(tmp_path):
     ))
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+ def check_user_quota(): return 429\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True,
         env=_env_with_stub(tmp_path / "bin"),
         timeout=60,
@@ -300,7 +304,7 @@ def test_quota_log_without_resets_line_still_degrades_cleanly(tmp_path):
     ))
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True,
         env=_env_with_stub(tmp_path / "bin"),
         timeout=60,
@@ -330,7 +334,7 @@ def test_nonempty_nonfatal_log_degrades_without_reason_suffix(tmp_path):
     ))
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True,
         env=_env_with_stub(tmp_path / "bin"),
         timeout=60,
@@ -357,7 +361,7 @@ def test_execerr_reason_is_not_truncated_at_colon(tmp_path):
     ))
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True,
         env=_env_with_stub(tmp_path / "bin"),
         timeout=60,
@@ -390,7 +394,7 @@ def test_quota_reason_resets_not_doubled_when_agy_logs_error_twice(tmp_path):
     env["AGY_MODEL"] = "x-explicit-model"
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True, env=env, timeout=60,
     )
     assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
@@ -424,7 +428,7 @@ def test_primary_quota_falls_back_once_to_second_pool(tmp_path):
     env["AGY_MODELS"] = str(models)
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True,
         env=env,
         timeout=60,
@@ -494,7 +498,7 @@ def test_both_quota_pools_degrade_after_exactly_two_calls(tmp_path):
     env["AGY_MODELS"] = str(models)
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True, env=env, timeout=60,
     )
     assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
@@ -525,7 +529,7 @@ def test_empty_fallback_disables_second_quota_call(tmp_path):
     env["AGY_FALLBACK_MODEL"] = ""
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True, env=env, timeout=60,
     )
     assert r.returncode == 1, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
@@ -554,7 +558,7 @@ def test_quota_with_nonempty_banner_still_degrades(tmp_path):
     env["AGY_MODEL"] = "x-explicit-model"
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True, env=env, timeout=60,
     )
     assert r.returncode == 1, (
@@ -580,7 +584,7 @@ def test_default_gemini_review_passes_through(tmp_path):
     ))
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True,
         env=_env_with_stub(tmp_path / "bin"),
         timeout=60,
@@ -604,7 +608,7 @@ def test_agy_explicit_override_note_when_non_google_model_used(tmp_path):
     env["AGY_MODEL"] = "Claude Sonnet 4.6 (Thinking)"
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True, env=env, timeout=60,
     )
     assert r.returncode == 0, f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
@@ -623,7 +627,7 @@ def test_gpt_oss_override_is_flagged_as_non_google_family(tmp_path):
     env["AGY_MODEL"] = "GPT-OSS 120B"
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True,
         text=True,
         env=env,
@@ -658,7 +662,7 @@ def _run_gemini_in_cwd(cwd_dir: Path, tmp_path):
     env.pop("AGY_MODEL", None)
     return subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True, env=env, cwd=str(cwd_dir), timeout=30,
     )
 

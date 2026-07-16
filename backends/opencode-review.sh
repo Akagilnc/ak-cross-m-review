@@ -32,7 +32,7 @@ opencode run \
   "${VARIANT_FLAG[@]+"${VARIANT_FLAG[@]}"}" \
   --file "$PROMPT_FILE" \
   --dir "$REVIEW_ROOT" \
-  "Review the attached packet and return only the grounded prose review." \
+  "Use the pinned task and inspect this repository; return only the grounded prose review." \
   > "$OUTPUT_FILE" 2> "$ERROR_FILE"
 OPENCODE_RC=$?
 set -e

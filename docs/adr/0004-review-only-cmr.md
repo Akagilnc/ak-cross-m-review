@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-07-15), owner decision.
+Accepted (2026-07-15); amended 2026-07-16, owner decision.
 
 ## Context
 
@@ -21,9 +21,10 @@ verify candidate findings; report once.
    one-panel pass and stops after judgment. The caller owns every repair,
    commit, retry, and later gate. Review-only is an outcome boundary, not
    filesystem read-only inside isolated reviewer clones.
-2. The target is one user-supplied base-to-HEAD diff from a clean committed
-   repository, materialized once. Record HEAD and status before dispatch and
-   recheck both before the terminal verdict. Each panel member receives an
+2. The target is one user-supplied base-to-HEAD range from a clean committed
+   repository. Record HEAD and status before dispatch and recheck both before
+   the terminal verdict. Pin one resolved log command and one resolved diff
+   command; each reviewer runs them itself. Each panel member receives an
    independent writable clone detached at the recorded HEAD; never expose the
    original target. The clone does not share the target's Git config, refs, or
    object store, and its source remote is removed before dispatch.
@@ -43,8 +44,9 @@ verify candidate findings; report once.
    fallback disables it. Auth and other failures do not retry. The successful
    model's actual family counts. OpenCode GLM is Z.AI; an OpenAI model through
    OpenCode is the same family as Codex. CMR does not replace degraded panel
-   members. Every member sees the same full packet; at least two actually
-   successful, distinct actual model families are required.
+   members. Every member sees the same small task packet and reads the range,
+   authority, surrounding repository, and tests from its own clone; at least
+   two actually successful, distinct actual model families are required.
 5. Panel outputs are candidate findings, never votes. The judge verifies their
    union, separates defect adjudication from remedy adjudication, and may reject
    only as `unconstitutional`, `over_defense`, `not_established`, or
@@ -57,13 +59,20 @@ verify candidate findings; report once.
    invokes the other.
 8. `DOC-MODE.md` and `prompts/cmr-fixer.md` are removed. Their historical
    rationale remains in git and the changelog, not in the active skill.
-9. CLI invocation contracts have executable behavior tests. Markdown wording
-   does not gain golden or phrase-pinning tests (ADR 0003).
+9. CLI invocation contracts have executable behavior tests. A failed Codex leg
+   preserves a bounded tail of native diagnostics before the generic degrade
+   flag; a non-zero exit is not guessed to mean auth, quota, or crash. Markdown
+   wording does not gain golden or phrase-pinning tests (ADR 0003).
 10. Prompts and adapters resolve from the physical directory containing the
     loaded `SKILL.md`; every transport runs with cwd at its own writable scratch
     clone. Reviewers may install, test, and probe there, but may not repair,
     commit, push, or mutate remotes. Candidate locations are actual `path:line`
     anchors. Completeness gaps require both authority and consumer anchors.
+11. The task packet contains only the endpoint SHAs, the two resolved Git
+    commands, the selected lens, the ordered authority source list, and the
+    candidate contract. It never embeds, segments, compresses, archives, or
+    preloads the diff or repository files. Equal reviewer input means equal
+    target/range, authority, lens, and candidate contract.
 
 This decision expressly supersedes the active CMR behavior recorded in ADR
 0001/0002 where it requires host-specific squads, disclosed document repair
@@ -80,5 +89,7 @@ from the active skill; provenance remains in git history.
 - A live defect can survive rejection of a bad proposed remedy.
 - Evidence work may write freely in independent clones without granting
   reviewers the target or turning CMR into a repair engine.
+- Reviewer context comes from the independent clone, not from serializing the
+  repository into the model prompt.
 - Review reports become inputs to an outer workflow instead of instructions to
   mutate the reviewed target.

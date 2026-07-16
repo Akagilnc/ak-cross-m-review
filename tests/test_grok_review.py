@@ -7,6 +7,10 @@ from pathlib import Path
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "backends" / "grok-review.sh"
+REVIEW_TASK = (
+    "Review fixed range 111...222 from this clone; run git diff --binary "
+    "111...222; authority: AGENTS.md.\n"
+)
 
 
 def _stub_grok(stub_dir: Path, body: str) -> None:
@@ -24,7 +28,7 @@ def _run_grok(stub_dir: Path, mode: str = "code", **env_extra: str):
     env.update(env_extra)
     return subprocess.run(
         ["bash", str(SCRIPT), mode],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True,
         text=True,
         env=env,
@@ -107,7 +111,7 @@ def test_model_and_effort_overrides_pass_through_as_single_arguments(tmp_path):
 
 def test_review_packet_passes_to_grok_verbatim(tmp_path):
     prompt_dump = tmp_path / "prompt"
-    packet = "review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n"
+    packet = REVIEW_TASK
     _stub_grok(
         tmp_path / "bin",
         'prompt_file=""\n'

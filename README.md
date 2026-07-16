@@ -1,8 +1,9 @@
 # ak-cross-m-review
 
 Local, pre-PR, **review-only** cross-model gate. Version 0.4 fixes one
-base-to-HEAD diff, sends the same packet to independent model families, judges
-their candidate findings against named authority, reports once, and stops.
+base-to-HEAD range, gives each model family an independent clone plus the same
+small task packet, judges their candidate findings against named authority,
+reports once, and stops. Reviewers read the diff and repository themselves.
 
 `SKILL.md` plus the selected prompt under `prompts/` is the complete active
 authority. ADR 0004 records the owner-approved boundary.
@@ -12,7 +13,8 @@ authority. ADR 0004 records the owner-approved boundary.
 1. **Pin target** — fix the reviewed base-to-HEAD snapshot.
 2. **Pin authority** — fix the sources that govern the review.
 3. **Choose one lens** — completeness or correctness, never both in one call.
-4. **Dispatch panel** — send every reviewer the same packet.
+4. **Dispatch panel** — run every reviewer from its own clone with the same
+   pinned commands, lens, authority list, and candidate contract.
 5. **Judge and stop** — adjudicate candidates and return one terminal verdict.
 
 ## Named entry points
@@ -58,9 +60,9 @@ scripts/install-skills.sh        installs the engine and both presets
 docs/adr/0004-review-only-cmr.md owner supersession decision
 ```
 
-The CLI invocation forms have executable behavior tests in their adapter
-slices. Prompt prose is governed by review and git history, not phrase-pinning
-tests (ADR 0003).
+The CLI invocation forms and failure reporting have executable behavior tests
+in their adapter slices. Prompt prose is governed by review and git history,
+not phrase-pinning tests (ADR 0003).
 
 ## Boundary
 

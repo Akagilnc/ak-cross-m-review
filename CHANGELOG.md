@@ -12,12 +12,21 @@ supersession of the embedded repair engine.
 
 ### Changed
 
+- Owner amendment (2026-07-16): reviewers now receive independent remote-free
+  clones plus a small task packet containing pinned SHAs/commands, lens,
+  authority sources, and candidate contract. They read the diff, surrounding
+  repository, and tests themselves; CMR no longer embeds, segments, compresses,
+  or preloads repository content into prompts.
+- Codex non-zero/timeout degradation now prints a bounded native-output tail
+  before the generic `本轮缺 codex` line. The adapter no longer labels every
+  non-zero exit as auth/quota/crash, so input-limit and other native failures
+  remain diagnosable.
 - Replaced the 831-line procedure with a five-step review-only engine: pin
   target, pin authority, choose one lens, dispatch the panel, judge and stop.
 - Defaulted `CMR_PANEL` to Codex + Grok. Optional legs are host-Agent Claude
-  Opus, agy/Gemini 3.5 Flash, and OpenCode. Panel members get the same full
-  diff, follow their declared transport policy, and count only when their
-  actual successful model families are distinct.
+  Opus, agy/Gemini 3.5 Flash, and OpenCode. Panel members get the same pinned
+  review task, follow their declared transport policy, and count only when
+  their actual successful model families are distinct.
 - Kept transports caller-directed: agy calls one primary model (default
   `Gemini 3.5 Flash (High)`) and may call one declared second quota pool
   (default `Claude Sonnet 4.6 (Thinking)`) only after confirmed quota/429. Auth

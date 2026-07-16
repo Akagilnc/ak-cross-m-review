@@ -4,9 +4,11 @@ Local, pre-PR, review-only cross-model gate. `SKILL.md` plus the selected prompt
 under `prompts/` is the complete active authority; named skills under `skills/`
 are preset entry points. ADR 0004 records the owner-approved v0.4 boundary.
 
-`backends/` only transport the review packet and return output; they do not
-judge or repair. Runtime dispatch and scratch lifecycle live in `SKILL.md` Step
-4; judgment, sealing, and termination live in Step 5.
+`backends/` only transport the small review task and return output; they do not
+judge or repair. Reviewers run from independent clone roots and read the pinned
+diff, authority, surrounding repository, and tests themselves. Runtime dispatch
+and scratch lifecycle live in `SKILL.md` Step 4; judgment, sealing, and
+termination live in Step 5.
 
 ## Testing
 

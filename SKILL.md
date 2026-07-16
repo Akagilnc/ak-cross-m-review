@@ -43,11 +43,19 @@ exception.
    output hard-stops before dispatch and is reported verbatim.
 2. Record `PRE_HEAD` from `git -C "$REPO_ROOT" rev-parse --verify
    'HEAD^{commit}'`; resolve the supplied base similarly as `BASE_SHA`.
-3. Record `git -C "$REPO_ROOT" log --oneline "$BASE_SHA..$PRE_HEAD"`.
-4. Outside the reviewed repository, materialize `git -C "$REPO_ROOT" diff
-   --binary "$BASE_SHA...$PRE_HEAD"` once; record its checksum and file list.
-5. Reuse those exact bytes for every panel member. Never regenerate or narrow
-   the diff after seeing a review.
+3. Pin one resolved command for each reviewer to run from its clone, with the
+   literal full SHAs substituted for refs:
+
+   ```text
+   git log --oneline BASE_SHA..PRE_HEAD
+   git diff --binary BASE_SHA...PRE_HEAD
+   ```
+
+4. Run the resolved log command at `REPO_ROOT`. Check the resolved range with
+   `git -C "$REPO_ROOT" diff --quiet "$BASE_SHA...$PRE_HEAD"`: exit 0 means
+   empty and hard-stops; exit 1 means non-empty; any other exit hard-stops.
+5. Freeze those two commands. Every reviewer runs them itself in its own clone;
+   never regenerate, narrow, segment, compress, or embed the diff in a prompt.
 
 An unresolved root/ref, dirty or untracked path, identical endpoints, or empty
 diff ends the invocation with `CMR-VERDICT: hard-stop`. Report the failed
@@ -63,9 +71,11 @@ Build one ordered authority set before dispatch:
 4. surrounding code only as evidence of an established contract — the changed
    implementation is not authority for itself.
 
-Follow references named by a higher authority. Put the exact authority list
-and the load-bearing excerpts in the packet so every panel member sees the
-same constitution. A lower source cannot override a higher one.
+Follow references named by a higher authority. Freeze the exact ordered source
+list. Repository authority is listed by repository-relative path and read by
+each reviewer from its clone; do not paste repository file bodies or excerpts
+into the task packet. Include exact user-supplied authority text only when it
+has no repository path. A lower source cannot override a higher one.
 
 The completeness lens requires line-addressable clause authority. Every clause
 must cite an actual authority `path:line`; an unlocated summary cannot establish
@@ -134,10 +144,23 @@ Preflight `CMR_PANEL` before launch. Unknown tokens, repeated tokens, aliases
 that resolve to the same transport twice, or fewer than two selected transports
 hard-stop. Do not probe quota: make the real calls and report real failures.
 
-Build one packet outside `REPO_ROOT` with the endpoint SHAs, checksum,
-authority, lens prompt, candidate contract, and materialized diff. For each
-member, choose a unique `LEG_ROOT` outside the target and create an independent
-writable clone at `PRE_HEAD`:
+Build one small task packet outside `REPO_ROOT` containing only:
+
+- `BASE_SHA` and `PRE_HEAD`;
+- the one resolved log command and one resolved diff command from Step 1;
+- the selected lens prompt;
+- the frozen ordered authority source list; and
+- the candidate contract from Step 5.
+
+Do not attach the diff, changed files, repository archive, compressed content,
+or preloaded file bodies. Each reviewer owns repository reading, search, and
+verification. "Same input" means the same target/range, authority, lens, and
+candidate contract, not a serialized diff copy.
+
+For each member, choose a unique `LEG_ROOT` outside the target under a path with
+no hidden component (no path segment beginning with `.`), then create an
+independent writable clone at `PRE_HEAD`. This keeps every transport able to
+discover the repository; agy refuses hidden workspace paths.
 
 ```bash
 git clone --no-local --no-checkout "$REPO_ROOT" "$LEG_ROOT"
@@ -150,14 +173,19 @@ Do not use a linked worktree, shared object store, reference clone, or
 alternates: the leg's `.git` config, refs, and objects must be independent of
 the target. Before dispatch, verify that `git -C "$LEG_ROOT" rev-parse
 --path-format=absolute --git-common-dir` is inside `LEG_ROOT`, HEAD equals
-`PRE_HEAD`, status is empty, and `git -C "$LEG_ROOT" remote` prints nothing.
-Any failed check hard-stops before that reviewer runs.
+`PRE_HEAD`, `git -C "$LEG_ROOT" cat-file -e "$BASE_SHA^{commit}"` succeeds,
+the canonical `LEG_ROOT` has no hidden path component, status is empty, and
+`git -C "$LEG_ROOT" remote` prints nothing. Any failed check hard-stops before
+that reviewer runs.
 
 Record token → absolute `LEG_ROOT`; resolve prompts and backends from
-`SKILL_ROOT`, and run each transport at its own `LEG_ROOT`. Never expose
-`REPO_ROOT`. Launch one parallel batch with the same packet and no peer output;
-do not replace a degraded panel member. The declared agy quota-only second pool
-above belongs to that one member; it is not a replacement panel leg.
+`SKILL_ROOT`, `cd` to that member's `LEG_ROOT`, and send the same task packet to
+each transport from there. The reviewer starts at the clone root and must run
+the pinned log/diff commands, inspect surrounding code and authority paths, and
+run useful tests or probes itself. Never expose `REPO_ROOT`. Launch one parallel
+batch with no peer output; do not replace a degraded panel member. The declared
+agy quota-only second pool above belongs to that one member; it is not a
+replacement panel leg.
 
 A reviewer may install dependencies, test, and create probes or local artifacts
 in `LEG_ROOT`, but must not repair, commit, push, or mutate remote state.

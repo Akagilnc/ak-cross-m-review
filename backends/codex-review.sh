@@ -17,9 +17,8 @@
 #      - `-o <file>` (--output-last-message): codex writes ONLY its final
 #        message (the review candidates + verification) to
 #        this file. We emit THAT, not stdout. `codex exec`'s stdout is the
-#        full prompt echo + reasoning trace — 1.5MB on a real diff, ~99%
-#        of it noise the orchestrator already has. `-o` is codex's native
-#        "last message only" output: a few KB, complete, no parser needed.
+#        task echo + reasoning trace; `-o` is codex's native "last message
+#        only" output: concise, complete, and parser-free.
 #      - `--ephemeral`: do NOT persist a session rollout file. CMR and other
 #        callers may run Codex reviewers in parallel; without it instances
 #        collide on ~/.codex/session → cross-talk (prompt A surfaces in
@@ -35,7 +34,7 @@
 #        CMR_CODEX_MODEL (e.g. luna) — the pin prevents silent drift, it
 #        does not lock the value.
 #      - NO `-C`: codex runs from the current dir (the repo root)
-#      - always 2>&1 so failures are visible
+#      - always 2>&1 so a bounded native failure tail can be surfaced
 #
 # This file's ONLY job is avoiding codex invocation pitfalls (the correct
 # invocation FORM). It imposes NO hard restriction on model or reasoning
@@ -48,7 +47,8 @@
 #   wiki/concepts/codex-bot-conventions.md  §CLI 侧的正确 pattern / §模型变体
 #
 # Invocation:
-#   <stdin: full review prompt incl. diff> | codex-review.sh <mode> [<label>]
+#   <stdin: pinned review task; reviewer reads the clone>
+#           | codex-review.sh <mode> [<label>]
 #     mode  : doc | code   (review lens)
 #     label : optional diagnostic tag (e.g. "full")
 #
@@ -78,8 +78,9 @@
 # On success we emit codex's FINAL MESSAGE (the review — prose or JSON,
 # from the `-o` file) to stdout; the orchestrator reads it with judgment
 # (the recorded prose-review contract). Diagnostics to stderr. On timeout /
-# non-zero codex exit (auth/quota/crash) / an empty final message: empty
-# stdout + exit 1 + a stderr "本轮缺 codex" flag. The script does NOT parse
+# non-zero codex exit / an empty final message: empty stdout + exit 1 + a
+# stderr "本轮缺 codex" flag. Native failure output is surfaced as a bounded
+# tail before that flag. The script does NOT parse
 # findings or demand a sentinel-JSON format — that gate dropped codex's
 # prose review as a phantom outage (removed in 0.3.9.0). It also does NOT
 # tail-parse the verbose stdout — codex's own `-o` gives the clean last
@@ -127,8 +128,8 @@ fi
 
 # codex writes ONLY its final message (the review) here via
 # `-o`/--output-last-message. We emit this file's contents on success, NOT
-# codex's stdout (which is the full prompt echo + reasoning trace, ~1.5MB
-# of mostly-noise on a real diff). Created before CODEX_CMD so the array
+# codex's stdout (which is the task echo + reasoning trace). Created before
+# CODEX_CMD so the array
 # can reference it; cleaned on EXIT (the trap is widened when PROMPT_TMP is
 # added below).
 LASTMSG="$(mktemp)"
@@ -176,7 +177,7 @@ if [ "${1:-}" = "--selftest" ]; then
     *) echo "FAIL: command not canonical form ('codex exec --ephemeral -c model_reasoning_effort=${CMR_CODEX_EFFORT} --model X -o <file> -')" >&2; fail=1 ;;
   esac
   # -o/--output-last-message mandatory: it is how we get codex's clean
-  # final review instead of the 1.5MB stdout echo (no -o → we'd have
+  # final review instead of the stdout task/trace stream (no -o → we'd have
   # nothing to emit on the success path).
   case "$CMD" in
     *" -o "*) ;;
@@ -279,15 +280,21 @@ wait "$CODEX_PID"
 RC=$?
 set -e
 [ "$TIMED_OUT" -eq 1 ] && RC=124   # idle watchdog fired → force the degrade path
-RAW="$(cat "$TMP_OUT" 2>/dev/null || true)"
+
+emit_native_output_tail() {
+  [ -s "$TMP_OUT" ] || return 0
+  echo "codex-review: native output tail (last 8192 bytes):" >&2
+  tail -c 8192 "$TMP_OUT" >&2 || true
+  echo >&2
+}
 
 # Outage signals, in order. We emit codex's FINAL MESSAGE (the `-o`
-# file) on success — NOT $RAW (the full stdout echo+trace, kept only so a
-# failure's diagnostics aren't lost). Three true-outage cases degrade:
+# file) on success — not the full stdout echo+trace. On failure, only a
+# bounded native-output tail is surfaced. Three true-outage cases degrade:
 #
 #  1. idle/hang kill (rc 124 = our idle watchdog; 137/143 = SIGKILL/TERM)
 #     — a partial -o file from a killed codex must NEVER count as a review.
-#  2. codex exited non-zero (auth/quota/crash). rc is the clean,
+#  2. codex exited non-zero for any native CLI/model/service reason. rc is the clean,
 #     content-independent outage signal; we do NOT grep the body for
 #     auth/quota/429 — a real prose review legitimately discusses those as
 #     defect categories (it self-degraded on this repo once).
@@ -297,15 +304,17 @@ RAW="$(cat "$TMP_OUT" 2>/dev/null || true)"
 #
 # We do NOT parse findings or require a sentinel-JSON shape (that gate
 # dropped codex's prose as a phantom outage, removed 0.3.9.0), and we do
-# NOT tail-parse stdout — codex's own `-o` gives the clean last message.
+# NOT parse stdout as a review — codex's own `-o` gives the clean last message.
 case "$RC" in
   124|137|143)
+    emit_native_output_tail
     echo "codex-review: timeout/kill (rc=$RC) — degrade, flag '本轮缺 codex'" >&2
     exit 1
     ;;
 esac
 if [ "$RC" -ne 0 ]; then
-  echo "codex-review: codex exited rc=$RC (auth/quota/crash, not a review) — degrade, flag '本轮缺 codex'" >&2
+  emit_native_output_tail
+  echo "codex-review: codex exited non-zero (rc=$RC; not a review) — degrade, flag '本轮缺 codex'" >&2
   exit 1
 fi
 

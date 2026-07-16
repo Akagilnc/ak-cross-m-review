@@ -8,6 +8,10 @@ from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "backends" / "opencode-review.sh"
 ROOT = SCRIPT.parents[1]
+REVIEW_TASK = (
+    "Review fixed range 111...222 from this clone; run git diff --binary "
+    "111...222; authority: AGENTS.md.\n"
+)
 
 
 def _stub_opencode(stub_dir: Path, body: str) -> None:
@@ -32,7 +36,7 @@ def _run_opencode(
     env.update(env_extra)
     return subprocess.run(
         ["bash", str(SCRIPT), mode],
-        input="review packet\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True,
         text=True,
         env=env,
@@ -95,7 +99,7 @@ def test_default_invocation_is_pure_attachment_based_and_repo_scoped(tmp_path):
         "<prompt-file>",
         "--dir",
         str(ROOT),
-        "Review the attached packet and return only the grounded prose review.",
+        "Use the pinned task and inspect this repository; return only the grounded prose review.",
     ]
     assert cwd_dump.read_text().strip() == str(ROOT)
 
@@ -127,7 +131,7 @@ def test_model_override_and_nonempty_variant_pass_through(tmp_path):
 
 def test_review_packet_passes_to_opencode_verbatim(tmp_path):
     prompt_dump = tmp_path / "prompt"
-    packet = "review packet\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n"
+    packet = REVIEW_TASK
     _stub_opencode(
         tmp_path / "bin",
         'prompt_file=""\n'

@@ -6,7 +6,7 @@
 # optional Google-family reviewer.
 #
 # Invocation:
-#   <stdin: full reviewer prompt incl. the diff to review>
+#   <stdin: pinned review task; reviewer reads the clone>
 #           | backends/gemini.sh <mode>
 #
 # Success: review prose passes through verbatim on stdout. On degrade,
@@ -55,7 +55,7 @@ esac
 # project), captured BEFORE any `cd`. agy's workspace must be THIS, not
 # PROTO_ROOT: the skill itself lives under `~/.claude/skills/...` (hidden),
 # so cd-ing agy into PROTO_ROOT made agy refuse the (hidden) workspace and
-# run diff-only on EVERY registered-skill invocation. agy reads its cwd as
+# run without repository context on EVERY registered-skill invocation. agy reads its cwd as
 # the workspace, so we cd here (not PROTO_ROOT) before running it.
 REVIEW_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
@@ -70,7 +70,7 @@ trap 'rm -f "$AGY_LOG" "$AGY_PROMPT_FILE"' EXIT
 
 # agy refuses to add a workspace folder whose path has a hidden (dot)
 # component ("... is hidden: ignore uri" in its log) → the Gemini reviewer
-# gets NO repo context (diff-only, cannot grep source). We now point agy
+# gets NO repo context (cannot inspect or grep source). We now point agy
 # at REVIEW_ROOT (the reviewed repo), so this only fires when the user's
 # OWN project is under a dot-path (e.g. reviewing from a
 # `.claude/worktrees/...` checkout) — NOT, as before, on every invocation
@@ -79,7 +79,7 @@ trap 'rm -f "$AGY_LOG" "$AGY_PROMPT_FILE"' EXIT
 # context.
 case "$REVIEW_ROOT" in
   */.*)
-    echo "gemini: warn: the reviewed repo root '$REVIEW_ROOT' is under a hidden (dot) directory; agy will not add it as a workspace folder ('is hidden: ignore uri'), so the Gemini reviewer runs WITHOUT repo context (diff-only, no source grep). Review from a non-hidden checkout for full agy context." >&2
+    echo "gemini: warn: the reviewed repo root '$REVIEW_ROOT' is under a hidden (dot) directory; agy will not add it as a workspace folder ('is hidden: ignore uri'), so the Gemini reviewer runs WITHOUT repo context and cannot inspect source. Review from a non-hidden checkout for full agy context." >&2
     ;;
 esac
 
@@ -92,8 +92,8 @@ agy_log_has_quota() {
 
 # On a degrade, surface WHY by scanning ONLY agy's --log-file — that is
 # where agy actually writes its fatal backend errors. Do NOT scan $RAW:
-# on the extract-fail path $RAW is the full model output, which quotes
-# the reviewed diff, so any diff that merely mentions quota/429 code
+# on the extract-fail path $RAW is the full model output, which may quote
+# reviewed source, so source that merely mentions quota/429 code
 # would yield a false "quota exhausted" attribution (cross-model review
 # R1: Claude C1 + codex#2 R1, live-reproduced). Always returns 0 (empty
 # = no known reason).

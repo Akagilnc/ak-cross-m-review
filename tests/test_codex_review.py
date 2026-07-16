@@ -2,10 +2,9 @@
 
 Two pinned behaviors around the degrade gate:
 
-1. A codex that exits NON-ZERO is a real outage (auth/quota/crash) and
-   must degrade (empty stdout + exit 1 + stderr flag), even if it printed a
-   salvageable-looking body. Otherwise a failed codex silently counts as
-   a valid zero-finding reviewer.
+1. A codex that exits NON-ZERO must degrade (empty stdout + exit 1 + stderr
+   flag) while preserving a bounded native diagnostic tail. Otherwise a failed
+   codex silently counts as a valid zero-finding reviewer or hides its cause.
 
 2. A codex that exits ZERO with a PROSE review (no JSON, no sentinel)
    must be PASSED THROUGH verbatim (exit 0), NOT degraded. Codex's
@@ -22,15 +21,24 @@ from pathlib import Path
 import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "backends" / "codex-review.sh"
+REVIEW_TASK = (
+    "Review fixed range 111...222 from this clone; run git diff --binary "
+    "111...222; authority: AGENTS.md.\n"
+)
 
 
-def test_degrades_when_codex_exits_nonzero_with_salvageable_body(tmp_path):
+def test_nonzero_codex_exit_preserves_native_error_and_degrades(tmp_path):
     stub_dir = tmp_path / "bin"
     stub_dir.mkdir()
     codex = stub_dir / "codex"
-    # Prints a JSON-ish error body but the process exits 1 — a real
-    # outage (auth/quota/crash). Must degrade, never count as a review.
-    codex.write_text('#!/bin/sh\necho \'{"error":"quota exceeded"}\'\nexit 1\n')
+    # Codex reports its actionable native failure on the captured process
+    # stream, then exits non-zero. The backend must preserve that reason on
+    # stderr while still degrading rather than counting it as a review.
+    codex.write_text(
+        "#!/bin/sh\n"
+        'echo "Input exceeds the maximum length of 1048576 characters." >&2\n'
+        "exit 1\n"
+    )
     codex.chmod(codex.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
     env = dict(os.environ)
@@ -39,7 +47,7 @@ def test_degrades_when_codex_exits_nonzero_with_salvageable_body(tmp_path):
 
     r = subprocess.run(
         ["bash", str(SCRIPT), "code"],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True, env=env, timeout=60,
     )
 
@@ -48,6 +56,10 @@ def test_degrades_when_codex_exits_nonzero_with_salvageable_body(tmp_path):
         f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     )
     assert r.stdout == ""
+    assert "Input exceeds the maximum length of 1048576 characters." in r.stderr
+    assert r.stderr.index("Input exceeds the maximum length") < r.stderr.index(
+        "codex exited non-zero"
+    )
     assert "本轮缺 codex" in r.stderr, (
         f"degrade must keep the visible flag — the stderr flag and the "
         f"nonzero exit are the ONLY two signals since #39\nstderr={r.stderr!r}"
@@ -77,14 +89,14 @@ def _run_codex(stub_dir, mode="code", **env_extra):
     env.update(env_extra)
     return subprocess.run(
         ["bash", str(SCRIPT), mode],
-        input="review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n",
+        input=REVIEW_TASK,
         capture_output=True, text=True, env=env, timeout=60,
     )
 
 
 def test_review_packet_passes_to_codex_verbatim(tmp_path):
     prompt_dump = tmp_path / "prompt"
-    packet = "review prompt\n--- BEGIN DIFF ---\n+x\n--- END DIFF ---\n"
+    packet = REVIEW_TASK
     _codex_stub(
         tmp_path / "bin",
         'cat > "$CODEX_PROMPT_DUMP"\n'
@@ -133,10 +145,9 @@ def test_invalid_mode_degrades_with_empty_stdout(tmp_path):
 
 def test_emits_last_message_not_stdout_echo(tmp_path):
     # THE fix: codex's strongest output is a PROSE review, written to the
-    # -o (--output-last-message) file; its STDOUT is the ~1.5MB prompt
-    # echo + reasoning trace. The backend must emit the -o review (exit 0,
-    # not degrade) and must NOT emit the verbose stdout — that's the ~99%
-    # size cut and the whole point.
+    # -o (--output-last-message) file; its STDOUT is the task echo + reasoning
+    # trace. The backend must emit the -o review (exit 0, not degrade) and must
+    # not mix the verbose transport stream into review stdout.
     review = (
         "I reviewed the diff. One real issue:\\n"
         "P1: route.ts:96 route() treats a non-reviewer output as 0 findings, "
@@ -144,7 +155,7 @@ def test_emits_last_message_not_stdout_echo(tmp_path):
         "CMR-VERDICT: findings"
     )
     _codex_stub(tmp_path / "bin", (
-        'echo "VERBOSE_ECHO_PROMPT_TRACE_NOISE — 1.5MB of echo would be here"\n'
+        'echo "VERBOSE_TASK_TRACE_NOISE would be here"\n'
         f'[ -n "$OUT" ] && printf \'%b\\n\' "{review}" > "$OUT"\n'
         "exit 0\n"
     ))
@@ -218,6 +229,8 @@ def test_silent_codex_killed_after_idle_window(tmp_path):
         f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     )
     assert "本轮缺 codex" in r.stderr
+    assert "first reasoning line" in r.stderr
+    assert r.stderr.index("first reasoning line") < r.stderr.index("timeout/kill")
     assert r.stdout == ""
 
 
