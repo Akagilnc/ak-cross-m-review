@@ -43,7 +43,7 @@ def test_official_argv_prompt_cwd_and_success(tmp_path, model, variant):
         tmp_path / "argv", tmp_path / "prompt", tmp_path / "cwd"
     )
     clone = tmp_path / "clone"
-    clone.mkdir()
+    subprocess.run(["git", "init", "-q", str(clone)], check=True)
     _stub(
         tmp_path / "bin",
         ': > "$ARGV_DUMP"; for arg in "$@"; do printf "%s\\0" "$arg" >> "$ARGV_DUMP"; done\n'
@@ -83,6 +83,23 @@ def test_official_argv_prompt_cwd_and_success(tmp_path, model, variant):
 )
 def test_nonzero_or_empty_output_degrades(tmp_path, body, reason):
     _stub(tmp_path / "bin", body)
-    result = _run(tmp_path / "bin", cwd=tmp_path)
+    result = _run(tmp_path / "bin")
     assert result.returncode == 1 and result.stdout == ""
     assert reason in result.stderr and "本轮缺 opencode" in result.stderr
+
+
+def test_nonzero_stdout_diagnostic_is_preserved_before_degrade(tmp_path):
+    _stub(tmp_path / "bin", 'echo "native opencode fatal"; exit 7\n')
+    result = _run(tmp_path / "bin")
+    assert result.returncode == 1 and result.stdout == ""
+    assert result.stderr.index("native opencode fatal") < result.stderr.index(
+        "opencode-review: degrade"
+    )
+
+
+def test_non_git_cwd_stops_before_opencode_and_preserves_git_error(tmp_path):
+    ran = tmp_path / "ran"
+    _stub(tmp_path / "bin", ': > "$RAN"; echo "unexpected review"\n')
+    result = _run(tmp_path / "bin", cwd=tmp_path, RAN=str(ran))
+    assert result.returncode != 0 and result.stdout == "" and not ran.exists()
+    assert "fatal: not a git repository" in result.stderr

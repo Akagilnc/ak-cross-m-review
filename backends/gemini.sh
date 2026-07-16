@@ -34,8 +34,8 @@
 #   captured into the output rather than silenced). Note: agy routes
 #   fatal backend errors (e.g. RESOURCE_EXHAUSTED / 429 quota) to its
 #   --log-file, NOT stdout/stderr — so a quota-exhausted run looks like
-#   a plain empty success (rc=0, empty stdout). We pass --log-file and
-#   grep it on degrade so the flag names the real reason.
+#   a plain empty success (rc=0, empty stdout). We pass --log-file and emit
+#   its unmodified contents only if the final call degrades.
 
 set -euo pipefail
 
@@ -57,16 +57,17 @@ esac
 # so cd-ing agy into PROTO_ROOT made agy refuse the (hidden) workspace and
 # run without repository context on EVERY registered-skill invocation. agy reads its cwd as
 # the workspace, so we cd here (not PROTO_ROOT) before running it.
-REVIEW_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+REVIEW_ROOT="$(git rev-parse --show-toplevel)"
 
 # agy routes fatal backend errors (RESOURCE_EXHAUSTED / 429 quota, the
 # agent-executor error line) to its --log-file, not to the captured
 # stdout/stderr.
-# Give agy a private log so the degrade paths can name the real reason;
+# Give agy a private log so final degrade paths preserve its diagnostics;
 # clean it up on any exit.
 AGY_LOG="$(mktemp "${TMPDIR:-/tmp}/agy-cmr.XXXXXX")"
+AGY_PREVIOUS_LOG="$(mktemp "${TMPDIR:-/tmp}/agy-cmr-previous.XXXXXX")"
 AGY_PROMPT_FILE="$(mktemp "${TMPDIR:-/tmp}/agy-cmr-prompt.XXXXXX")"
-trap 'rm -f "$AGY_LOG" "$AGY_PROMPT_FILE"' EXIT
+trap 'rm -f "$AGY_LOG" "$AGY_PREVIOUS_LOG" "$AGY_PROMPT_FILE"' EXIT
 
 # agy refuses to add a workspace folder whose path has a hidden (dot)
 # component ("... is hidden: ignore uri" in its log) → the Gemini reviewer
@@ -90,36 +91,15 @@ agy_log_has_quota() {
   grep -qiE '\(code 429\)|quota reached|quota exceeded|individual quota' "$AGY_LOG"
 }
 
-# On a degrade, surface WHY by scanning ONLY agy's --log-file — that is
-# where agy actually writes its fatal backend errors. Do NOT scan $RAW:
-# on the extract-fail path $RAW is the full model output, which may quote
-# reviewed source, so source that merely mentions quota/429 code
-# would yield a false "quota exhausted" attribution (cross-model review
-# R1: Claude C1 + codex#2 R1, live-reproduced). Always returns 0 (empty
-# = no known reason).
-agy_fatal_reason() {
-  [ -s "$AGY_LOG" ] || return 0
-  if agy_log_has_quota; then
-    # Optional detail. `grep -m1 … || true` keeps it non-fatal under
-    # `set -euo pipefail`: a no-match (grep exit 1) must NOT abort the
-    # function before the reason is printed (online R1: gemini + sourcery;
-    # the empty-/no-match degrade is exercised by the R2 characterization
-    # tests). `-m1` caps to the first matching LINE, but agy writes the
-    # error TWICE on one line, so `-o` still emits two matches — keep only
-    # the first via `${resets%%<newline>*}` (no extra pipe → no SIGPIPE),
-    # else the flag carries a doubled, newline-split "Resets in …".
-    local resets
-    resets="$(grep -m1 -oiE 'Resets in [0-9hdms]+' "$AGY_LOG" || true)"
-    resets="${resets%%$'\n'*}"
-    printf 'quota/429 — agy individual quota exhausted%s' "${resets:+; $resets}"
-    return 0
-  fi
-  # `.*` (to end of line, not `[^:]*`) so a multi-colon executor error
-  # like "agent executor error: call failed: backend timeout" is kept
-  # whole, not truncated at the first colon (online R1: sourcery).
-  local execerr
-  execerr="$(grep -m1 -oE 'agent executor error: .*' "$AGY_LOG" || true)"
-  [ -n "$execerr" ] && printf '%s' "$execerr"
+emit_agy_log() {
+  local log="$1"
+  [ -s "$log" ] && cat "$log" >&2
+  return 0
+}
+
+emit_agy_raw() {
+  local raw="$1"
+  [ -n "$raw" ] && printf '%s\n' "$raw" >&2
   return 0
 }
 
@@ -140,6 +120,7 @@ AGY_PRIMARY_MODEL="${AGY_MODEL:-Gemini 3.5 Flash (High)}"
 AGY_FALLBACK_MODEL="${AGY_FALLBACK_MODEL-Claude Sonnet 4.6 (Thinking)}"
 AGY_RAN_MODEL="$AGY_PRIMARY_MODEL"
 AGY_USED_FALLBACK=0
+AGY_PREVIOUS_RAW=""
 
 run_agy() {
   local model="$1"
@@ -152,14 +133,18 @@ run_agy() {
 
 run_agy "$AGY_RAN_MODEL"
 if [ -n "$AGY_FALLBACK_MODEL" ] && agy_log_has_quota; then
+  AGY_PREVIOUS_RAW="$RAW"
+  cp "$AGY_LOG" "$AGY_PREVIOUS_LOG"
   AGY_RAN_MODEL="$AGY_FALLBACK_MODEL"
   AGY_USED_FALLBACK=1
   run_agy "$AGY_RAN_MODEL"
 fi
 
 if [ -z "$RAW" ]; then
-  REASON="$(agy_fatal_reason)"
-  echo "gemini: degrade — flag '本轮缺 gemini' (empty output, agy rc=$G_RC${REASON:+; $REASON})" >&2
+  emit_agy_raw "$AGY_PREVIOUS_RAW"
+  emit_agy_log "$AGY_PREVIOUS_LOG"
+  emit_agy_log "$AGY_LOG"
+  echo "gemini: degrade — flag '本轮缺 gemini' (empty output, agy rc=$G_RC)" >&2
   exit 1
 fi
 
@@ -176,13 +161,13 @@ fi
 # Gemini's review is prose; the old sentinel gate treated any prose as
 # "no findings JSON" and degraded it to 本轮缺 gemini — dropping a real
 # review over format (prose-review is this skill's contract: review text
-# the agent reads). The degrade-reason scan still reads ONLY agy's
-# --log-file (agy_fatal_reason), never $RAW, so a review body that quotes
-# the diff's quota/429 code cannot mis-attribute a reason.
+# the agent reads).
 if [ "$G_RC" -ne 0 ] || agy_log_has_quota; then
-  REASON="$(agy_fatal_reason)"
-  printf '%s\n' "$RAW" >&2
-  echo "gemini: degrade — flag '本轮缺 gemini' (agy exit rc=$G_RC${REASON:+; $REASON})" >&2
+  emit_agy_raw "$AGY_PREVIOUS_RAW"
+  emit_agy_log "$AGY_PREVIOUS_LOG"
+  emit_agy_raw "$RAW"
+  emit_agy_log "$AGY_LOG"
+  echo "gemini: degrade — flag '本轮缺 gemini' (agy exit rc=$G_RC)" >&2
   exit 1
 fi
 

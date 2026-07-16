@@ -15,7 +15,7 @@ MODEL="${CMR_OPENCODE_MODEL:-opencode-go/glm-5.2}"
 VARIANT_FLAG=()
 [ -n "${CMR_OPENCODE_VARIANT:-}" ] \
   && VARIANT_FLAG=(--variant "$CMR_OPENCODE_VARIANT")
-REVIEW_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+REVIEW_ROOT="$(git rev-parse --show-toplevel)"
 PROMPT_FILE="$(mktemp)"
 OUTPUT_FILE="$(mktemp)"
 ERROR_FILE="$(mktemp)"
@@ -41,6 +41,9 @@ if [ -s "$ERROR_FILE" ]; then
   cat "$ERROR_FILE" >&2
 fi
 if [ "$OPENCODE_RC" -ne 0 ]; then
+  if [ -s "$OUTPUT_FILE" ]; then
+    cat "$OUTPUT_FILE" >&2
+  fi
   echo "opencode-review: degrade — flag '本轮缺 opencode' (opencode exit rc=$OPENCODE_RC)" >&2
   exit 1
 fi

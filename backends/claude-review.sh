@@ -39,6 +39,9 @@ if [ -s "$ERROR_FILE" ]; then
   cat "$ERROR_FILE" >&2
 fi
 if [ "$CLAUDE_RC" -ne 0 ]; then
+  if [ -s "$OUTPUT_FILE" ]; then
+    cat "$OUTPUT_FILE" >&2
+  fi
   echo "claude-review: degrade — flag '本轮缺 claude' (claude exit rc=$CLAUDE_RC)" >&2
   exit 1
 fi
@@ -76,6 +79,7 @@ PARSE_RC=$?
 set -e
 
 if [ "$PARSE_RC" -ne 0 ]; then
+  cat "$OUTPUT_FILE" >&2
   cat "$ERROR_FILE" >&2
   echo "claude-review: degrade — flag '本轮缺 claude' (invalid Claude event stream)" >&2
   exit 1

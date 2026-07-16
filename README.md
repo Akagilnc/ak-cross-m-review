@@ -14,26 +14,25 @@ authority. ADR 0004 records the owner-approved boundary.
 
 1. **Pin target** — fix the reviewed base-to-HEAD snapshot.
 2. **Pin authority** — fix the sources that govern the review.
-3. **Choose lens sequence** — completeness, correctness, or explicit ordered
-   `all` for ship-pre/design-doc.
+3. **Choose lens sequence** — independent completeness or correctness, or
+   explicit ordered `all` inside this invocation.
 4. **Dispatch panel** — run every reviewer from its own clone with the same
    pinned commands, lens, authority list, and candidate contract.
 5. **Judge and stop** — adjudicate candidates and return one terminal verdict.
 
 ## Named entry points
 
-- `ak-cmr-completeness` presets the completeness lens. Use it first on a
-  finished change and on design documents.
-- `ak-cmr-correctness` presets the correctness lens. Use it per-slice, or after
-  completeness passes for the same finished target.
+- `ak-cmr-completeness` presets the completeness lens.
+- `ak-cmr-correctness` presets the correctness lens.
 
 Both are thin wrappers: they invoke the root engine once, return its report,
 and stop.
 
-The generic `ak-cross-m-review` entry also accepts explicit `--lens all` for a
-complete ship-pre/design-doc gate. Lens omission is an error, not an `all`
-default. `all` stops on completeness gaps; after `complete`, it launches a fresh
-correctness panel against the same pinned target and authority.
+The generic `ak-cross-m-review` entry also accepts explicit `--lens all`. Lens
+omission is an error, not an `all` default. `all` stops on completeness gaps;
+after `complete`, it launches a fresh correctness panel against the same pinned
+target and authority. This internal order does not make either named lens a
+prerequisite for the other.
 
 ## Minimal usage
 
@@ -43,32 +42,28 @@ export CMR_PANEL=codex,grok
 
 Then, in agent chat:
 
-Per-slice correctness:
+Correctness review of code:
 
 ```text
-/ak-cmr-correctness --base HEAD~1 --scenario per-slice --authority docs/specs/feature.md
+/ak-cmr-correctness --base HEAD~1 --mode code --authority docs/specs/feature.md
 ```
 
-Two-call ship-pre with the named presets:
+Independent completeness review of code:
 
 ```text
-/ak-cmr-completeness --base main --scenario ship-pre --authority docs/specs/feature.md
-/ak-cmr-correctness --base main --scenario ship-pre --authority docs/specs/feature.md --prior-completeness SEALED_REPORT
+/ak-cmr-completeness --base main --mode code --authority docs/specs/feature.md
 ```
 
-`SEALED_REPORT` is the verbatim `complete` report from the first call; both
-calls must name the same fixed target and authority.
-
-Complete ship-pre gate:
+Explicit ordered review:
 
 ```text
-/ak-cross-m-review --base main --scenario ship-pre --lens all --authority docs/specs/feature.md
+/ak-cross-m-review --base main --mode code --lens all --authority docs/specs/feature.md
 ```
 
-Complete design-document gate:
+Explicit ordered document review:
 
 ```text
-/ak-cross-m-review --base main --scenario design-doc --lens all --authority docs/adr/0042-feature-design.md
+/ak-cross-m-review --base main --mode doc --lens all --authority docs/adr/0042-feature-design.md
 ```
 
 ## Panel and quota switching

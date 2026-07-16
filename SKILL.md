@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: Fixed-target cross-model review of a base-to-HEAD diff. Use per-slice, before a PR, or for design-document review; select one lens or the explicit ordered all gate.
+description: Fixed-target cross-model review of a base-to-HEAD diff through one selected lens or the explicit ordered all gate.
 allowed-tools:
   - Bash
   - Read
@@ -27,22 +27,19 @@ single lens. Direct engine invocation, including `all`, must provide every
 required input explicitly. These are agent-chat arguments, not a shell CLI.
 
 ```text
-/ak-cross-m-review --base FIXED_POINT --scenario per-slice|ship-pre|design-doc
+/ak-cross-m-review --base FIXED_POINT --mode code|doc
   --lens completeness|correctness|all --authority SOURCE [--authority SOURCE ...]
-  [--prior-completeness SEALED_REPORT]
 ```
 
 - `--base` — fixed point compared with the current committed `HEAD`.
-- `--scenario` — workflow gate; Step 3 defines valid lens combinations.
+- `--mode` — reviewer transport mode only; it carries no workflow meaning.
 - `--lens` — required lens or ordered `all` sequence; there is no default.
 - `--authority` — governing path or labelled user source; repeat as needed.
-- `--prior-completeness` — verbatim prior CMR report; required only for a
-  ship-pre/design-doc single-lens correctness call.
 
 Example:
 
 ```text
-/ak-cross-m-review --base main --scenario ship-pre --lens all --authority docs/specs/feature.md
+/ak-cross-m-review --base main --mode code --lens all --authority docs/specs/feature.md
 ```
 
 ## Step 1 — Pin the target
@@ -58,6 +55,14 @@ without conflating them:
 The user-supplied fixed point and the current committed `HEAD` define the whole
 review. There is no implicit `main`, range, worktree-diff, or small-change
 exception.
+
+Apply one runner shell invariant everywhere below: run each runner-owned stage
+in its own fail-fast shell (`set -euo pipefail`), except where a step explicitly
+assigns an exit code a meaning. On the first failure, stop that stage and record
+the exact command and exit code, and preserve the native diagnostic content from
+stdout and stderr. A runner label may follow those diagnostics, but must not
+replace or paraphrase their content. Any root, pin, or Step 5 seal command
+failure hard-stops.
 
 1. Run `git -C "$REPO_ROOT" status --porcelain=v1 --untracked-files=all`; any
    output hard-stops before dispatch and is reported verbatim.
@@ -113,24 +118,21 @@ Each panel pass loads exactly one prompt:
 - `prompts/cmr-reviewer.md` — **correctness**: Trace–Break–Prove real defects.
 - `prompts/cmr-completeness.md` — **completeness**: Clause–Wire–Exercise gaps.
 
-`--lens` is required; omission does not default to `all`. The scenario gates the
-allowed sequence:
+`--lens` is required; omission does not default to `all`.
 
-- `per-slice` accepts correctness only.
-- `ship-pre` and `design-doc` accept either named single lens or explicit `all`.
+- `completeness` and `correctness` are independent calls. Neither requires a
+  prior report from the other lens.
 - `all` runs completeness first. A sealed `complete` result emits
   `CMR-LENS-RESULT: completeness=complete` and permits a fresh correctness panel
   pass against the same `BASE_SHA`, `PRE_HEAD`, and authority set. Do not
   combine prompts, reviewer contexts, candidates, or judgment across lenses.
-- A ship-pre/design-doc single-lens correctness call requires
-  `--prior-completeness` containing a sealed `CMR-VERDICT: complete` report that
-  names the same `BASE_SHA` and `PRE_HEAD`; a missing or mismatched report
-  hard-stops. `all` creates this handoff internally and takes no such input.
 
-Use backend mode `doc` for `design-doc`; use `code` for the other scenarios.
+Pass the requested `--mode` unchanged to every selected backend.
 
-The outer workflow owns any later repair or retry. This engine persists no
-cross-call state; `all` owns only its two-pass sequence inside one invocation.
+CMR does not decide when a caller should use a lens, inspect prior review
+reports, or interpret HEAD movement across invocations. It persists no
+cross-call state. `all` owns only its two-pass sequence inside one invocation;
+the caller owns every later review, repair, or retry.
 
 ## Step 4 — Dispatch the panel
 
@@ -190,6 +192,8 @@ Put this role boundary first, verbatim:
 > simulate a panel, create or discard clones, or emit runner verdict,
 > degradation, or retry instructions. The current directory is the assigned
 > clone; do not re-clone it. Use ordinary repository tools and tests freely.
+> Do not inspect, reference, or reuse another panel leg or clone; keep
+> project-local dependencies, probes, and artifacts inside this assigned clone.
 > Your only valid submission is the current lens's candidate format or exact
 > no-candidate sentence.
 
@@ -198,26 +202,60 @@ or preloaded file bodies. Each reviewer owns repository reading, search, and
 verification. "Same input" means the same target/range, authority, lens, and
 candidate contract, not a serialized diff copy.
 
-For each member, choose a unique `LEG_ROOT` outside the target under a path with
-no hidden component (no path segment beginning with `.`), then create an
-independent writable clone at `PRE_HEAD`. This keeps every transport able to
+For each member, choose a unique absolute `LEG_ROOT` outside the target under a
+path with no hidden component (no path segment beginning with `.`), then create
+an independent writable clone at `PRE_HEAD`. This keeps every transport able to
 discover the repository; agy refuses hidden workspace paths.
 
 ```bash
-LEG_ROOT="$(cd "$(dirname "$LEG_ROOT")" && pwd -P)/$(basename "$LEG_ROOT")"
-test ! -e "$LEG_ROOT"
+(
+set -euo pipefail
 case "$LEG_ROOT" in
-  "$REPO_ROOT"|"$REPO_ROOT"/*|*/.*) exit 1 ;;
+  /*) ;;
+  *) printf 'LEG_ROOT must be absolute: %s\n' "$LEG_ROOT" >&2; exit 1 ;;
+esac
+LEG_ROOT="$(cd "$(dirname "$LEG_ROOT")" && pwd -P)/$(basename "$LEG_ROOT")"
+test ! -e "$LEG_ROOT" || {
+  printf 'LEG_ROOT already exists: %s\n' "$LEG_ROOT" >&2
+  exit 1
+}
+case "$LEG_ROOT" in
+  "$REPO_ROOT"|"$REPO_ROOT"/*|*/.*)
+    printf 'LEG_ROOT is inside the target or a hidden path: %s\n' "$LEG_ROOT" >&2
+    exit 1
+    ;;
 esac
 git clone --origin origin --no-local --no-checkout "$REPO_ROOT" "$LEG_ROOT"
 git -C "$LEG_ROOT" checkout --detach "$PRE_HEAD"
 git -C "$LEG_ROOT" remote remove origin
 COMMON_DIR="$(git -C "$LEG_ROOT" rev-parse --path-format=absolute --git-common-dir)"
-case "$COMMON_DIR" in "$LEG_ROOT"/*) ;; *) exit 1 ;; esac
-test "$(git -C "$LEG_ROOT" rev-parse HEAD)" = "$PRE_HEAD"
-git -C "$LEG_ROOT" cat-file -e "${BASE_SHA}^{commit}"
-test -z "$(git -C "$LEG_ROOT" status --porcelain=v1 --untracked-files=all)"
-test -z "$(git -C "$LEG_ROOT" remote)"
+case "$COMMON_DIR" in
+  "$LEG_ROOT"/*) ;;
+  *)
+    printf 'clone common dir escaped LEG_ROOT: %s\n' "$COMMON_DIR" >&2
+    exit 1
+    ;;
+esac
+LEG_HEAD="$(git -C "$LEG_ROOT" rev-parse HEAD)"
+test "$LEG_HEAD" = "$PRE_HEAD" || {
+  printf 'clone HEAD mismatch: expected %s, got %s\n' "$PRE_HEAD" "$LEG_HEAD" >&2
+  exit 1
+}
+git -C "$LEG_ROOT" cat-file -e "${BASE_SHA}^{commit}" || {
+  printf 'clone cannot read BASE_SHA: %s\n' "$BASE_SHA" >&2
+  exit 1
+}
+LEG_STATUS="$(git -C "$LEG_ROOT" status --porcelain=v1 --untracked-files=all)"
+test -z "$LEG_STATUS" || {
+  printf 'clone is dirty after preparation:\n%s\n' "$LEG_STATUS" >&2
+  exit 1
+}
+LEG_REMOTES="$(git -C "$LEG_ROOT" remote)"
+test -z "$LEG_REMOTES" || {
+  printf 'clone still has remotes after preparation:\n%s\n' "$LEG_REMOTES" >&2
+  exit 1
+}
+)
 ```
 
 Do not use a linked worktree, shared object store, reference clone, or
@@ -257,15 +295,18 @@ required. Otherwise return
 `CMR-VERDICT: hard-stop` and print a fully
 resolved retry in two correctly labelled parts: a copyable shell line beginning
 with `export CMR_PANEL=...`, followed by a copyable **agent-chat skill
-invocation** repeating the actual base, scenario, lens, and authority values.
+invocation** repeating the actual base, mode, lens, and authority values.
 Placeholders are forbidden; never present a skill invocation as a shell binary.
 
-After output, record each leg's HEAD, `status --porcelain=v1
---untracked-files=all`, and remotes. Discard the independent clone only when
-HEAD still equals `PRE_HEAD`, status is empty, and no remote exists. Preserve
-and report the path, HEAD, status, and remotes of every dirty, moved, or
-remote-changed leg. Never reset, clean, or remove such a leg; scratch state does
-not alter the target verdict.
+After output, audit each leg's HEAD, `status --porcelain=v1
+--untracked-files=all`, and remotes under the runner shell invariant. Preserve
+the leg if any audit command fails. Discard it only when all three commands
+return zero, HEAD still equals `PRE_HEAD`, status is empty, and no remote exists.
+Otherwise preserve and report its path plus every available result and native
+diagnostic. Never reset, clean, or remove a preserved leg; scratch state does
+not alter the target verdict. Record and evaluate this audit before cleanup;
+clone deletion must be a later, separate action. Never combine audit and
+deletion in one compound command.
 
 ## Step 5 — Judge and stop
 
@@ -325,8 +366,9 @@ with evidence such as wrong behavior remaining green, the system under test
 being mocked out, a material assertion being removed/relaxed, or the relevant
 failure path being unable to turn red.
 
-Report every live and refuted/rejected disposition with evidence. Before
-finishing each lens result, seal only the original target:
+Report every live and refuted/rejected disposition with evidence. Under the
+runner shell invariant, seal only the original target before finishing each
+lens result:
 
 1. compare `git -C "$REPO_ROOT" rev-parse 'HEAD^{commit}'` with `PRE_HEAD`;
 2. rerun `git -C "$REPO_ROOT" status --porcelain=v1 --untracked-files=all`.

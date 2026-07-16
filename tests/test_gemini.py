@@ -31,8 +31,11 @@ def _stub_agy(path: Path) -> None:
         '  empty) exit 0;;\n'
         '  auth) echo "Authentication required"; exit 1;;\n'
         '  nonquota) echo "E agent executor error: RESOURCE_EXHAUSTED: worker pool" > "$log"; exit 1;;\n'
+        '  unknown_log) echo "E UNKNOWN_NATIVE_FATAL: provider imploded" > "$log"; exit 1;;\n'
         '  quota_then_success)\n'
         '    case "$model" in *Gemini*) echo "E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$log";; *) echo "review from $model";; esac;;\n'
+        '  quota_then_auth)\n'
+        '    case "$model" in *Gemini*) echo "Primary native detail"; echo "E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$log";; *) echo "Authentication required for fallback"; exit 7;; esac;;\n'
         '  quota_all) echo "E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$log";;\n'
         'esac\n'
     )
@@ -65,7 +68,7 @@ def _argv(path: Path) -> list[str]:
 def test_official_argv_prompt_cwd_and_success(tmp_path, model, timeout):
     _stub_agy(tmp_path / "bin")
     clone = tmp_path / "clone"
-    clone.mkdir()
+    subprocess.run(["git", "init", "-q", str(clone)], check=True)
     argv_dump, prompt_dump, cwd_dump = (
         tmp_path / "argv", tmp_path / "prompt", tmp_path / "cwd"
     )
@@ -117,6 +120,18 @@ def test_auth_and_nonquota_failures_never_use_second_pool(tmp_path, scenario):
     assert "本轮缺 gemini" in result.stderr
 
 
+def test_unknown_log_only_fatal_is_preserved_before_degrade(tmp_path):
+    _stub_agy(tmp_path / "bin")
+    result = _run(
+        tmp_path / "bin", SCENARIO="unknown_log",
+        MODEL_DUMP=str(tmp_path / "models"),
+    )
+    assert result.returncode == 1 and result.stdout == ""
+    assert result.stderr.index(
+        "E UNKNOWN_NATIVE_FATAL: provider imploded"
+    ) < result.stderr.index("gemini: degrade")
+
+
 def test_confirmed_primary_quota_uses_second_pool_once_and_labels_family(tmp_path):
     _stub_agy(tmp_path / "bin")
     models = tmp_path / "models"
@@ -130,6 +145,7 @@ def test_confirmed_primary_quota_uses_second_pool_once_and_labels_family(tmp_pat
     assert result.returncode == 0
     assert result.stdout == "review from Claude Sonnet 4.6 (Thinking)\n"
     assert "NO Google family this round" in result.stderr
+    assert "RESOURCE_EXHAUSTED" not in result.stderr
 
 
 def test_both_quota_pools_exhaust_after_exactly_two_calls(tmp_path):
@@ -142,7 +158,29 @@ def test_both_quota_pools_exhaust_after_exactly_two_calls(tmp_path):
         "Gemini 3.5 Flash (High)", "Claude Sonnet 4.6 (Thinking)",
     ]
     assert result.returncode == 1 and result.stdout == ""
-    assert "quota/429" in result.stderr and "本轮缺 gemini" in result.stderr
+    assert "E RESOURCE_EXHAUSTED (code 429): Individual quota reached." in result.stderr
+    assert "quota/429" not in result.stderr and "本轮缺 gemini" in result.stderr
+
+
+def test_failed_fallback_preserves_primary_quota_and_fallback_error(tmp_path):
+    _stub_agy(tmp_path / "bin")
+    models = tmp_path / "models"
+    result = _run(
+        tmp_path / "bin", SCENARIO="quota_then_auth", MODEL_DUMP=str(models),
+    )
+    assert models.read_text().splitlines() == [
+        "Gemini 3.5 Flash (High)", "Claude Sonnet 4.6 (Thinking)",
+    ]
+    assert result.returncode == 1 and result.stdout == ""
+    assert result.stderr.index("Primary native detail") < result.stderr.index(
+        "E RESOURCE_EXHAUSTED (code 429): Individual quota reached."
+    )
+    assert result.stderr.index(
+        "E RESOURCE_EXHAUSTED (code 429): Individual quota reached."
+    ) < result.stderr.index("Authentication required for fallback")
+    assert result.stderr.index(
+        "Authentication required for fallback"
+    ) < result.stderr.index("gemini: degrade")
 
 
 def test_successful_non_google_override_reports_actual_family(tmp_path):
@@ -154,3 +192,13 @@ def test_successful_non_google_override_reports_actual_family(tmp_path):
     assert result.returncode == 0
     assert "GPT-OSS 120B" in result.stderr
     assert "NO Google family this round" in result.stderr
+
+
+def test_non_git_cwd_stops_before_agy_and_preserves_git_error(tmp_path):
+    _stub_agy(tmp_path / "bin")
+    models = tmp_path / "models"
+    result = _run(
+        tmp_path / "bin", cwd=tmp_path, MODEL_DUMP=str(models),
+    )
+    assert result.returncode != 0 and result.stdout == "" and not models.exists()
+    assert "fatal: not a git repository" in result.stderr

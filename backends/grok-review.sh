@@ -34,6 +34,9 @@ if [ -s "$ERROR_FILE" ]; then
   cat "$ERROR_FILE" >&2
 fi
 if [ "$GROK_RC" -ne 0 ]; then
+  if [ -s "$OUTPUT_FILE" ]; then
+    cat "$OUTPUT_FILE" >&2
+  fi
   echo "grok-review: degrade — flag '本轮缺 grok' (grok exit rc=$GROK_RC)" >&2
   exit 1
 fi
