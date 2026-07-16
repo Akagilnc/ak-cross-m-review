@@ -65,6 +65,12 @@ For a runtime artifact introduced for the first time, trace both its invocation
 and its availability chain: inventory/package/mount/discovery/preflight must make
 the artifact reachable before the runtime consumer calls it.
 
+When authority adds, migrates, or removes a shared contract, schema, protocol,
+state field, or command, build a migration surface matrix. Enumerate every
+production producer, prompt/instruction, runtime binding/schema, decoder/consumer,
+and test/probe, one surface per row, and compare it to the clause. Do not use
+representative sampling: confirm every production consumer independently.
+
 For a design document, identify the downstream decision, state transition, or
 implementation boundary that consumes each clause. Do not demand that future
 code already exists merely because the design precedes implementation; audit
