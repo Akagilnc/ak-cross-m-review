@@ -257,6 +257,11 @@ last_size=-1
 idle=0
 while kill -0 "$CODEX_PID" 2>/dev/null; do
   sleep "$IDLE_POLL"
+  # The process can finish during this sleep. Do not count that final quiet
+  # poll as idle time and label a successful exit as a timeout.
+  if ! kill -0 "$CODEX_PID" 2>/dev/null; then
+    break
+  fi
   size=$(wc -c < "$TMP_OUT" 2>/dev/null || echo 0)
   if [ "$size" -eq "$last_size" ]; then
     idle=$(( idle + IDLE_POLL ))
