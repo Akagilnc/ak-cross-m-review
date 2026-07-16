@@ -57,6 +57,10 @@ Follow shared types, constants, interfaces, and state transitions across the
 whole diff. A claim about a symbol or contract must be checked at its actual
 consumers, not inferred from one hunk.
 
+When a comment, commit, or authority claims the change matches or follows
+another implementation, open that referenced source and compare the behavior
+directly; the claim itself is not evidence.
+
 ## 3. Break
 
 Try to produce a concrete counterexample:

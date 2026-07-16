@@ -53,9 +53,10 @@ For a runtime artifact introduced for the first time, trace both its invocation
 and its availability chain: inventory/package/mount/discovery/preflight must make
 the artifact reachable before the runtime consumer calls it.
 
-For each shared contract changed by the diff, trace its complete blast radius
-from the canonical source: every declared variant and every production wire for
-that variant must be individually reconciled with the source.
+For each exported seam or shared contract changed by the diff, search every
+reference and authority-required consumer from the canonical source. Reconcile
+every declared variant and production wire individually; a declared capability
+that no required consumer uses is a candidate gap.
 
 For a design document, identify the downstream decision, state transition, or
 implementation boundary that consumes each clause. Do not demand that future
@@ -74,6 +75,11 @@ When safe and runnable:
 2. run the real entry path or the narrowest faithful probe;
 3. observe whether the required rejection, route, or transition occurs;
 4. record the command, injected condition, and result.
+
+For a code `ship-pre` review, run the repository's canonical full validation
+entry point when safe and runnable; do not substitute a selected subset, and
+include constitutional or static guard suites exposed by that entry point. This
+does not apply to design documents.
 
 Static shape and author-written happy-path tests do not prove a load-bearing
 mechanism works. If it cannot be exercised, record `unverifiable` and the exact
