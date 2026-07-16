@@ -3,16 +3,19 @@
 Local, pre-PR, **review-only** cross-model gate. Version 0.4 fixes one
 base-to-HEAD range, gives each model family an independent clone plus the same
 small task packet, judges their candidate findings against named authority,
-reports once, and stops. Reviewers read the diff and repository themselves.
+reports once, and stops. Reviewers read the diff and repository themselves;
+explicit `--lens all` runs completeness and, after `complete`, correctness with
+fresh panels.
 
-`SKILL.md` plus the selected prompt under `prompts/` is the complete active
+`SKILL.md` plus each selected prompt under `prompts/` is the complete active
 authority. ADR 0004 records the owner-approved boundary.
 
 ## Five-step shape
 
 1. **Pin target** — fix the reviewed base-to-HEAD snapshot.
 2. **Pin authority** — fix the sources that govern the review.
-3. **Choose one lens** — completeness or correctness, never both in one call.
+3. **Choose lens sequence** — completeness, correctness, or explicit ordered
+   `all` for ship-pre/design-doc.
 4. **Dispatch panel** — run every reviewer from its own clone with the same
    pinned commands, lens, authority list, and candidate contract.
 5. **Judge and stop** — adjudicate candidates and return one terminal verdict.
@@ -27,6 +30,11 @@ authority. ADR 0004 records the owner-approved boundary.
 Both are thin wrappers: they invoke the root engine once, return its report,
 and stop.
 
+The generic `ak-cross-m-review` entry also accepts explicit `--lens all` for a
+complete ship-pre/design-doc gate. Lens omission is an error, not an `all`
+default. `all` stops on completeness gaps; after `complete`, it launches a fresh
+correctness panel against the same pinned target and authority.
+
 ## Minimal usage
 
 ```bash
@@ -37,6 +45,8 @@ Then, in agent chat:
 
 ```text
 ak-cmr-correctness --base HEAD~1 --scenario per-slice --authority docs/adr/0004-review-only-cmr.md
+
+ak-cross-m-review --base main --scenario ship-pre --lens all --authority docs/adr/0004-review-only-cmr.md
 ```
 
 ## Panel and quota switching
@@ -67,7 +77,7 @@ phrase-pinning tests (ADR 0003).
 
 ## Boundary
 
-See `SKILL.md` Steps 4–5 and the selected lens prompt. They supersede summaries
+See `SKILL.md` Steps 4–5 and each selected lens prompt. They supersede summaries
 in non-authoritative project documentation.
 
 ## Installation

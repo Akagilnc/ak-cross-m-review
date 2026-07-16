@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: One-pass cross-model review of a fixed base-to-HEAD diff. Use per-slice, before a PR, or for design-document review; prefer the named completeness or correctness preset.
+description: Fixed-target cross-model review of a base-to-HEAD diff. Use per-slice, before a PR, or for design-document review; select one lens or the explicit ordered all gate.
 allowed-tools:
   - Bash
   - Read
@@ -8,21 +8,24 @@ allowed-tools:
   - Glob
 ---
 
-# /ak-cross-m-review — one-pass review engine
+# /ak-cross-m-review — fixed-target review engine
 
-This repository's CMR authority is this file plus the selected lens prompt.
+This repository's CMR authority is this file plus the selected lens prompt or
+prompts.
 The wiki is lineage, not an override (ADR 0002); ADR 0004 supersedes the prior
 procedure.
 
-**REVIEW ONLY.** One invocation pins one target, authority set, lens, and panel
-pass, then reports once and stops: no repair, commit, push, another pass, or
-other lens. This constrains the outcome, not writable reviewer scratch space.
+**REVIEW ONLY.** One invocation pins one target and authority set, runs one
+selected lens or the explicit ordered `all` gate, then reports once and stops:
+no repair, commit, push, or unrequested pass. This constrains the outcome, not
+writable reviewer scratch space.
 
-Prefer the named presets `ak-cmr-completeness` and `ak-cmr-correctness`.
-Direct engine invocation must provide every required input explicitly:
+Prefer the named presets `ak-cmr-completeness` and `ak-cmr-correctness` for a
+single lens. Direct engine invocation, including `all`, must provide every
+required input explicitly:
 
 `/ak-cross-m-review --base FIXED_POINT --scenario per-slice|ship-pre|design-doc
---lens completeness|correctness --authority SOURCE [--authority SOURCE ...]`
+--lens completeness|correctness|all --authority SOURCE [--authority SOURCE ...]`
 
 ## Step 1 — Pin the target
 
@@ -77,33 +80,37 @@ that has no repository path in the packet under a stable label such as
 `user-authority-1`, cited as `user-authority-1:LINE`. A lower source cannot
 override a higher one.
 
-The completeness lens requires line-addressable clause authority. Every clause
-must cite its actual repository `path:line` or task-packet `source-label:line`;
-an unlocated summary cannot establish an absence. If no source states what had
-to be delivered, return
+The completeness lens, including completeness inside `all`, requires
+line-addressable clause authority. Every clause must cite its actual repository
+`path:line` or task-packet `source-label:line`; an unlocated summary cannot
+establish an absence. If no source states what had to be delivered, return
 `CMR-VERDICT: hard-stop` with `missing completeness authority`. Correctness may
 proceed from repository contracts when no feature spec exists, but those
 contracts must be named.
 
-## Step 3 — Choose one lens
+## Step 3 — Choose the lens sequence
 
-Load exactly one prompt:
+Each panel pass loads exactly one prompt:
 
 - `prompts/cmr-reviewer.md` — **correctness**: Trace–Break–Prove real defects.
 - `prompts/cmr-completeness.md` — **completeness**: Clause–Wire–Exercise gaps.
 
-The scenario is a gate, not a panel-shape switch:
+`--lens` is required; omission does not default to `all`. The scenario gates the
+allowed sequence:
 
 - `per-slice` accepts correctness only.
-- `ship-pre` and `design-doc` are two separate outer calls: completeness
-  first, then correctness after completeness passes for the same target.
+- `ship-pre` and `design-doc` accept either named single lens or explicit `all`.
+- `all` runs completeness first. A sealed `complete` result emits
+  `CMR-LENS-RESULT: completeness=complete` and permits a fresh correctness panel
+  pass against the same `BASE_SHA`, `PRE_HEAD`, and authority set. Do not
+  combine prompts, reviewer contexts, candidates, or judgment across lenses.
 - A ship-pre/design-doc correctness call without a prior completeness result
   naming the same `BASE_SHA` and `PRE_HEAD` hard-stops.
 
 Use backend mode `doc` for `design-doc`; use `code` for the other scenarios.
 
-The outer workflow owns sequencing and any later repair. This engine neither
-persists cross-call state nor calls its sibling lens.
+The outer workflow owns any later repair or retry. This engine persists no
+cross-call state; `all` owns only its two-pass sequence inside one invocation.
 
 ## Step 4 — Dispatch the panel
 
@@ -151,7 +158,7 @@ Build one small task packet outside `REPO_ROOT` containing only:
 
 - `BASE_SHA` and `PRE_HEAD`;
 - the one resolved log command and one resolved diff command from Step 1;
-- the selected lens prompt;
+- the current pass's selected lens prompt;
 - the frozen ordered authority source list; and
 - the candidate contract from Step 5.
 
@@ -202,6 +209,10 @@ A reviewer may install dependencies, test, and create probes or local artifacts
 in `LEG_ROOT`, but must not repair, commit, push, or mutate remote state.
 Checkout mutations are evidence only; judge against the pinned target.
 
+Every panel pass creates fresh reviewer calls and fresh independent clones. In
+`all`, the correctness pass must not reuse a completeness reviewer process,
+output, task packet, or `LEG_ROOT`.
+
 A successful member has exit code zero and non-empty review stdout. Record every
 failed/empty member as `degraded` with token, model, actual family if known, and
 error evidence; it is not an approval. At least two successful members from
@@ -221,9 +232,10 @@ not alter the target verdict.
 
 ## Step 5 — Judge and stop
 
-Panel output contains **candidate findings**, not verdicts. Take their union;
-agreement is not a vote. Deduplicate only candidates with the same trigger,
-execution path, wrong outcome, and impact.
+For the current lens pass, panel output contains **candidate findings**, not
+verdicts. Take their union within that pass; agreement is not a vote. Never
+merge candidates across lenses. Deduplicate only candidates with the same
+trigger, execution path, wrong outcome, and impact.
 
 An admissible candidate contains:
 
@@ -276,13 +288,13 @@ with evidence such as wrong behavior remaining green, the system under test
 being mocked out, a material assertion being removed/relaxed, or the relevant
 failure path being unable to turn red.
 
-Report every live and refuted/rejected disposition with evidence. Before the
-terminal line, seal only the original target:
+Report every live and refuted/rejected disposition with evidence. Before
+finishing each lens result, seal only the original target:
 
 1. compare `git -C "$REPO_ROOT" rev-parse 'HEAD^{commit}'` with `PRE_HEAD`;
 2. rerun `git -C "$REPO_ROOT" status --porcelain=v1 --untracked-files=all`.
 
-Any HEAD change or status output overrides the lens result with
+Any HEAD change or status output overrides the invocation with
 `CMR-VERDICT: hard-stop`. Show the before/after HEAD and status evidence. Never
 reset, checkout, remove, or clean `REPO_ROOT`; preserve unexpected target
 changes. Step 4 leg cleanup never substitutes for this seal.
@@ -291,13 +303,22 @@ For completeness, resolve every `unverifiable` row before the terminal line.
 Unestablished delivery blocks `complete`; do not relabel it a live gap without
 proof.
 
-With the snapshot still sealed, end with exactly one terminal line:
+For `all`, a sealed completeness result of `complete` is reported only as the
+non-terminal line `CMR-LENS-RESULT: completeness=complete`; then repeat Steps
+4–5 with the correctness prompt. Any other completeness result ends the
+invocation immediately with its normal terminal verdict.
 
-- completeness: `CMR-VERDICT: complete` when no live gap remains, otherwise
-  `CMR-VERDICT: gaps`;
-- correctness: `CMR-VERDICT: converged` when no live defect remains, otherwise
+With the snapshot still sealed, end the invocation with exactly one terminal
+line:
+
+- single-lens completeness: `CMR-VERDICT: complete` when no live gap remains,
+  otherwise `CMR-VERDICT: gaps`;
+- single-lens correctness, or `all` after completeness passes:
+  `CMR-VERDICT: converged` when no live defect remains, otherwise
   `CMR-VERDICT: findings`;
-- either lens: `CMR-VERDICT: escalate` for a genuine owner decision, or
+- `all` before correctness: `CMR-VERDICT: gaps` when completeness has a live
+  gap;
+- any lens selection: `CMR-VERDICT: escalate` for a genuine owner decision, or
   `CMR-VERDICT: hard-stop` when a prerequisite or family floor failed, or when
   required delivery remains unverifiable.
 
