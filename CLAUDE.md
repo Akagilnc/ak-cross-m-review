@@ -1,32 +1,28 @@
 # ak-cross-m-review
 
-Local, pre-PR cross-model review skill. `SKILL.md` is the entry — with
-`DOC-MODE.md`, its disclosed file, the two form the standalone authority
-for cmr in this environment: squad / dispatch / degradation / termination
-rules ALL live there, never here (the user-adjudication ledger = RECORDED
-markers + git history). `backends/` holds the reviewer invocations; `prompts/` the two
-review lenses (`cmr-reviewer.md`, `cmr-completeness.md`) plus
-`cmr-fixer.md`. See `README.md` for architecture. The historical origin is
-`~/WorkSpace/vault/ak-cc-wiki/wiki/concepts/cross-model-review.md`.
+Local, pre-PR, review-only cross-model gate. `SKILL.md` plus the selected prompt
+under `prompts/` is the complete active authority; named skills under `skills/`
+are preset entry points. ADR 0004 records the owner-approved v0.4 boundary.
+
+`backends/` only transport the small review task and return output; they do not
+judge or repair. Reviewers run from independent clone roots and read the pinned
+diff, authority, surrounding repository, and tests themselves. Runtime dispatch
+and scratch lifecycle live in `SKILL.md` Step 4; judgment, sealing, and
+termination live in Step 5.
 
 ## Testing
 
-Run: `pytest` (or `.venv/bin/pytest`). Test directory: `tests/`.
-Full conventions and the two-layer model are in
-[TESTING.md](./TESTING.md).
+Run: `pytest` (or `.venv/bin/pytest`). Then run:
 
-Test expectations:
+```bash
+bash backends/codex-review.sh --selftest
+```
 
-- 100% coverage of executable code is the goal — tests make vibe coding
-  safe, not yolo. Docs/prose are never pytest targets (#38; ADR 0003):
-  rule provenance = RECORDED markers + git history.
-- New executable function → write a corresponding test in
-  `tests/test_<module>.py`.
-- Executable bug fix → write a regression test that fails before, passes
-  after.
-- New error path → cover it; keep `bash backends/codex-review.sh
-  --selftest` (the invocation-form regression guard) green.
-- New executable conditional (if/else, branch) → test BOTH paths.
-- Assert real computed values, never existence/smoke checks.
-- Never commit code that makes existing tests or the selftest battery
-  fail.
+Full conventions are in [TESTING.md](./TESTING.md).
+
+- Tests cover executable backend behavior, not Markdown wording (ADR 0003).
+- New executable behavior or error paths require behavioral coverage.
+- Preserve the incident-backed Codex invocation guard and agy transport tests.
+- Grok and Claude invocation behavior belongs to their thin adapters and
+  behavior tests, not duplicated prose in `SKILL.md`.
+- Never commit with a red test or selftest.

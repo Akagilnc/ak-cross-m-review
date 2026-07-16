@@ -2,14 +2,14 @@
 # Install the cross-model-review skills into ~/.claude/skills/.
 #
 # Three skills ship from this one repo:
-#   - ak-cross-m-review  (the engine; repo root)   — already symlinked in
+#   - ak-cross-m-review  (one-pass engine; repo root) — already symlinked in
 #                         most setups; this script (re)links it too.
 #   - ak-cmr-completeness    (the completeness gate; skills/ak-cmr-completeness/)
 #   - ak-cmr-correctness     (the correctness  gate; skills/ak-cmr-correctness/)
 #
 # Claude Code discovers a skill as `~/.claude/skills/<name>/SKILL.md`, one
 # level deep — so each skill needs its OWN entry there. The two gate skills
-# are thin wrappers that just invoke the engine with `--lens`; keeping them
+# are preset wrappers that invoke the engine once with `--lens`; keeping them
 # as named entry points is what makes the completeness vs correctness choice
 # explicit (the agent picks the skill that names what it means, instead of
 # trusting a `--lens` flag it might forget or mis-set).

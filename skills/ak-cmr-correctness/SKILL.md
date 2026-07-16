@@ -1,36 +1,14 @@
 ---
 name: ak-cmr-correctness
-description: Correctness gate for cross-model review. Use per-slice after a baseline commit, or as the ship-pre gate after completeness passes and before a PR.
+description: Run the correctness cross-model review gate per-slice, or after ship-pre/design completeness passes.
 allowed-tools:
-  - Bash
-  - Read
-  - Grep
-  - Glob
-  - Agent
-  - AskUserQuestion
-  - TodoWrite
   - Skill
 ---
 
-# ak-cmr-correctness — the correctness gate (one named entry point)
+# ak-cmr-correctness
 
-This is a thin wrapper. It runs **exactly one** thing: the **correctness
-lens** of cross-model review.
+This is a preset, not an independent engine.
 
-**Do:** invoke the `ak-cross-m-review` skill with **`--lens correctness`**
-(via the `Skill` tool), passing through whatever scope args you have
-(`--base` / `--range` / `--diff` / `--scenario per-slice|ship-pre`). That
-dispatches the squad against `prompts/cmr-reviewer.md` — *is what's there
-correct?* — grading P0–P4 and looping to `CMR-VERDICT: converged`.
-
-That is all this skill does. It exists so the correctness gate is a
-**named, explicit invocation** — the agent picks *this* skill when it
-means correctness, instead of trusting a parameter it might forget or
-mis-set. (`--lens correctness` is also the engine default, so this is the
-plain "review my change for bugs" entry point.)
-
-For the full procedure (squad, dispatch, merge, drift, termination, the
-fix loop) see `ak-cross-m-review` — this wrapper changes nothing but the
-lens. The completeness gate is its sibling skill `ak-cmr-completeness`; on a
-finished change (ship-pre) run `ak-cmr-completeness` **first**, then this one.
-Never both in one prompt («严禁合一次 cmr 闸»).
+Invoke `ak-cross-m-review` exactly once with `--lens correctness`. Pass the
+user's base, scenario, authority inputs, and any required prior completeness
+result through unchanged. Return the root skill's report unchanged, then stop.

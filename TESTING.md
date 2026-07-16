@@ -1,50 +1,45 @@
 # Testing
 
-The surviving suite has two layers. Both cover executable behavior; prose
-rules are tracked in prose and git history, not pinned by pytest.
+Tests cover executable transport behavior. Skill and prompt prose are reviewed
+as documents and tracked in git history; they are never pinned by pytest (ADR
+0003).
 
-## Framework
-
-- **pytest** 9.x (+ `pytest-cov`), Python 3.12+.
-- Config: `pyproject.toml` → `[tool.pytest.ini_options]`
-  (`testpaths = ["tests"]`).
-- Local dev uses a project venv (`.venv/`, gitignored).
-
-## How to run
+## Run
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install pytest pytest-cov
-.venv/bin/pytest
+pytest
+bash backends/codex-review.sh --selftest
 ```
 
-Or, if pytest is on PATH: `pytest`.
+Local development may use `.venv/bin/pytest`. CI uses Python 3.12 and the
+configuration in `pyproject.toml`.
 
-## Test layers
+## Executable surfaces
 
-1. **pytest subprocess behavioral tests** — `tests/test_codex_review.py` and
-   `tests/test_gemini.py` execute `backends/codex-review.sh` and
-   `backends/gemini.sh`. They stub `codex` / `agy` on PATH, so they exercise
-   backend behavior without real reviewer CLI calls.
-2. **codex-review.sh invocation-form guard** —
-   `bash backends/codex-review.sh --selftest` validates the invocation form
-   without calling codex. Pytest also drives this selftest with supported
-   environment-variable combinations.
+- `tests/test_codex_review.py` drives `backends/codex-review.sh` with a stub
+  Codex CLI and covers success, real outage, final-message extraction, idle
+  handling, and invocation overrides.
+- `tests/test_grok_review.py` drives `backends/grok-review.sh` and pins its
+  one-shot stdin/model/effort invocation plus failure semantics.
+- `tests/test_claude_review.py` drives `backends/claude-review.sh` and pins its
+  explicit model invocation, writable-clone cwd, and failure semantics.
+- `tests/test_gemini.py` drives the formal optional agy/Gemini transport in
+  `backends/gemini.sh`, which also has external consumers.
+- `tests/test_opencode_review.py` drives the optional OpenCode transport in
+  `backends/opencode-review.sh`.
+- `backends/codex-review.sh --selftest` validates the real command-array form
+  without calling Codex.
 
-Doc-consistency tests were removed by adjudication on 2026-07-13 (issue #38).
-Rule provenance lives in prose `RECORDED` markers and git history, not pytest.
-
-Merge / grade / drift / termination are **agent judgment** per `SKILL.md`,
-not deterministic code. The full N+1+1 reviewer
-loop is exercised by running the skill itself against a real diff.
+The target pin, authority choice, candidate adjudication, and final verdict are
+agent judgment defined by `SKILL.md`, not deterministic code.
 
 ## Conventions
 
-- Test files: `tests/test_<module>.py`; functions `test_<behavior>`.
-- Assert real computed values, never `assert x is not None` / existence
-  smoke checks.
-- Mock nothing in the core tests — stub the reviewer CLIs (`codex` / `agy`)
-  on PATH and assert the backend's exact stdout / exit / flags.
-- New executable function → add a `tests/test_*.py` case. Executable bug fix
-  → regression test. New executable conditional branch → test both paths.
-- Never import secrets/API keys in tests.
-- Never commit code that makes the suite or the selftest battery red.
+- Test files are `tests/test_<surface>.py`; test names describe behavior.
+- Stub the reviewer CLI on `PATH` and assert stdout, stderr, exit status, and
+  the actual argv/environment contract.
+- New executable behavior gets a failing test first; new branches cover both
+  sides. Bug fixes get a regression test that fails on the old behavior.
+- Assert computed behavior, not existence or wording.
+- Never import secrets or real subscription credentials.
+- Keep pytest and the Codex selftest green before commit.

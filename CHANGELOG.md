@@ -4,6 +4,74 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.4.0.0 — 2026-07-15
+
+CMR returns to one job: review a fixed target against fixed authority, judge the
+cross-model candidates, report once, and stop. ADR 0004 records the owner
+supersession of the embedded repair engine.
+
+### Changed
+
+- Owner amendment (2026-07-16): reviewers now receive independent remote-free
+  clones plus a small task packet containing pinned SHAs/commands, lens,
+  authority sources, and candidate contract. They read the diff, surrounding
+  repository, and tests themselves; CMR no longer embeds, segments, compresses,
+  or preloads repository content into prompts.
+- Codex non-zero/timeout degradation now prints a bounded, strict-valid UTF-8
+  native-output tail before the generic `本轮缺 codex` line. The adapter no
+  longer labels every non-zero exit as auth/quota/crash, so input-limit and
+  other native failures remain diagnosable.
+- Replaced the 831-line procedure with a five-step review-only engine: pin
+  target, pin authority, choose one lens, dispatch the panel, judge and stop.
+- Defaulted `CMR_PANEL` to Codex + Grok. Optional legs are Claude, agy, and
+  OpenCode. Claude now has a thin explicit CLI adapter defaulting to
+  `claude-opus-4-8`, leaving reasoning effort unset, with a caller model
+  override and no automatic fallback. Its headless invocation uses Claude
+  Code's `acceptEdits` permission mode plus an explicit Bash allowance so the
+  reviewer can write scratch and run Git, tests, and probes in its independent
+  clone without bypassing the permission system. Panel members count only when
+  their actual successful families are distinct.
+- Kept transports caller-directed: agy calls one primary model (default
+  `Gemini 3.5 Flash (High)`) and may call one declared second quota pool
+  (default `Claude Sonnet 4.6 (Thinking)`) only after confirmed quota/429. Auth
+  and other failures do not retry; empty `AGY_FALLBACK_MODEL` disables the
+  second pool. Adapters pass the packet unchanged and apply no CLI read-only
+  sandbox.
+- Sealed the original reviewed repository before and after dispatch, resolved
+  adapters from the loaded skill directory, and gave each panel leg an
+  independent writable clone for tests and probes. Clones share no Git config,
+  refs, or object store with the target and have no remote during review. The
+  runtime procedure rejects destinations inside the target and pins the
+  removable remote name against caller Git config. Only
+  clean, unmoved, remote-free scratch is discarded; dirty, moved, or
+  remote-changed scratch is preserved without reset or cleanup.
+- Replaced panel voting with candidate union plus an evidence-checking judge.
+  Defect and remedy are adjudicated separately under the four lawful rejection
+  reasons; reviewer agreement and grounding no longer raise severity.
+- Rewrote correctness as Trace–Break–Prove and completeness as
+  Clause–Wire–Exercise. Review legs submit candidates and clause evidence, not
+  terminal verdicts.
+- Reduced both named gate skills to preset wrappers that select one lens,
+  return the root result unchanged, and stop.
+- Reduced non-authoritative `README.md`, `CLAUDE.md`, and `CONTEXT.md` runtime
+  prose to pointers to `SKILL.md` and the selected lens prompt.
+
+### Removed
+
+- Removed reviewer-count formulas, host-specific composition, automatic panel
+  replacement, vote thresholds, multi-pass termination policy, and all in-CMR
+  repair/commit behavior.
+- Removed `DOC-MODE.md` and `prompts/cmr-fixer.md`; their provenance remains in
+  this changelog and git history.
+- Removed the universal missing-test gate, required suggested remedies, and
+  per-reviewer verdicts from the lens prompts.
+
+### Preserved
+
+- Kept the incident-backed Codex transport/selftest and formal optional agy
+  backend behavior tests. Grok invocation behavior lives in its thin adapter and
+  adapter tests rather than duplicated skill prose.
+
 ## 0.3.23.0 — 2026-07-15
 
 Squad-composition and termination rules re-adjudicated (owner rulings
