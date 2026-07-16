@@ -47,8 +47,8 @@ candidate findings; report once.
    reasoning effort unset. Its headless call uses `--permission-mode
    acceptEdits --allowedTools Bash` so it can write scratch and run Git, tests,
    and probes in its independent clone. It does not use `bypassPermissions`.
-   It makes no automatic fallback; CLI failure or empty output degrades the
-   leg. Other optional legs are agy and OpenCode. agy
+   It makes no automatic fallback; CLI failure, empty output, or malformed
+   reviewer output degrades the leg. Other optional legs are agy and OpenCode. agy
    makes one primary call and, only when its log
    confirms quota/429, may make one configured second-pool call; an empty
    fallback disables it. Auth and other failures do not retry. The successful
@@ -82,9 +82,10 @@ candidate findings; report once.
     clone. Reviewers may install, test, and probe there, but may not repair,
     commit, push, or mutate remotes. Candidate locations are actual `path:line`
     anchors. Completeness gaps require both authority and consumer anchors.
-11. Each panel pass's task packet contains only the endpoint SHAs, the two
-    resolved Git commands, that pass's selected lens, the ordered authority
-    source list, and the candidate contract. It never embeds, segments,
+11. Each panel pass's task packet contains only the fixed reviewer role
+    boundary, endpoint SHAs, the two resolved Git commands, that pass's
+    selected lens, the ordered authority source list, and the candidate
+    contract. It never embeds, segments,
     compresses, archives, or preloads the diff or repository files. Equal
     reviewer input means equal target/range, authority, lens, and candidate
     contract.

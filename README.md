@@ -49,6 +49,16 @@ Per-slice correctness:
 /ak-cmr-correctness --base HEAD~1 --scenario per-slice --authority docs/specs/feature.md
 ```
 
+Two-call ship-pre with the named presets:
+
+```text
+/ak-cmr-completeness --base main --scenario ship-pre --authority docs/specs/feature.md
+/ak-cmr-correctness --base main --scenario ship-pre --authority docs/specs/feature.md --prior-completeness SEALED_REPORT
+```
+
+`SEALED_REPORT` is the verbatim `complete` report from the first call; both
+calls must name the same fixed target and authority.
+
 Complete ship-pre gate:
 
 ```text
