@@ -36,11 +36,12 @@ verify candidate findings; report once.
    authority hard-stops.
 3. Per-slice uses correctness. Ship-pre and design-document work call
    completeness first and correctness later as separate outer invocations.
-4. The default panel is Codex + Grok. The optional `claude` preset explicitly
-   requests Opus 4.8 through an independent host Agent and never inherits the
-   host default or Fable routing. If unavailable, the leg degrades and the
-   caller may explicitly select another panel transport/model. Other optional
-   legs are agy and OpenCode. agy makes one primary call and, only when its log
+4. The default panel is Codex + Grok. The optional `claude` token uses the
+   explicit `backends/claude-review.sh` CLI adapter, configurable through
+   `CMR_CLAUDE_MODEL` / `CMR_CLAUDE_EFFORT` and defaulting to
+   `claude-opus-4-8` / `high`. It makes no automatic fallback; CLI failure or
+   empty output degrades the leg. Other optional legs are agy and OpenCode. agy
+   makes one primary call and, only when its log
    confirms quota/429, may make one configured second-pool call; an empty
    fallback disables it. Auth and other failures do not retry. The successful
    model's actual family counts. OpenCode GLM is Z.AI; an OpenAI model through

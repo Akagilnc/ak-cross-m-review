@@ -21,6 +21,8 @@ configuration in `pyproject.toml`.
   handling, and invocation overrides.
 - `tests/test_grok_review.py` drives `backends/grok-review.sh` and pins its
   one-shot stdin/model/effort invocation plus failure semantics.
+- `tests/test_claude_review.py` drives `backends/claude-review.sh` and pins its
+  explicit model/effort invocation, writable-clone cwd, and failure semantics.
 - `tests/test_gemini.py` drives the formal optional agy/Gemini transport in
   `backends/gemini.sh`, which also has external consumers.
 - `tests/test_opencode_review.py` drives the optional OpenCode transport in

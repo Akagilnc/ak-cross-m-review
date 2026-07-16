@@ -23,6 +23,6 @@ Full conventions are in [TESTING.md](./TESTING.md).
 - Tests cover executable backend behavior, not Markdown wording (ADR 0003).
 - New executable behavior or error paths require behavioral coverage.
 - Preserve the incident-backed Codex invocation guard and agy transport tests.
-- Grok invocation behavior belongs to its thin adapter and adapter tests, not
-  duplicated prose in `SKILL.md`.
+- Grok and Claude invocation behavior belongs to their thin adapters and
+  behavior tests, not duplicated prose in `SKILL.md`.
 - Never commit with a red test or selftest.

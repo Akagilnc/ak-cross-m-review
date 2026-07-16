@@ -23,10 +23,10 @@ supersession of the embedded repair engine.
   other native failures remain diagnosable.
 - Replaced the 831-line procedure with a five-step review-only engine: pin
   target, pin authority, choose one lens, dispatch the panel, judge and stop.
-- Defaulted `CMR_PANEL` to Codex + Grok. Optional legs are host-Agent Claude
-  Opus, agy/Gemini 3.5 Flash, and OpenCode. Panel members get the same pinned
-  review task, follow their declared transport policy, and count only when
-  their actual successful model families are distinct.
+- Defaulted `CMR_PANEL` to Codex + Grok. Optional legs are Claude, agy, and
+  OpenCode. Claude now has a thin explicit CLI adapter defaulting to
+  `claude-opus-4-8` / `high`, with caller overrides and no automatic fallback.
+  Panel members count only when their actual successful families are distinct.
 - Kept transports caller-directed: agy calls one primary model (default
   `Gemini 3.5 Flash (High)`) and may call one declared second quota pool
   (default `Claude Sonnet 4.6 (Thinking)`) only after confirmed quota/429. Auth

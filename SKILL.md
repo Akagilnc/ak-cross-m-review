@@ -6,7 +6,6 @@ allowed-tools:
   - Read
   - Grep
   - Glob
-  - Agent
 ---
 
 # /ak-cross-m-review — one-pass review engine
@@ -71,15 +70,17 @@ Build one ordered authority set before dispatch:
 4. surrounding code only as evidence of an established contract — the changed
    implementation is not authority for itself.
 
-Follow references named by a higher authority. Freeze the exact ordered source
-list. Repository authority is listed by repository-relative path and read by
-each reviewer from its clone; do not paste repository file bodies or excerpts
-into the task packet. Include exact user-supplied authority text only when it
-has no repository path. A lower source cannot override a higher one.
+Follow references named by a higher authority and freeze the ordered source
+list. List repository authority by relative path for reviewers to read from
+their clones; do not paste it into the packet. Preserve exact user-supplied text
+that has no repository path in the packet under a stable label such as
+`user-authority-1`, cited as `user-authority-1:LINE`. A lower source cannot
+override a higher one.
 
 The completeness lens requires line-addressable clause authority. Every clause
-must cite an actual authority `path:line`; an unlocated summary cannot establish
-an absence. If no source states what had to be delivered, return
+must cite its actual repository `path:line` or task-packet `source-label:line`;
+an unlocated summary cannot establish an absence. If no source states what had
+to be delivered, return
 `CMR-VERDICT: hard-stop` with `missing completeness authority`. Correctness may
 proceed from repository contracts when no feature spec exists, but those
 contracts must be named.
@@ -114,7 +115,7 @@ Supported tokens, adapters, and real transport families:
 |---|---|---|
 | `codex` | `backends/codex-review.sh` | OpenAI |
 | `grok` | `backends/grok-review.sh` | xAI |
-| `claude` | independent host Agent | Anthropic |
+| `claude` | `backends/claude-review.sh` | Anthropic |
 | `gemini` / `agy` | `backends/gemini.sh` | actual model vendor (Google primary; second pool may differ) |
 | `opencode` | `backends/opencode-review.sh` | actual model vendor |
 
@@ -124,10 +125,9 @@ Transport configuration:
   `medium`; explicit `low` allowed).
 - Grok model and effort are configurable with `CMR_GROK_MODEL` /
   `CMR_GROK_EFFORT`.
-- The `claude` preset explicitly requests Opus 4.8 through an independent host
-  Agent; never inherit the host default or Fable routing. If unavailable,
-  degrade the leg; the caller may explicitly select another panel
-  transport/model.
+- Claude uses `CMR_CLAUDE_MODEL` / `CMR_CLAUDE_EFFORT` (defaults
+  `claude-opus-4-8` / `high`). The adapter makes one explicit CLI call with no
+  automatic fallback; any CLI failure or empty output degrades the leg.
 - `gemini` and `agy` alias one transport; selecting both is a duplicate. The
   agy adapter calls `AGY_MODEL` once (default `Gemini 3.5 Flash (High)`). Only a
   confirmed quota/429 may call `AGY_FALLBACK_MODEL` once (default `Claude
@@ -180,8 +180,11 @@ test -z "$(git -C "$LEG_ROOT" remote)"
 ```
 
 Do not use a linked worktree, shared object store, reference clone, or
-alternates. Any clone command or check failure hard-stops before that reviewer
-runs; preserve the failed clone for diagnosis.
+alternates. A clone command or leg check failure degrades only that member: do
+not dispatch it, preserve any failed clone for diagnosis, and continue the
+selected panel. The final successful-family floor decides whether the panel can
+be judged. A failed target pin, authority prerequisite, or original-target seal
+still hard-stops the invocation.
 
 Record token → absolute `LEG_ROOT`; resolve prompts and backends from
 `SKILL_ROOT`, `cd` to that member's `LEG_ROOT`, and send the same task packet to
@@ -196,11 +199,11 @@ A reviewer may install dependencies, test, and create probes or local artifacts
 in `LEG_ROOT`, but must not repair, commit, push, or mutate remote state.
 Checkout mutations are evidence only; judge against the pinned target.
 
-A successful CLI member has exit code zero and non-empty review stdout; a host
-Agent must return non-empty review text. Record every failed/empty member as
-`degraded` with token, model, actual family if known, and error evidence. It is
-not an approval. At least two successful members from distinct actual families
-are required. Otherwise return `CMR-VERDICT: hard-stop` and print a fully
+A successful member has exit code zero and non-empty review stdout. Record every
+failed/empty member as `degraded` with token, model, actual family if known, and
+error evidence; it is not an approval. At least two successful members from
+distinct actual families are required. Otherwise return
+`CMR-VERDICT: hard-stop` and print a fully
 resolved retry in two correctly labelled parts: a copyable shell line beginning
 with `export CMR_PANEL=...`, followed by a copyable **agent-chat skill
 invocation** repeating the actual base, scenario, lens, and authority values.
@@ -222,43 +225,47 @@ execution path, wrong outcome, and impact.
 An admissible candidate contains:
 
 - `location` — an actual `path:line` in the reviewed repository;
-- `claim` — the alleged defect or gap;
-- `failure scenario` — `trigger → path → wrong observable outcome`;
-- `authority` — the exact requirement or invariant violated;
+- `claim` — the alleged defect/gap or required delivery not yet established;
+- `failure scenario` — `trigger → path → wrong outcome`, or the required
+  path/effect still unproved;
+- `authority` — the exact line-addressed requirement or invariant governing it;
 - `evidence` — source, test, command, or probe result;
 - `severity_hint` — impact if the claim is live;
 - `remedy` — optional and never required for admission.
 
 Correctness candidates use the actual affected `path:line`. A completeness
-absence cites both its authority `path:line` and the nearest actual affected or
-expected consumer `path:line`; without both locations it is not admissible.
+absence cites both its authority repository `path:line` or task-packet
+`source-label:line` and the nearest actual affected or expected consumer
+`path:line`; without both anchors it is not admissible.
 
 Verify each candidate against the fixed target and authority. Judge the defect
 claim separately from its remedy:
 
 ```text
 defect: live | refuted
-reason: <one of unconstitutional | over_defense | not_established | scope_creep when refuted>
+defect_reason: <unconstitutional | over_defense | not_established when refuted>
 evidence: <required for every refutation>
 severity: <impact only; live findings only>
 remedy: none | advisory | rejected | owner_decision
-remedy_reason: <reason + evidence when rejected>
+remedy_reason: <unconstitutional | over_defense | not_established | scope_creep + evidence when rejected>
 ```
 
-The four lawful rejection reasons are: conflict with ratified authority;
-defense whose probability, consequence, and downstream backstop do not justify
-its cost; claim not established by the current target; or behavior invented
-outside the authority. Difficulty is not a rejection reason. A real defect
-stays live when only its proposed remedy is rejected. Deletion/simplification
-outranks adding an equivalent mechanism.
+Adjudicate the defect's existence and impact without using its proposed remedy.
+A defect may be refuted only because it conflicts with ratified authority, asks
+for unjustified defense, or is not established by the fixed target. Difficulty
+is not a rejection reason. A real defect stays live when only its proposed
+remedy is rejected. Deletion/simplification outranks adding an equivalent
+mechanism.
 
 `scope_creep` means the proposed fix invents behavior not authorized by the
-authority/spec. A defect being pre-existing, in an adjacent file, or
-incidentally discovered during review does not make it scope creep.
+authority/spec. It may reject that remedy, never the defect. A defect being
+pre-existing, in an adjacent file, or incidentally discovered during review
+does not make it scope creep.
 
 Before marking a claim live, prove its exact trigger, state taxonomy, and owner
 are inside the cited clause. Similar states, adjacent retries, and other
-components cannot widen authority: use `not_established` or `scope_creep`.
+components cannot widen a defect claim: use `not_established`. Use
+`scope_creep` only when a remedy invents the wider behavior.
 
 Reviewer agreement may raise confidence, never severity. Grounding decides
 whether the claim is established, never its impact. A test finding is live only
@@ -277,6 +284,10 @@ Any HEAD change or status output overrides the lens result with
 reset, checkout, remove, or clean `REPO_ROOT`; preserve unexpected target
 changes. Step 4 leg cleanup never substitutes for this seal.
 
+For completeness, resolve every `unverifiable` row before the terminal line.
+Unestablished delivery blocks `complete`; do not relabel it a live gap without
+proof.
+
 With the snapshot still sealed, end with exactly one terminal line:
 
 - completeness: `CMR-VERDICT: complete` when no live gap remains, otherwise
@@ -284,6 +295,7 @@ With the snapshot still sealed, end with exactly one terminal line:
 - correctness: `CMR-VERDICT: converged` when no live defect remains, otherwise
   `CMR-VERDICT: findings`;
 - either lens: `CMR-VERDICT: escalate` for a genuine owner decision, or
-  `CMR-VERDICT: hard-stop` when a prerequisite or family floor failed.
+  `CMR-VERDICT: hard-stop` when a prerequisite or family floor failed, or when
+  required delivery remains unverifiable.
 
 Then stop unconditionally. The caller decides what happens next.

@@ -54,6 +54,7 @@ skills/ak-cmr-completeness/      completeness preset
 skills/ak-cmr-correctness/       correctness preset
 backends/codex-review.sh         incident-backed Codex transport
 backends/grok-review.sh          thin Grok transport
+backends/claude-review.sh        thin Claude CLI transport
 backends/gemini.sh               agy transport
 backends/opencode-review.sh      thin OpenCode transport
 scripts/install-skills.sh        installs the engine and both presets
