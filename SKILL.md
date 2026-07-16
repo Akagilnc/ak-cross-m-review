@@ -190,6 +190,8 @@ Put this role boundary first, verbatim:
 > simulate a panel, create or discard clones, or emit runner verdict,
 > degradation, or retry instructions. The current directory is the assigned
 > clone; do not re-clone it. Use ordinary repository tools and tests freely.
+> Do not inspect, reference, or reuse another panel leg or clone; keep
+> project-local dependencies, probes, and artifacts inside this assigned clone.
 > Your only valid submission is the current lens's candidate format or exact
 > no-candidate sentence.
 
@@ -265,7 +267,9 @@ After output, record each leg's HEAD, `status --porcelain=v1
 HEAD still equals `PRE_HEAD`, status is empty, and no remote exists. Preserve
 and report the path, HEAD, status, and remotes of every dirty, moved, or
 remote-changed leg. Never reset, clean, or remove such a leg; scratch state does
-not alter the target verdict.
+not alter the target verdict. Record and evaluate this audit before cleanup;
+clone deletion must be a later, separate action. Never combine audit and
+deletion in one compound command.
 
 ## Step 5 — Judge and stop
 
