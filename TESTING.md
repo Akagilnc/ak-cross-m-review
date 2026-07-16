@@ -1,8 +1,8 @@
 # Testing
 
-Tests cover executable transport and reviewer-clone behavior. Skill and prompt
-prose are reviewed as documents and tracked in git history; they are never
-pinned by pytest (ADR 0003).
+Tests cover executable transport behavior. Skill and prompt prose are reviewed
+as documents and tracked in git history; they are never pinned by pytest (ADR
+0003).
 
 ## Run
 
@@ -25,9 +25,6 @@ configuration in `pyproject.toml`.
   `backends/gemini.sh`, which also has external consumers.
 - `tests/test_opencode_review.py` drives the optional OpenCode transport in
   `backends/opencode-review.sh`.
-- `tests/test_review_clone.py` drives `scripts/prepare-review-clone.sh` through
-  a real local Git clone, including nested-destination rejection and immunity
-  to a caller's custom default remote name.
 - `backends/codex-review.sh --selftest` validates the real command-array form
   without calling Codex.
 

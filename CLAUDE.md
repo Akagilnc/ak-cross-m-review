@@ -21,9 +21,6 @@ bash backends/codex-review.sh --selftest
 Full conventions are in [TESTING.md](./TESTING.md).
 
 - Tests cover executable backend behavior, not Markdown wording (ADR 0003).
-- Reviewer clone preparation is executable behavior owned by
-  `scripts/prepare-review-clone.sh` and `tests/test_review_clone.py`; do not
-  duplicate its clone/preflight sequence in prose or another script.
 - New executable behavior or error paths require behavioral coverage.
 - Preserve the incident-backed Codex invocation guard and agy transport tests.
 - Grok invocation behavior belongs to its thin adapter and adapter tests, not

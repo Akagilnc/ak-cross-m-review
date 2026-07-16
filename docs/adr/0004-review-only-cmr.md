@@ -78,10 +78,6 @@ verify candidate findings; report once.
     candidate contract. It never embeds, segments, compresses, archives, or
     preloads the diff or repository files. Equal reviewer input means equal
     target/range, authority, lens, and candidate contract.
-12. `scripts/prepare-review-clone.sh` is the single executable source for clone
-    creation and its pre-dispatch isolation checks. `SKILL.md` invokes it from
-    `SKILL_ROOT`; clone commands and checks are not reimplemented in the skill.
-
 This decision expressly supersedes the active CMR behavior recorded in ADR
 0001/0002 where it requires host-specific squads, disclosed document repair
 rules, or `SKILL.md + DOC-MODE.md` as the authority union. Their historical

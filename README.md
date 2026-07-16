@@ -56,14 +56,13 @@ backends/codex-review.sh         incident-backed Codex transport
 backends/grok-review.sh          thin Grok transport
 backends/gemini.sh               agy transport
 backends/opencode-review.sh      thin OpenCode transport
-scripts/prepare-review-clone.sh  isolated clone preparation and preflight
 scripts/install-skills.sh        installs the engine and both presets
 docs/adr/0004-review-only-cmr.md owner supersession decision
 ```
 
-CLI invocation, failure reporting, and reviewer-clone isolation have executable
-behavior tests in their implementation slices. Prompt prose is governed by
-review and git history, not phrase-pinning tests (ADR 0003).
+CLI invocation and failure reporting have executable behavior tests in their
+adapter slices. Prompt prose is governed by review and git history, not
+phrase-pinning tests (ADR 0003).
 
 ## Boundary
 
