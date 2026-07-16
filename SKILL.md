@@ -62,9 +62,10 @@ exception.
 Apply one runner shell invariant everywhere below: run each runner-owned stage
 in its own fail-fast shell (`set -euo pipefail`), except where a step explicitly
 assigns an exit code a meaning. On the first failure, stop that stage and record
-the exact command, exit code, and unmodified native stdout and stderr; a runner
-label may only follow those diagnostics, never replace or wrap them. Any root,
-pin, or Step 5 seal command failure hard-stops.
+the exact command and exit code, and preserve the native diagnostic content from
+stdout and stderr. A runner label may follow those diagnostics, but must not
+replace or paraphrase their content. Any root, pin, or Step 5 seal command
+failure hard-stops.
 
 1. Run `git -C "$REPO_ROOT" status --porcelain=v1 --untracked-files=all`; any
    output hard-stops before dispatch and is reported verbatim.
@@ -207,14 +208,18 @@ or preloaded file bodies. Each reviewer owns repository reading, search, and
 verification. "Same input" means the same target/range, authority, lens, and
 candidate contract, not a serialized diff copy.
 
-For each member, choose a unique `LEG_ROOT` outside the target under a path with
-no hidden component (no path segment beginning with `.`), then create an
-independent writable clone at `PRE_HEAD`. This keeps every transport able to
+For each member, choose a unique absolute `LEG_ROOT` outside the target under a
+path with no hidden component (no path segment beginning with `.`), then create
+an independent writable clone at `PRE_HEAD`. This keeps every transport able to
 discover the repository; agy refuses hidden workspace paths.
 
 ```bash
 (
 set -euo pipefail
+case "$LEG_ROOT" in
+  /*) ;;
+  *) printf 'LEG_ROOT must be absolute: %s\n' "$LEG_ROOT" >&2; exit 1 ;;
+esac
 LEG_ROOT="$(cd "$(dirname "$LEG_ROOT")" && pwd -P)/$(basename "$LEG_ROOT")"
 test ! -e "$LEG_ROOT"
 case "$LEG_ROOT" in
@@ -227,8 +232,10 @@ COMMON_DIR="$(git -C "$LEG_ROOT" rev-parse --path-format=absolute --git-common-d
 case "$COMMON_DIR" in "$LEG_ROOT"/*) ;; *) exit 1 ;; esac
 test "$(git -C "$LEG_ROOT" rev-parse HEAD)" = "$PRE_HEAD"
 git -C "$LEG_ROOT" cat-file -e "${BASE_SHA}^{commit}"
-test -z "$(git -C "$LEG_ROOT" status --porcelain=v1 --untracked-files=all)"
-test -z "$(git -C "$LEG_ROOT" remote)"
+LEG_STATUS="$(git -C "$LEG_ROOT" status --porcelain=v1 --untracked-files=all)"
+test -z "$LEG_STATUS"
+LEG_REMOTES="$(git -C "$LEG_ROOT" remote)"
+test -z "$LEG_REMOTES"
 )
 ```
 
