@@ -1,6 +1,6 @@
 ---
 name: ak-cmr-completeness
-description: Run the completeness cross-model review gate before ship-pre correctness, or for a design document.
+description: Run an independent completeness cross-model review of a fixed base-to-HEAD diff.
 allowed-tools:
   - Skill
 ---
@@ -10,5 +10,5 @@ allowed-tools:
 This is a preset, not an independent engine.
 
 Invoke `ak-cross-m-review` exactly once with `--lens completeness`. Pass the
-user's base, scenario, and authority inputs through unchanged. Return the root
+user's base, mode, and authority inputs through unchanged. Return the root
 skill's report unchanged, then stop. The caller owns any later correctness call.

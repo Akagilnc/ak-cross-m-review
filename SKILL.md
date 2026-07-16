@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: Fixed-target cross-model review of a base-to-HEAD diff. Use per-slice, before a PR, or for design-document review; select one lens or the explicit ordered all gate.
+description: Fixed-target cross-model review of a base-to-HEAD diff through one selected lens or the explicit ordered all gate.
 allowed-tools:
   - Bash
   - Read
@@ -27,22 +27,19 @@ single lens. Direct engine invocation, including `all`, must provide every
 required input explicitly. These are agent-chat arguments, not a shell CLI.
 
 ```text
-/ak-cross-m-review --base FIXED_POINT --scenario per-slice|ship-pre|design-doc
+/ak-cross-m-review --base FIXED_POINT --mode code|doc
   --lens completeness|correctness|all --authority SOURCE [--authority SOURCE ...]
-  [--prior-completeness SEALED_REPORT]
 ```
 
 - `--base` — fixed point compared with the current committed `HEAD`.
-- `--scenario` — workflow gate; Step 3 defines valid lens combinations.
+- `--mode` — reviewer transport mode only; it carries no workflow meaning.
 - `--lens` — required lens or ordered `all` sequence; there is no default.
 - `--authority` — governing path or labelled user source; repeat as needed.
-- `--prior-completeness` — verbatim prior CMR report; required only for a
-  ship-pre/design-doc single-lens correctness call.
 
 Example:
 
 ```text
-/ak-cross-m-review --base main --scenario ship-pre --lens all --authority docs/specs/feature.md
+/ak-cross-m-review --base main --mode code --lens all --authority docs/specs/feature.md
 ```
 
 ## Step 1 — Pin the target
@@ -121,24 +118,21 @@ Each panel pass loads exactly one prompt:
 - `prompts/cmr-reviewer.md` — **correctness**: Trace–Break–Prove real defects.
 - `prompts/cmr-completeness.md` — **completeness**: Clause–Wire–Exercise gaps.
 
-`--lens` is required; omission does not default to `all`. The scenario gates the
-allowed sequence:
+`--lens` is required; omission does not default to `all`.
 
-- `per-slice` accepts correctness only.
-- `ship-pre` and `design-doc` accept either named single lens or explicit `all`.
+- `completeness` and `correctness` are independent calls. Neither requires a
+  prior report from the other lens.
 - `all` runs completeness first. A sealed `complete` result emits
   `CMR-LENS-RESULT: completeness=complete` and permits a fresh correctness panel
   pass against the same `BASE_SHA`, `PRE_HEAD`, and authority set. Do not
   combine prompts, reviewer contexts, candidates, or judgment across lenses.
-- A ship-pre/design-doc single-lens correctness call requires
-  `--prior-completeness` containing a sealed `CMR-VERDICT: complete` report that
-  names the same `BASE_SHA` and `PRE_HEAD`; a missing or mismatched report
-  hard-stops. `all` creates this handoff internally and takes no such input.
 
-Use backend mode `doc` for `design-doc`; use `code` for the other scenarios.
+Pass the requested `--mode` unchanged to every selected backend.
 
-The outer workflow owns any later repair or retry. This engine persists no
-cross-call state; `all` owns only its two-pass sequence inside one invocation.
+CMR does not decide when a caller should use a lens, inspect prior review
+reports, or interpret HEAD movement across invocations. It persists no
+cross-call state. `all` owns only its two-pass sequence inside one invocation;
+the caller owns every later review, repair, or retry.
 
 ## Step 4 — Dispatch the panel
 
@@ -301,7 +295,7 @@ required. Otherwise return
 `CMR-VERDICT: hard-stop` and print a fully
 resolved retry in two correctly labelled parts: a copyable shell line beginning
 with `export CMR_PANEL=...`, followed by a copyable **agent-chat skill
-invocation** repeating the actual base, scenario, lens, and authority values.
+invocation** repeating the actual base, mode, lens, and authority values.
 Placeholders are forbidden; never present a skill invocation as a shell binary.
 
 After output, audit each leg's HEAD, `status --porcelain=v1

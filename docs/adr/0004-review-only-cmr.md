@@ -36,11 +36,13 @@ candidate findings; report once.
    remote-changed leg and unexpected target change without reset or cleanup.
    The authority set is frozen before dispatch. Completeness without enumerable
    authority hard-stops.
-3. Per-slice uses correctness. Ship-pre and design-document work may call either
-   named lens separately or explicit `all`. `all` runs completeness first and
-   launches a fresh correctness pass only after a sealed `complete` result,
-   reusing the pinned endpoints and authority set but no reviewer context or
-   scratch clone. Lens omission remains an error; it does not default to `all`.
+3. The two named lenses are independent calls; neither requires a report from
+   the other. CMR does not decide when a caller should invoke a lens or use HEAD
+   movement across invocations as a workflow gate. Explicit `all` is only an
+   invocation-local ordered convenience: it runs completeness first and starts
+   a fresh correctness pass after `complete`, reusing the pinned endpoints and
+   authority set but no reviewer context or scratch clone. Lens omission remains
+   an error; it does not default to `all`.
 4. The default panel is Codex + Grok. The optional `claude` token uses the
    explicit `backends/claude-review.sh` CLI adapter, configurable through
    `CMR_CLAUDE_MODEL` and defaulting to `claude-opus-4-8`; it leaves CLI
@@ -110,6 +112,5 @@ from the active skill; provenance remains in git history.
   repository into the model prompt.
 - Review reports become inputs to an outer workflow instead of instructions to
   mutate the reviewed target.
-- The generic engine can run the complete ship-pre/design sequence through
-  explicit `--lens all` without adding another preset or changing either named
-  single-lens entry point.
+- The generic engine can run an explicit ordered `--lens all` invocation without
+  turning either named single-lens entry point into a prerequisite for the other.
