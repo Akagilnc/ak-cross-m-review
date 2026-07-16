@@ -76,11 +76,6 @@ When safe and runnable:
 3. observe whether the required rejection, route, or transition occurs;
 4. record the command, injected condition, and result.
 
-For a code `ship-pre` review, run the repository's canonical full validation
-entry point when safe and runnable; do not substitute a selected subset, and
-include constitutional or static guard suites exposed by that entry point. This
-does not apply to design documents.
-
 Static shape and author-written happy-path tests do not prove a load-bearing
 mechanism works. If it cannot be exercised, record `unverifiable` and the exact
 missing evidence unless other evidence establishes the required behavior. Do
