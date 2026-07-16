@@ -19,6 +19,8 @@ trap 'rm -f "$OUTPUT_FILE" "$ERROR_FILE"' EXIT
 set +e
 claude -p \
   --model "$MODEL" \
+  --permission-mode acceptEdits \
+  --allowedTools Bash \
   --output-format text \
   --no-session-persistence \
   > "$OUTPUT_FILE" 2> "$ERROR_FILE"

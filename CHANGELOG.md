@@ -26,8 +26,11 @@ supersession of the embedded repair engine.
 - Defaulted `CMR_PANEL` to Codex + Grok. Optional legs are Claude, agy, and
   OpenCode. Claude now has a thin explicit CLI adapter defaulting to
   `claude-opus-4-8`, leaving reasoning effort unset, with a caller model
-  override and no automatic fallback. Panel members count only when their
-  actual successful families are distinct.
+  override and no automatic fallback. Its headless invocation uses Claude
+  Code's `acceptEdits` permission mode plus an explicit Bash allowance so the
+  reviewer can write scratch and run Git, tests, and probes in its independent
+  clone without bypassing the permission system. Panel members count only when
+  their actual successful families are distinct.
 - Kept transports caller-directed: agy calls one primary model (default
   `Gemini 3.5 Flash (High)`) and may call one declared second quota pool
   (default `Claude Sonnet 4.6 (Thinking)`) only after confirmed quota/429. Auth

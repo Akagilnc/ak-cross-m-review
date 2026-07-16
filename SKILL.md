@@ -126,7 +126,10 @@ Transport configuration:
 - Grok model and effort are configurable with `CMR_GROK_MODEL` /
   `CMR_GROK_EFFORT`.
 - Claude uses `CMR_CLAUDE_MODEL` (default `claude-opus-4-8`) and leaves CLI
-  reasoning effort unset. The adapter makes one explicit CLI call with no
+  reasoning effort unset. Its headless call uses `--permission-mode
+  acceptEdits --allowedTools Bash`: Claude may write scratch and run Git,
+  tests, and probes inside its independent clone without using
+  `bypassPermissions`. The adapter makes one explicit CLI call with no
   automatic fallback; any CLI failure or empty output degrades the leg.
 - `gemini` and `agy` alias one transport; selecting both is a duplicate. The
   agy adapter calls `AGY_MODEL` once (default `Gemini 3.5 Flash (High)`). Only a

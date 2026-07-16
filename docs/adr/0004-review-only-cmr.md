@@ -39,8 +39,11 @@ verify candidate findings; report once.
 4. The default panel is Codex + Grok. The optional `claude` token uses the
    explicit `backends/claude-review.sh` CLI adapter, configurable through
    `CMR_CLAUDE_MODEL` and defaulting to `claude-opus-4-8`; it leaves CLI
-   reasoning effort unset. It makes no automatic fallback; CLI failure or
-   empty output degrades the leg. Other optional legs are agy and OpenCode. agy
+   reasoning effort unset. Its headless call uses `--permission-mode
+   acceptEdits --allowedTools Bash` so it can write scratch and run Git, tests,
+   and probes in its independent clone. It does not use `bypassPermissions`.
+   It makes no automatic fallback; CLI failure or empty output degrades the
+   leg. Other optional legs are agy and OpenCode. agy
    makes one primary call and, only when its log
    confirms quota/429, may make one configured second-pool call; an empty
    fallback disables it. Auth and other failures do not retry. The successful
@@ -93,7 +96,9 @@ from the active skill; provenance remains in git history.
   adapter-local fallback.
 - A live defect can survive rejection of a bad proposed remedy.
 - Evidence work may write freely in independent clones without granting
-  reviewers the target or turning CMR into a repair engine.
+  reviewers the target or turning CMR into a repair engine. Claude's adapter
+  grants the headless process the matching edit and Bash permissions without
+  bypassing Claude Code's permission system.
 - Reviewer context comes from the independent clone, not from serializing the
   repository into the model prompt.
 - Review reports become inputs to an outer workflow instead of instructions to
