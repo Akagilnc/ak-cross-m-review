@@ -265,6 +265,26 @@ def test_streaming_codex_survives_when_total_time_exceeds_idle_window(tmp_path):
     assert "本轮缺 codex" not in r.stderr
 
 
+def test_codex_exit_during_watchdog_sleep_is_not_misclassified_as_timeout(tmp_path):
+    _codex_stub(tmp_path / "bin", (
+        'echo "first reasoning line"\n'
+        "sleep 3\n"
+        '[ -n "$OUT" ] && printf \'%b\\n\' "grounded review" > "$OUT"\n'
+        "exit 0\n"
+    ))
+
+    r = _run_codex(
+        tmp_path / "bin", CMR_CODEX_TIMEOUT="2", CMR_CODEX_IDLE_POLL="2"
+    )
+
+    assert r.returncode == 0, (
+        "a codex that exits normally during a watchdog sleep must not be "
+        f"misclassified as timed out; stdout={r.stdout!r}; stderr={r.stderr!r}"
+    )
+    assert r.stdout == "grounded review\n"
+    assert "本轮缺 codex" not in r.stderr
+
+
 def test_silent_codex_killed_after_idle_window(tmp_path):
     # The flip side: a codex that goes SILENT (one line, then no output for
     # longer than the idle window) is a hang → scoped-killed → degrade. It
