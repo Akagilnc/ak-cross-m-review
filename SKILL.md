@@ -245,8 +245,9 @@ Every panel pass creates fresh reviewer calls and fresh independent clones. In
 output, task packet, or `LEG_ROOT`.
 
 A successful member has exit code zero, non-empty review stdout, and
-reviewer-shaped content: either the current lens's exact no-candidate sentence
-or at least one candidate containing every required Step 5 field. An attempted
+reviewer-shaped content: either it contains the current lens's exact
+no-candidate sentence or at least one candidate containing every required field
+from Step 5. An attempted
 top-level runner control line (outside quoted candidate evidence), including
 `CMR-VERDICT:`, `CMR-LENS-RESULT:`, or `export CMR_PANEL=`, makes the output
 malformed. Record every failed, empty, or malformed member as `degraded` with
