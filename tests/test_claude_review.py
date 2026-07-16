@@ -110,6 +110,28 @@ def test_nonzero_or_empty_output_degrades(tmp_path, body, reason):
     assert reason in result.stderr and "本轮缺 claude" in result.stderr
 
 
+def test_nonzero_stdout_diagnostic_is_preserved_before_degrade(tmp_path):
+    _stub(tmp_path / "bin", 'echo "native claude fatal"; exit 7\n')
+    result = _run(tmp_path / "bin")
+    assert result.returncode == 1 and result.stdout == ""
+    assert result.stderr.index("native claude fatal") < result.stderr.index(
+        "claude-review: degrade"
+    )
+
+
+def test_terminal_result_failure_preserves_native_result_before_degrade(tmp_path):
+    stream = json.dumps({
+        "type": "result", "subtype": "error", "is_error": True,
+        "result": "native terminal reason",
+    })
+    _stub(tmp_path / "bin", f"cat <<'EOF'\n{stream}\nEOF\n")
+    result = _run(tmp_path / "bin")
+    assert result.returncode == 1 and result.stdout == ""
+    assert result.stderr.index("native terminal reason") < result.stderr.index(
+        "claude-review: degrade"
+    )
+
+
 def test_background_notification_cannot_replace_main_review(tmp_path):
     stream = _stream("grounded main review\n", "leftover timer; no action needed\n")
     _stub(tmp_path / "bin", f"cat <<'EOF'\n{stream}\nEOF\n")

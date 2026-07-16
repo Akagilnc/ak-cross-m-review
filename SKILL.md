@@ -59,6 +59,13 @@ The user-supplied fixed point and the current committed `HEAD` define the whole
 review. There is no implicit `main`, range, worktree-diff, or small-change
 exception.
 
+Apply one runner shell invariant everywhere below: run each runner-owned stage
+in its own fail-fast shell (`set -euo pipefail`), except where a step explicitly
+assigns an exit code a meaning. On the first failure, stop that stage and record
+the exact command, exit code, and unmodified native stdout and stderr; a runner
+label may only follow those diagnostics, never replace or wrap them. Any root,
+pin, or Step 5 seal command failure hard-stops.
+
 1. Run `git -C "$REPO_ROOT" status --porcelain=v1 --untracked-files=all`; any
    output hard-stops before dispatch and is reported verbatim.
 2. Record `PRE_HEAD` from `git -C "$REPO_ROOT" rev-parse --verify
@@ -206,6 +213,8 @@ independent writable clone at `PRE_HEAD`. This keeps every transport able to
 discover the repository; agy refuses hidden workspace paths.
 
 ```bash
+(
+set -euo pipefail
 LEG_ROOT="$(cd "$(dirname "$LEG_ROOT")" && pwd -P)/$(basename "$LEG_ROOT")"
 test ! -e "$LEG_ROOT"
 case "$LEG_ROOT" in
@@ -220,6 +229,7 @@ test "$(git -C "$LEG_ROOT" rev-parse HEAD)" = "$PRE_HEAD"
 git -C "$LEG_ROOT" cat-file -e "${BASE_SHA}^{commit}"
 test -z "$(git -C "$LEG_ROOT" status --porcelain=v1 --untracked-files=all)"
 test -z "$(git -C "$LEG_ROOT" remote)"
+)
 ```
 
 Do not use a linked worktree, shared object store, reference clone, or
@@ -262,11 +272,12 @@ with `export CMR_PANEL=...`, followed by a copyable **agent-chat skill
 invocation** repeating the actual base, scenario, lens, and authority values.
 Placeholders are forbidden; never present a skill invocation as a shell binary.
 
-After output, record each leg's HEAD, `status --porcelain=v1
---untracked-files=all`, and remotes. Discard the independent clone only when
-HEAD still equals `PRE_HEAD`, status is empty, and no remote exists. Preserve
-and report the path, HEAD, status, and remotes of every dirty, moved, or
-remote-changed leg. Never reset, clean, or remove such a leg; scratch state does
+After output, audit each leg's HEAD, `status --porcelain=v1
+--untracked-files=all`, and remotes under the runner shell invariant. Preserve
+the leg if any audit command fails. Discard it only when all three commands
+return zero, HEAD still equals `PRE_HEAD`, status is empty, and no remote exists.
+Otherwise preserve and report its path plus every available result and native
+diagnostic. Never reset, clean, or remove a preserved leg; scratch state does
 not alter the target verdict. Record and evaluate this audit before cleanup;
 clone deletion must be a later, separate action. Never combine audit and
 deletion in one compound command.
@@ -329,8 +340,9 @@ with evidence such as wrong behavior remaining green, the system under test
 being mocked out, a material assertion being removed/relaxed, or the relevant
 failure path being unable to turn red.
 
-Report every live and refuted/rejected disposition with evidence. Before
-finishing each lens result, seal only the original target:
+Report every live and refuted/rejected disposition with evidence. Under the
+runner shell invariant, seal only the original target before finishing each
+lens result:
 
 1. compare `git -C "$REPO_ROOT" rev-parse 'HEAD^{commit}'` with `PRE_HEAD`;
 2. rerun `git -C "$REPO_ROOT" status --porcelain=v1 --untracked-files=all`.

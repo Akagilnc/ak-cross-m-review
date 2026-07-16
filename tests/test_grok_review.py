@@ -86,3 +86,12 @@ def test_nonzero_or_empty_output_degrades(tmp_path, body, reason):
     result = _run(tmp_path / "bin")
     assert result.returncode == 1 and result.stdout == ""
     assert reason in result.stderr and "本轮缺 grok" in result.stderr
+
+
+def test_nonzero_stdout_diagnostic_is_preserved_before_degrade(tmp_path):
+    _stub(tmp_path / "bin", 'echo "native grok fatal"; exit 7\n')
+    result = _run(tmp_path / "bin")
+    assert result.returncode == 1 and result.stdout == ""
+    assert result.stderr.index("native grok fatal") < result.stderr.index(
+        "grok-review: degrade"
+    )
