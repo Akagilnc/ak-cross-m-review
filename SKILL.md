@@ -33,7 +33,7 @@ without conflating them:
 - `SKILL_ROOT` — the absolute physical directory containing this loaded
   `SKILL.md`; prompts and backends resolve from here.
 - `REPO_ROOT` — `git rev-parse --show-toplevel` from the repository the caller
-  asked to review; pin and judge the target here, but never hand it to a reviewer.
+  asked to review; pin and judge the target here.
 
 The user-supplied fixed point and the current committed `HEAD` define the whole
 review. There is no implicit `main`, range, worktree-diff, or small-change
@@ -170,19 +170,18 @@ LEG_ROOT="$("$SKILL_ROOT/scripts/prepare-review-clone.sh" \
 Do not use a linked worktree, shared object store, reference clone, or
 alternates. The helper is the single clone/preflight implementation: it makes
 the leg's Git config, refs, and objects independent; detaches at `PRE_HEAD`;
-removes the source remote; expires all reflogs; and emits the canonical
-`LEG_ROOT` only after verifying the common Git directory stays inside the leg,
-the pinned HEAD/base are present, the path has no hidden component, status and
-remotes are empty, and neither local Git config nor raw reflog files contain
-the canonical `REPO_ROOT`. Any helper failure hard-stops before that reviewer
-runs; preserve the failed clone for diagnosis.
+removes the source remote; and emits the canonical `LEG_ROOT` only after
+rejecting a destination inside `REPO_ROOT` and verifying the common Git
+directory stays inside the leg, the pinned HEAD/base are present, the path has
+no hidden component, and status and remotes are empty. Any helper failure
+hard-stops before that reviewer runs; preserve the failed clone for diagnosis.
 
 Record token → absolute `LEG_ROOT`; resolve prompts and backends from
 `SKILL_ROOT`, `cd` to that member's `LEG_ROOT`, and send the same task packet to
 each transport from there. The reviewer starts at the clone root and must run
 the pinned log/diff commands, inspect surrounding code and authority paths, and
-run useful tests or probes itself. Never expose `REPO_ROOT`. Launch one parallel
-batch with no peer output; do not replace a degraded panel member. The declared
+run useful tests or probes itself. Launch one parallel batch with no peer
+output; do not replace a degraded panel member. The declared
 agy quota-only second pool above belongs to that one member; it is not a
 replacement panel leg.
 
@@ -245,6 +244,10 @@ its cost; claim not established by the current target; or behavior invented
 outside the authority. Difficulty is not a rejection reason. A real defect
 stays live when only its proposed remedy is rejected. Deletion/simplification
 outranks adding an equivalent mechanism.
+
+`scope_creep` means the proposed fix invents behavior not authorized by the
+authority/spec. A defect being pre-existing, in an adjacent file, or
+incidentally discovered during review does not make it scope creep.
 
 Before marking a claim live, prove its exact trigger, state taxonomy, and owner
 are inside the cited clause. Similar states, adjacent retries, and other

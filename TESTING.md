@@ -26,8 +26,8 @@ configuration in `pyproject.toml`.
 - `tests/test_opencode_review.py` drives the optional OpenCode transport in
   `backends/opencode-review.sh`.
 - `tests/test_review_clone.py` drives `scripts/prepare-review-clone.sh` through
-  a real local Git clone and fault-injected cleanup, including explicit local
-  config and raw-reflog provenance checks.
+  a real local Git clone, including nested-destination rejection and immunity
+  to a caller's custom default remote name.
 - `backends/codex-review.sh --selftest` validates the real command-array form
   without calling Codex.
 

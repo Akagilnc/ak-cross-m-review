@@ -21,10 +21,11 @@ trap 'rm -f "$PROMPT_FILE" "$OUTPUT_FILE" "$ERROR_FILE"' EXIT
 cat > "$PROMPT_FILE"
 
 set +e
-grok --no-memory --no-subagents \
+RUST_LOG=off grok --no-memory --no-subagents \
   --prompt-file "$PROMPT_FILE" \
   --model "$MODEL" \
   --reasoning-effort "$EFFORT" \
+  --output-format plain \
   > "$OUTPUT_FILE" 2> "$ERROR_FILE"
 GROK_RC=$?
 set -e

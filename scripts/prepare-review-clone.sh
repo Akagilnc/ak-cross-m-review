@@ -36,11 +36,22 @@ has_hidden_component() {
 }
 
 REPO_ROOT="$(cd "$REPO_ARG" && pwd -P)" || fail "cannot resolve source repository"
+LEG_PARENT="$(cd "$(dirname "$LEG_ARG")" && pwd -P)" \
+  || fail "cannot resolve reviewer clone parent"
+LEG_CANDIDATE="$LEG_PARENT/$(basename "$LEG_ARG")"
+if [ -e "$LEG_ARG" ]; then
+  LEG_CANDIDATE="$(cd "$LEG_ARG" && pwd -P)" \
+    || fail "cannot resolve reviewer clone path"
+fi
+case "$LEG_CANDIDATE" in
+  "$REPO_ROOT"|"$REPO_ROOT"/*)
+    fail "reviewer clone path must be outside source repository"
+    ;;
+esac
 
-git clone --no-local --no-checkout "$REPO_ROOT" "$LEG_ARG"
+git clone --origin origin --no-local --no-checkout "$REPO_ROOT" "$LEG_ARG"
 git -C "$LEG_ARG" checkout --detach "$PRE_HEAD"
 git -C "$LEG_ARG" remote remove origin
-git -C "$LEG_ARG" reflog expire --expire=now --all
 
 LEG_ROOT="$(cd "$LEG_ARG" && pwd -P)" || fail "cannot resolve reviewer clone"
 COMMON_DIR="$(git -C "$LEG_ROOT" rev-parse --path-format=absolute --git-common-dir)"
@@ -50,20 +61,6 @@ case "$COMMON_DIR" in
   "$LEG_ROOT"/*) ;;
   *) fail "git common directory escapes reviewer clone" ;;
 esac
-
-LOCAL_CONFIG="$(git -C "$LEG_ROOT" config --local --list)"
-case "$LOCAL_CONFIG" in
-  *"$REPO_ROOT"*) fail "source path remains in reviewer local config" ;;
-esac
-
-if [ -d "$COMMON_DIR/logs" ]; then
-  if LC_ALL=C grep -R -F -q -- "$REPO_ROOT" "$COMMON_DIR/logs"; then
-    fail "source path remains in raw reflog files"
-  else
-    GREP_STATUS="$?"
-    [ "$GREP_STATUS" -eq 1 ] || fail "could not verify raw reflog files"
-  fi
-fi
 
 ACTUAL_HEAD="$(git -C "$LEG_ROOT" rev-parse HEAD)"
 [ "$ACTUAL_HEAD" = "$PRE_HEAD" ] || fail "reviewer clone HEAD does not match pinned HEAD"

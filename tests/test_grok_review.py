@@ -56,15 +56,22 @@ def test_success_passes_review_prose_through_verbatim(tmp_path):
 
 def test_default_invocation_is_an_independent_single_review(tmp_path):
     argv_dump = tmp_path / "argv"
+    rust_log_dump = tmp_path / "rust-log"
     _stub_grok(
         tmp_path / "bin",
         ': > "$GROK_ARGV_DUMP"\n'
         'for arg in "$@"; do printf "%s\\0" "$arg" >> "$GROK_ARGV_DUMP"; done\n'
+        'printf "%s" "${RUST_LOG-unset}" > "$GROK_RUST_LOG_DUMP"\n'
         'printf "review complete\\n"\n'
         'exit 0\n',
     )
 
-    result = _run_grok(tmp_path / "bin", GROK_ARGV_DUMP=str(argv_dump))
+    result = _run_grok(
+        tmp_path / "bin",
+        GROK_ARGV_DUMP=str(argv_dump),
+        GROK_RUST_LOG_DUMP=str(rust_log_dump),
+        RUST_LOG="warn",
+    )
 
     assert result.returncode == 0, (
         f"stdout={result.stdout!r}\nstderr={result.stderr!r}"
@@ -81,7 +88,10 @@ def test_default_invocation_is_an_independent_single_review(tmp_path):
         "grok-4.5",
         "--reasoning-effort",
         "high",
+        "--output-format",
+        "plain",
     ]
+    assert rust_log_dump.read_text() == "off"
 
 
 def test_model_and_effort_overrides_pass_through_as_single_arguments(tmp_path):

@@ -25,11 +25,10 @@ verify candidate findings; report once.
    repository. Record HEAD and status before dispatch and recheck both before
    the terminal verdict. Pin one resolved log command and one resolved diff
    command; each reviewer runs them itself. Each panel member receives an
-   independent writable clone detached at the recorded HEAD; never expose the
-   original target. The clone does not share the target's Git config, refs, or
-   object store. Its source remote is removed and all reflogs are expired before
-   dispatch; preflight explicitly rejects the clone if its local Git config or
-   any raw reflog file still contains the canonical original-target path.
+   independent writable clone detached at the recorded HEAD. The clone does not
+   share the target's Git config, refs, or object store. Its source remote is
+   removed before dispatch, and clone preparation rejects a destination inside
+   the original target.
    Original-target mutation hard-stops with evidence. Only clean, unmoved,
    remote-free scratch may be discarded; preserve every dirty, moved, or
    remote-changed leg and unexpected target change without reset or cleanup.
@@ -52,7 +51,9 @@ verify candidate findings; report once.
 5. Panel outputs are candidate findings, never votes. The judge verifies their
    union, separates defect adjudication from remedy adjudication, and may reject
    only as `unconstitutional`, `over_defense`, `not_established`, or
-   `scope_creep`, with evidence.
+   `scope_creep`, with evidence. `scope_creep` means the proposed fix invents
+   behavior not authorized by authority/spec; pre-existing, adjacent-file, or
+   incidentally discovered defects do not qualify.
 6. Correctness uses Trace–Break–Prove. Completeness uses
    Clause–Wire–Exercise. Reviewer prompts do not emit terminal verdicts or
    require a remedy.

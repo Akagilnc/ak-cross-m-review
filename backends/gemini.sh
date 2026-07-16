@@ -181,7 +181,8 @@ fi
 # the diff's quota/429 code cannot mis-attribute a reason.
 if [ "$G_RC" -ne 0 ] || agy_log_has_quota; then
   REASON="$(agy_fatal_reason)"
-  echo "gemini: degrade — flag '本轮缺 gemini' (agy exit rc=$G_RC${REASON:+; $REASON}; agy's stderr is in the captured output per 2>&1)" >&2
+  printf '%s\n' "$RAW" >&2
+  echo "gemini: degrade — flag '本轮缺 gemini' (agy exit rc=$G_RC${REASON:+; $REASON})" >&2
   exit 1
 fi
 

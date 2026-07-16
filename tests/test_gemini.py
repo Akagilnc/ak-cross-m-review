@@ -32,13 +32,13 @@ def _env_with_stub(stub_dir: Path) -> dict[str, str]:
     return env
 
 
-def test_degrades_when_agy_exits_nonzero_with_salvageable_body(tmp_path):
+def test_nonzero_agy_exit_preserves_native_diagnostic(tmp_path):
     # agy exits non-zero = a real outage (quota/crash). Even with a
     # non-empty body, a non-zero exit must degrade — never count as a
     # review (the G_RC gate).
     _stub_agy(tmp_path / "bin", (
         '#!/bin/sh\n'
-        'echo \'{"error":"RESOURCE_EXHAUSTED 429"}\'\n'
+        'printf "Authentication required by provider\\n"\n'
         'exit 1\n'
     ))
     r = subprocess.run(
@@ -53,6 +53,7 @@ def test_degrades_when_agy_exits_nonzero_with_salvageable_body(tmp_path):
         f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     )
     assert r.stdout == ""
+    assert "Authentication required by provider" in r.stderr
     assert "本轮缺 gemini" in r.stderr
 
 

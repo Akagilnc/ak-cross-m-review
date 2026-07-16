@@ -37,8 +37,8 @@ supersession of the embedded repair engine.
   adapters from the loaded skill directory, and gave each panel leg an
   independent writable clone for tests and probes. Clones share no Git config,
   refs, or object store with the target and have no remote during review. One
-  executable helper now owns clone preparation: it expires reflogs and rejects
-  any local config or raw reflog that still exposes the original path. Only
+  executable helper now owns clone preparation, rejects destinations inside the
+  target, and pins the removable remote name against caller Git config. Only
   clean, unmoved, remote-free scratch is discarded; dirty, moved, or
   remote-changed scratch is preserved without reset or cleanup.
 - Replaced panel voting with candidate union plus an evidence-checking judge.
