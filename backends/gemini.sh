@@ -97,6 +97,12 @@ emit_agy_log() {
   return 0
 }
 
+emit_agy_raw() {
+  local raw="$1"
+  [ -n "$raw" ] && printf '%s\n' "$raw" >&2
+  return 0
+}
+
 cat > "$AGY_PROMPT_FILE"
 if [ ! -s "$AGY_PROMPT_FILE" ]; then
   echo "gemini: error: empty prompt on stdin" >&2
@@ -114,6 +120,7 @@ AGY_PRIMARY_MODEL="${AGY_MODEL:-Gemini 3.5 Flash (High)}"
 AGY_FALLBACK_MODEL="${AGY_FALLBACK_MODEL-Claude Sonnet 4.6 (Thinking)}"
 AGY_RAN_MODEL="$AGY_PRIMARY_MODEL"
 AGY_USED_FALLBACK=0
+AGY_PREVIOUS_RAW=""
 
 run_agy() {
   local model="$1"
@@ -126,6 +133,7 @@ run_agy() {
 
 run_agy "$AGY_RAN_MODEL"
 if [ -n "$AGY_FALLBACK_MODEL" ] && agy_log_has_quota; then
+  AGY_PREVIOUS_RAW="$RAW"
   cp "$AGY_LOG" "$AGY_PREVIOUS_LOG"
   AGY_RAN_MODEL="$AGY_FALLBACK_MODEL"
   AGY_USED_FALLBACK=1
@@ -133,6 +141,7 @@ if [ -n "$AGY_FALLBACK_MODEL" ] && agy_log_has_quota; then
 fi
 
 if [ -z "$RAW" ]; then
+  emit_agy_raw "$AGY_PREVIOUS_RAW"
   emit_agy_log "$AGY_PREVIOUS_LOG"
   emit_agy_log "$AGY_LOG"
   echo "gemini: degrade — flag '本轮缺 gemini' (empty output, agy rc=$G_RC)" >&2
@@ -154,8 +163,9 @@ fi
 # review over format (prose-review is this skill's contract: review text
 # the agent reads).
 if [ "$G_RC" -ne 0 ] || agy_log_has_quota; then
+  emit_agy_raw "$AGY_PREVIOUS_RAW"
   emit_agy_log "$AGY_PREVIOUS_LOG"
-  printf '%s\n' "$RAW" >&2
+  emit_agy_raw "$RAW"
   emit_agy_log "$AGY_LOG"
   echo "gemini: degrade — flag '本轮缺 gemini' (agy exit rc=$G_RC)" >&2
   exit 1

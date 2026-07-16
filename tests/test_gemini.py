@@ -35,7 +35,7 @@ def _stub_agy(path: Path) -> None:
         '  quota_then_success)\n'
         '    case "$model" in *Gemini*) echo "E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$log";; *) echo "review from $model";; esac;;\n'
         '  quota_then_auth)\n'
-        '    case "$model" in *Gemini*) echo "E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$log";; *) echo "Authentication required for fallback"; exit 7;; esac;;\n'
+        '    case "$model" in *Gemini*) echo "Primary native detail"; echo "E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$log";; *) echo "Authentication required for fallback"; exit 7;; esac;;\n'
         '  quota_all) echo "E RESOURCE_EXHAUSTED (code 429): Individual quota reached." > "$log";;\n'
         'esac\n'
     )
@@ -172,6 +172,9 @@ def test_failed_fallback_preserves_primary_quota_and_fallback_error(tmp_path):
         "Gemini 3.5 Flash (High)", "Claude Sonnet 4.6 (Thinking)",
     ]
     assert result.returncode == 1 and result.stdout == ""
+    assert result.stderr.index("Primary native detail") < result.stderr.index(
+        "E RESOURCE_EXHAUSTED (code 429): Individual quota reached."
+    )
     assert result.stderr.index(
         "E RESOURCE_EXHAUSTED (code 429): Individual quota reached."
     ) < result.stderr.index("Authentication required for fallback")
