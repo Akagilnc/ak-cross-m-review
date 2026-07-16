@@ -163,20 +163,19 @@ independent writable clone at `PRE_HEAD`. This keeps every transport able to
 discover the repository; agy refuses hidden workspace paths.
 
 ```bash
-git clone --no-local --no-checkout "$REPO_ROOT" "$LEG_ROOT"
-git -C "$LEG_ROOT" checkout --detach "$PRE_HEAD"
-git -C "$LEG_ROOT" remote remove origin
-LEG_ROOT="$(cd "$LEG_ROOT" && pwd -P)"
+LEG_ROOT="$("$SKILL_ROOT/scripts/prepare-review-clone.sh" \
+  "$REPO_ROOT" "$LEG_ROOT" "$PRE_HEAD" "$BASE_SHA")"
 ```
 
 Do not use a linked worktree, shared object store, reference clone, or
-alternates: the leg's `.git` config, refs, and objects must be independent of
-the target. Before dispatch, verify that `git -C "$LEG_ROOT" rev-parse
---path-format=absolute --git-common-dir` is inside `LEG_ROOT`, HEAD equals
-`PRE_HEAD`, `git -C "$LEG_ROOT" cat-file -e "$BASE_SHA^{commit}"` succeeds,
-the canonical `LEG_ROOT` has no hidden path component, status is empty, and
-`git -C "$LEG_ROOT" remote` prints nothing. Any failed check hard-stops before
-that reviewer runs.
+alternates. The helper is the single clone/preflight implementation: it makes
+the leg's Git config, refs, and objects independent; detaches at `PRE_HEAD`;
+removes the source remote; expires all reflogs; and emits the canonical
+`LEG_ROOT` only after verifying the common Git directory stays inside the leg,
+the pinned HEAD/base are present, the path has no hidden component, status and
+remotes are empty, and neither local Git config nor raw reflog files contain
+the canonical `REPO_ROOT`. Any helper failure hard-stops before that reviewer
+runs; preserve the failed clone for diagnosis.
 
 Record token → absolute `LEG_ROOT`; resolve prompts and backends from
 `SKILL_ROOT`, `cd` to that member's `LEG_ROOT`, and send the same task packet to

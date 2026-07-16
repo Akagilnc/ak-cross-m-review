@@ -284,7 +284,9 @@ set -e
 emit_native_output_tail() {
   [ -s "$TMP_OUT" ] || return 0
   echo "codex-review: native output tail (last 8192 bytes):" >&2
-  tail -c 8192 "$TMP_OUT" >&2 || true
+  # A byte tail can begin inside a multibyte character. Keep the same bounded
+  # native tail, but discard invalid UTF-8 fragments such as that cut prefix.
+  tail -c 8192 "$TMP_OUT" | iconv -c -f UTF-8 -t UTF-8 >&2 || true
   echo >&2
 }
 

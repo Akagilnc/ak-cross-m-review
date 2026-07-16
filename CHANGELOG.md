@@ -17,10 +17,10 @@ supersession of the embedded repair engine.
   authority sources, and candidate contract. They read the diff, surrounding
   repository, and tests themselves; CMR no longer embeds, segments, compresses,
   or preloads repository content into prompts.
-- Codex non-zero/timeout degradation now prints a bounded native-output tail
-  before the generic `本轮缺 codex` line. The adapter no longer labels every
-  non-zero exit as auth/quota/crash, so input-limit and other native failures
-  remain diagnosable.
+- Codex non-zero/timeout degradation now prints a bounded, strict-valid UTF-8
+  native-output tail before the generic `本轮缺 codex` line. The adapter no
+  longer labels every non-zero exit as auth/quota/crash, so input-limit and
+  other native failures remain diagnosable.
 - Replaced the 831-line procedure with a five-step review-only engine: pin
   target, pin authority, choose one lens, dispatch the panel, judge and stop.
 - Defaulted `CMR_PANEL` to Codex + Grok. Optional legs are host-Agent Claude
@@ -36,7 +36,9 @@ supersession of the embedded repair engine.
 - Sealed the original reviewed repository before and after dispatch, resolved
   adapters from the loaded skill directory, and gave each panel leg an
   independent writable clone for tests and probes. Clones share no Git config,
-  refs, or object store with the target and have no remote during review. Only
+  refs, or object store with the target and have no remote during review. One
+  executable helper now owns clone preparation: it expires reflogs and rejects
+  any local config or raw reflog that still exposes the original path. Only
   clean, unmoved, remote-free scratch is discarded; dirty, moved, or
   remote-changed scratch is preserved without reset or cleanup.
 - Replaced panel voting with candidate union plus an evidence-checking judge.

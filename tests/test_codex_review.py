@@ -72,6 +72,47 @@ def test_nonzero_codex_exit_preserves_native_error_and_degrades(tmp_path):
     )
 
 
+def test_native_error_tail_is_bounded_valid_utf8_at_multibyte_cut(tmp_path):
+    stub_dir = tmp_path / "bin"
+    message = "最后的真实错误：Input exceeds the maximum length.\n"
+    message_size = len(message.encode("utf-8"))
+    suffix_size = 8190
+    assert message_size < suffix_size
+
+    _codex_stub(
+        stub_dir,
+        'printf "EARLY_NATIVE_PREFIX_MUST_BE_TRUNCATED"\n'
+        "printf '\\342\\202\\254'\n"  # UTF-8 euro sign: 3 bytes
+        f"head -c {suffix_size - message_size} /dev/zero | tr '\\0' x\n"
+        f'printf "{message[:-1]}\\n"\n'
+        "exit 1\n",
+    )
+
+    env = dict(os.environ)
+    env["PATH"] = f"{stub_dir}{os.pathsep}{env['PATH']}"
+    env["CMR_CODEX_TIMEOUT"] = "15"
+    env["CMR_CODEX_IDLE_POLL"] = "1"
+    result = subprocess.run(
+        ["bash", str(SCRIPT), "code"],
+        input=REVIEW_TASK.encode(),
+        capture_output=True,
+        env=env,
+        timeout=60,
+    )
+
+    assert result.returncode == 1
+    assert result.stdout == b""
+    stderr = result.stderr.decode("utf-8", errors="strict")
+    assert "EARLY_NATIVE_PREFIX_MUST_BE_TRUNCATED" not in stderr
+    assert "最后的真实错误：Input exceeds the maximum length." in stderr
+    assert "本轮缺 codex" in stderr
+
+    header = b"codex-review: native output tail (last 8192 bytes):\n"
+    native_start = result.stderr.index(header) + len(header)
+    native_end = result.stderr.index(b"\ncodex-review: codex exited non-zero", native_start)
+    assert len(result.stderr[native_start:native_end]) <= 8192
+
+
 def _codex_stub(stub_dir, body):
     """Drop an executable `codex` stub on PATH. `body` is the sh after the
     shebang; it can use $OUT (the path passed to codex's -o flag)."""

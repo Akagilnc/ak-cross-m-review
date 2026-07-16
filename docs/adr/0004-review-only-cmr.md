@@ -27,7 +27,9 @@ verify candidate findings; report once.
    command; each reviewer runs them itself. Each panel member receives an
    independent writable clone detached at the recorded HEAD; never expose the
    original target. The clone does not share the target's Git config, refs, or
-   object store, and its source remote is removed before dispatch.
+   object store. Its source remote is removed and all reflogs are expired before
+   dispatch; preflight explicitly rejects the clone if its local Git config or
+   any raw reflog file still contains the canonical original-target path.
    Original-target mutation hard-stops with evidence. Only clean, unmoved,
    remote-free scratch may be discarded; preserve every dirty, moved, or
    remote-changed leg and unexpected target change without reset or cleanup.
@@ -60,9 +62,11 @@ verify candidate findings; report once.
 8. `DOC-MODE.md` and `prompts/cmr-fixer.md` are removed. Their historical
    rationale remains in git and the changelog, not in the active skill.
 9. CLI invocation contracts have executable behavior tests. A failed Codex leg
-   preserves a bounded tail of native diagnostics before the generic degrade
-   flag; a non-zero exit is not guessed to mean auth, quota, or crash. Markdown
-   wording does not gain golden or phrase-pinning tests (ADR 0003).
+   preserves a bounded, strict-valid UTF-8 tail of native diagnostics before
+   the generic degrade flag; invalid byte fragments such as a partial character
+   at the cut boundary are discarded. A non-zero exit is not guessed to mean
+   auth, quota, or crash. Markdown wording does not gain golden or phrase-pinning
+   tests (ADR 0003).
 10. Prompts and adapters resolve from the physical directory containing the
     loaded `SKILL.md`; every transport runs with cwd at its own writable scratch
     clone. Reviewers may install, test, and probe there, but may not repair,
@@ -73,6 +77,9 @@ verify candidate findings; report once.
     candidate contract. It never embeds, segments, compresses, archives, or
     preloads the diff or repository files. Equal reviewer input means equal
     target/range, authority, lens, and candidate contract.
+12. `scripts/prepare-review-clone.sh` is the single executable source for clone
+    creation and its pre-dispatch isolation checks. `SKILL.md` invokes it from
+    `SKILL_ROOT`; clone commands and checks are not reimplemented in the skill.
 
 This decision expressly supersedes the active CMR behavior recorded in ADR
 0001/0002 where it requires host-specific squads, disclosed document repair
