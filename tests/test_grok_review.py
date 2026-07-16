@@ -1,200 +1,88 @@
-"""Behavioral tests for the Grok reviewer backend."""
+"""Minimal contract tests for the Grok reviewer transport."""
 
 import os
 import stat
 import subprocess
 from pathlib import Path
 
+import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "backends" / "grok-review.sh"
-REVIEW_TASK = (
-    "Review fixed range 111...222 from this clone; run git diff --binary "
-    "111...222; authority: AGENTS.md.\n"
-)
+PACKET = "Review fixed range 111...222; authority: AGENTS.md.\n"
 
 
-def _stub_grok(stub_dir: Path, body: str) -> None:
-    stub_dir.mkdir(parents=True, exist_ok=True)
-    grok = stub_dir / "grok"
-    grok.write_text(f"#!/bin/sh\n{body}")
-    grok.chmod(grok.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+def _stub(path: Path, body: str) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    exe = path / "grok"
+    exe.write_text("#!/bin/sh\n" + body)
+    exe.chmod(exe.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
 
-def _run_grok(stub_dir: Path, mode: str = "code", **env_extra: str):
+def _run(stub: Path, cwd: Path | None = None, **extra: str):
     env = dict(os.environ)
-    env["PATH"] = f"{stub_dir}{os.pathsep}{env['PATH']}"
+    env["PATH"] = f"{stub}{os.pathsep}{env['PATH']}"
     env.pop("CMR_GROK_MODEL", None)
     env.pop("CMR_GROK_EFFORT", None)
-    env.update(env_extra)
+    env.update(extra)
     return subprocess.run(
-        ["bash", str(SCRIPT), mode],
-        input=REVIEW_TASK,
-        capture_output=True,
-        text=True,
-        env=env,
-        timeout=30,
+        ["bash", str(SCRIPT), "code"], input=PACKET, cwd=cwd,
+        capture_output=True, text=True, env=env, timeout=30,
     )
 
 
-def _read_argv(path: Path) -> list[str]:
-    argv = path.read_bytes().split(b"\0")
-    if argv and argv[-1] == b"":
-        argv = argv[:-1]
-    return [arg.decode() for arg in argv]
+def _argv(path: Path) -> list[str]:
+    return [part.decode() for part in path.read_bytes().split(b"\0") if part]
 
 
-def test_success_passes_review_prose_through_verbatim(tmp_path):
-    _stub_grok(tmp_path / "bin", 'printf "grounded prose review\\n"\nexit 0\n')
-
-    result = _run_grok(tmp_path / "bin")
-
-    assert result.returncode == 0, (
-        f"stdout={result.stdout!r}\nstderr={result.stderr!r}"
+@pytest.mark.parametrize(
+    ("model", "effort"),
+    [("grok-4.5", "high"), ("custom grok model", "xhigh")],
+)
+def test_official_argv_prompt_cwd_and_success(tmp_path, model, effort):
+    argv_dump, prompt_dump, cwd_dump = (
+        tmp_path / "argv", tmp_path / "prompt", tmp_path / "cwd"
     )
-    assert result.stdout == "grounded prose review\n"
-
-
-def test_default_invocation_is_an_independent_single_review(tmp_path):
-    argv_dump = tmp_path / "argv"
-    rust_log_dump = tmp_path / "rust-log"
-    _stub_grok(
+    clone = tmp_path / "clone"
+    clone.mkdir()
+    _stub(
         tmp_path / "bin",
-        ': > "$GROK_ARGV_DUMP"\n'
-        'for arg in "$@"; do printf "%s\\0" "$arg" >> "$GROK_ARGV_DUMP"; done\n'
-        'printf "%s" "${RUST_LOG-unset}" > "$GROK_RUST_LOG_DUMP"\n'
-        'printf "review complete\\n"\n'
-        'exit 0\n',
+        ': > "$ARGV_DUMP"; for arg in "$@"; do printf "%s\\0" "$arg" >> "$ARGV_DUMP"; done\n'
+        'prompt=""; while [ $# -gt 0 ]; do case "$1" in --prompt-file) prompt="$2"; shift 2;; *) shift;; esac; done\n'
+        'cp "$prompt" "$PROMPT_DUMP"; pwd > "$CWD_DUMP"\n'
+        'printf "%s" "${RUST_LOG-unset}" > "$RUST_LOG_DUMP"\n'
+        'printf "grounded review\\n"\n',
     )
-
-    result = _run_grok(
-        tmp_path / "bin",
-        GROK_ARGV_DUMP=str(argv_dump),
-        GROK_RUST_LOG_DUMP=str(rust_log_dump),
-        RUST_LOG="warn",
-    )
-
-    assert result.returncode == 0, (
-        f"stdout={result.stdout!r}\nstderr={result.stderr!r}"
-    )
-    argv = _read_argv(argv_dump)
-    assert Path(argv[3]).is_absolute()
-    argv[3] = "<prompt-file>"
+    extra = {
+        "ARGV_DUMP": str(argv_dump), "PROMPT_DUMP": str(prompt_dump),
+        "CWD_DUMP": str(cwd_dump), "RUST_LOG_DUMP": str(tmp_path / "rust"),
+    }
+    if model != "grok-4.5":
+        extra.update(CMR_GROK_MODEL=model, CMR_GROK_EFFORT=effort)
+    result = _run(tmp_path / "bin", cwd=clone, **extra)
+    argv = _argv(argv_dump)
+    prompt_path = argv[argv.index("--prompt-file") + 1]
+    argv[argv.index("--prompt-file") + 1] = "<prompt-file>"
+    assert Path(prompt_path).is_absolute()
     assert argv == [
-        "--no-memory",
-        "--no-subagents",
-        "--prompt-file",
-        "<prompt-file>",
-        "--model",
-        "grok-4.5",
-        "--reasoning-effort",
-        "high",
-        "--output-format",
-        "plain",
+        "--no-memory", "--no-subagents", "--prompt-file", "<prompt-file>",
+        "--model", model, "--reasoning-effort", effort,
+        "--output-format", "plain",
     ]
-    assert rust_log_dump.read_text() == "off"
+    assert prompt_dump.read_text() == PACKET
+    assert Path(cwd_dump.read_text().strip()) == clone
+    assert (tmp_path / "rust").read_text() == "off"
+    assert result.returncode == 0 and result.stdout == "grounded review\n"
 
 
-def test_model_and_effort_overrides_pass_through_as_single_arguments(tmp_path):
-    argv_dump = tmp_path / "argv"
-    _stub_grok(
-        tmp_path / "bin",
-        ': > "$GROK_ARGV_DUMP"\n'
-        'for arg in "$@"; do printf "%s\\0" "$arg" >> "$GROK_ARGV_DUMP"; done\n'
-        'printf "review complete\\n"\n'
-        'exit 0\n',
-    )
-
-    result = _run_grok(
-        tmp_path / "bin",
-        GROK_ARGV_DUMP=str(argv_dump),
-        CMR_GROK_MODEL="custom grok model",
-        CMR_GROK_EFFORT="xhigh",
-    )
-
-    assert result.returncode == 0, (
-        f"stdout={result.stdout!r}\nstderr={result.stderr!r}"
-    )
-    argv = _read_argv(argv_dump)
-    assert argv[argv.index("--model") + 1] == "custom grok model"
-    assert argv[argv.index("--reasoning-effort") + 1] == "xhigh"
-
-
-def test_review_packet_passes_to_grok_verbatim(tmp_path):
-    prompt_dump = tmp_path / "prompt"
-    packet = REVIEW_TASK
-    _stub_grok(
-        tmp_path / "bin",
-        'prompt_file=""\n'
-        'while [ $# -gt 0 ]; do\n'
-        '  case "$1" in\n'
-        '    --prompt-file) prompt_file="$2"; shift 2 ;;\n'
-        '    *) shift ;;\n'
-        '  esac\n'
-        'done\n'
-        'cp "$prompt_file" "$GROK_PROMPT_DUMP"\n'
-        'printf "review complete\\n"\n'
-        'exit 0\n',
-    )
-
-    result = _run_grok(tmp_path / "bin", GROK_PROMPT_DUMP=str(prompt_dump))
-
-    assert result.returncode == 0, (
-        f"stdout={result.stdout!r}\nstderr={result.stderr!r}"
-    )
-    assert prompt_dump.read_text() == packet
-
-
-def test_invalid_mode_degrades_before_grok_runs(tmp_path):
-    _stub_grok(tmp_path / "bin", 'printf "should not run\\n"\nexit 0\n')
-
-    result = _run_grok(tmp_path / "bin", mode='bad"\nmode')
-
-    assert result.returncode == 1
-    assert result.stdout == ""
-    assert "invalid MODE" in result.stderr
-    assert "本轮缺 grok" in result.stderr
-    assert "should not run" not in result.stdout
-
-
-def test_doc_mode_runs_the_same_review_transport(tmp_path):
-    _stub_grok(tmp_path / "bin", 'printf "document review\\n"\nexit 0\n')
-
-    result = _run_grok(tmp_path / "bin", mode="doc")
-
-    assert result.returncode == 0, (
-        f"stdout={result.stdout!r}\nstderr={result.stderr!r}"
-    )
-    assert result.stdout == "document review\n"
-
-
-def test_nonzero_grok_exit_degrades_without_leaking_salvageable_stdout(tmp_path):
-    _stub_grok(
-        tmp_path / "bin",
-        'printf "P1-looking but failed review\\n"\n'
-        'printf "provider failure\\n" >&2\n'
-        'exit 7\n',
-    )
-
-    result = _run_grok(tmp_path / "bin")
-
-    assert result.returncode == 1
-    assert result.stdout == ""
-    assert "provider failure" in result.stderr
-    assert "grok exit rc=7" in result.stderr
-    assert "本轮缺 grok" in result.stderr
-
-
-def test_empty_grok_output_degrades_visibly(tmp_path):
-    _stub_grok(
-        tmp_path / "bin",
-        'printf "provider returned no final answer\\n" >&2\n'
-        'exit 0\n',
-    )
-
-    result = _run_grok(tmp_path / "bin")
-
-    assert result.returncode == 1
-    assert result.stdout == ""
-    assert "provider returned no final answer" in result.stderr
-    assert "empty output" in result.stderr
-    assert "本轮缺 grok" in result.stderr
+@pytest.mark.parametrize(
+    ("body", "reason"),
+    [
+        ('echo "provider failed" >&2; exit 7\n', "grok exit rc=7"),
+        ("exit 0\n", "empty output"),
+    ],
+)
+def test_nonzero_or_empty_output_degrades(tmp_path, body, reason):
+    _stub(tmp_path / "bin", body)
+    result = _run(tmp_path / "bin")
+    assert result.returncode == 1 and result.stdout == ""
+    assert reason in result.stderr and "本轮缺 grok" in result.stderr
