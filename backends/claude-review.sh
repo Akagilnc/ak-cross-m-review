@@ -12,7 +12,6 @@ case "$MODE" in
 esac
 
 MODEL="${CMR_CLAUDE_MODEL:-claude-opus-4-8}"
-EFFORT="${CMR_CLAUDE_EFFORT:-high}"
 OUTPUT_FILE="$(mktemp)"
 ERROR_FILE="$(mktemp)"
 trap 'rm -f "$OUTPUT_FILE" "$ERROR_FILE"' EXIT
@@ -20,7 +19,6 @@ trap 'rm -f "$OUTPUT_FILE" "$ERROR_FILE"' EXIT
 set +e
 claude -p \
   --model "$MODEL" \
-  --effort "$EFFORT" \
   --output-format text \
   --no-session-persistence \
   > "$OUTPUT_FILE" 2> "$ERROR_FILE"

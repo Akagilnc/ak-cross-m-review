@@ -29,7 +29,6 @@ def _run_claude(
     env = dict(os.environ)
     env["PATH"] = f"{stub_dir}{os.pathsep}{env['PATH']}"
     env.pop("CMR_CLAUDE_MODEL", None)
-    env.pop("CMR_CLAUDE_EFFORT", None)
     env.update(env_extra)
     return subprocess.run(
         ["bash", str(SCRIPT), mode],
@@ -86,8 +85,6 @@ def test_default_invocation_is_one_tool_enabled_nonpersistent_review(tmp_path):
         "-p",
         "--model",
         "claude-opus-4-8",
-        "--effort",
-        "high",
         "--output-format",
         "text",
         "--no-session-persistence",
@@ -95,7 +92,7 @@ def test_default_invocation_is_one_tool_enabled_nonpersistent_review(tmp_path):
     assert prompt_dump.read_text() == REVIEW_TASK
 
 
-def test_model_and_effort_overrides_pass_through_as_single_arguments(tmp_path):
+def test_model_override_passes_through_as_one_argument_without_effort(tmp_path):
     argv_dump = tmp_path / "argv"
     _stub_claude(
         tmp_path / "bin",
@@ -109,7 +106,6 @@ def test_model_and_effort_overrides_pass_through_as_single_arguments(tmp_path):
         tmp_path / "bin",
         CLAUDE_ARGV_DUMP=str(argv_dump),
         CMR_CLAUDE_MODEL="custom claude model",
-        CMR_CLAUDE_EFFORT="xhigh",
     )
 
     assert result.returncode == 0, (
@@ -117,7 +113,7 @@ def test_model_and_effort_overrides_pass_through_as_single_arguments(tmp_path):
     )
     argv = _read_argv(argv_dump)
     assert argv[argv.index("--model") + 1] == "custom claude model"
-    assert argv[argv.index("--effort") + 1] == "xhigh"
+    assert "--effort" not in argv
 
 
 def test_reviewer_inherits_the_callers_writable_clone(tmp_path):

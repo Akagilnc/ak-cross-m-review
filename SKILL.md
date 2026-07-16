@@ -125,8 +125,8 @@ Transport configuration:
   `medium`; explicit `low` allowed).
 - Grok model and effort are configurable with `CMR_GROK_MODEL` /
   `CMR_GROK_EFFORT`.
-- Claude uses `CMR_CLAUDE_MODEL` / `CMR_CLAUDE_EFFORT` (defaults
-  `claude-opus-4-8` / `high`). The adapter makes one explicit CLI call with no
+- Claude uses `CMR_CLAUDE_MODEL` (default `claude-opus-4-8`) and leaves CLI
+  reasoning effort unset. The adapter makes one explicit CLI call with no
   automatic fallback; any CLI failure or empty output degrades the leg.
 - `gemini` and `agy` alias one transport; selecting both is a duplicate. The
   agy adapter calls `AGY_MODEL` once (default `Gemini 3.5 Flash (High)`). Only a
