@@ -27,13 +27,17 @@ single lens. Direct engine invocation, including `all`, must provide every
 required input explicitly. These are agent-chat arguments, not a shell CLI.
 
 ```text
-/ak-cross-m-review --base FIXED_POINT --scenario per-slice|ship-pre|design-doc --lens completeness|correctness|all --authority SOURCE [--authority SOURCE ...]
+/ak-cross-m-review --base FIXED_POINT --scenario per-slice|ship-pre|design-doc
+  --lens completeness|correctness|all --authority SOURCE [--authority SOURCE ...]
+  [--prior-completeness SEALED_REPORT]
 ```
 
 - `--base` — fixed point compared with the current committed `HEAD`.
 - `--scenario` — workflow gate; Step 3 defines valid lens combinations.
 - `--lens` — required lens or ordered `all` sequence; there is no default.
 - `--authority` — governing path or labelled user source; repeat as needed.
+- `--prior-completeness` — verbatim prior CMR report; required only for a
+  ship-pre/design-doc single-lens correctness call.
 
 Example:
 
@@ -118,8 +122,10 @@ allowed sequence:
   `CMR-LENS-RESULT: completeness=complete` and permits a fresh correctness panel
   pass against the same `BASE_SHA`, `PRE_HEAD`, and authority set. Do not
   combine prompts, reviewer contexts, candidates, or judgment across lenses.
-- A ship-pre/design-doc correctness call without a prior completeness result
-  naming the same `BASE_SHA` and `PRE_HEAD` hard-stops.
+- A ship-pre/design-doc single-lens correctness call requires
+  `--prior-completeness` containing a sealed `CMR-VERDICT: complete` report that
+  names the same `BASE_SHA` and `PRE_HEAD`; a missing or mismatched report
+  hard-stops. `all` creates this handoff internally and takes no such input.
 
 Use backend mode `doc` for `design-doc`; use `code` for the other scenarios.
 
