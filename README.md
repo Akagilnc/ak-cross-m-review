@@ -43,10 +43,22 @@ export CMR_PANEL=codex,grok
 
 Then, in agent chat:
 
-```text
-ak-cmr-correctness --base HEAD~1 --scenario per-slice --authority docs/adr/0004-review-only-cmr.md
+Per-slice correctness:
 
-ak-cross-m-review --base main --scenario ship-pre --lens all --authority docs/adr/0004-review-only-cmr.md
+```text
+/ak-cmr-correctness --base HEAD~1 --scenario per-slice --authority docs/specs/feature.md
+```
+
+Complete ship-pre gate:
+
+```text
+/ak-cross-m-review --base main --scenario ship-pre --lens all --authority docs/specs/feature.md
+```
+
+Complete design-document gate:
+
+```text
+/ak-cross-m-review --base main --scenario design-doc --lens all --authority docs/adr/0042-feature-design.md
 ```
 
 ## Panel and quota switching

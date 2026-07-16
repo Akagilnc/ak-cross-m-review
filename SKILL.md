@@ -20,12 +20,26 @@ selected lens or the explicit ordered `all` gate, then reports once and stops:
 no repair, commit, push, or unrequested pass. This constrains the outcome, not
 writable reviewer scratch space.
 
+## Invocation
+
 Prefer the named presets `ak-cmr-completeness` and `ak-cmr-correctness` for a
 single lens. Direct engine invocation, including `all`, must provide every
-required input explicitly:
+required input explicitly. These are agent-chat arguments, not a shell CLI.
 
-`/ak-cross-m-review --base FIXED_POINT --scenario per-slice|ship-pre|design-doc
---lens completeness|correctness|all --authority SOURCE [--authority SOURCE ...]`
+```text
+/ak-cross-m-review --base FIXED_POINT --scenario per-slice|ship-pre|design-doc --lens completeness|correctness|all --authority SOURCE [--authority SOURCE ...]
+```
+
+- `--base` — fixed point compared with the current committed `HEAD`.
+- `--scenario` — workflow gate; Step 3 defines valid lens combinations.
+- `--lens` — required lens or ordered `all` sequence; there is no default.
+- `--authority` — governing path or labelled user source; repeat as needed.
+
+Example:
+
+```text
+/ak-cross-m-review --base main --scenario ship-pre --lens all --authority docs/specs/feature.md
+```
 
 ## Step 1 — Pin the target
 
