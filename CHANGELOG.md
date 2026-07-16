@@ -4,6 +4,24 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.4.1.0 — 2026-07-16
+
+CMR can now run a complete ship-pre or design-document gate through one
+explicit ordered `--lens all` invocation while preserving both named
+single-lens presets.
+
+### Added
+
+- `all` runs completeness first and starts a fresh correctness panel only after
+  a sealed `complete` result. The two-call preset flow now has an explicit
+  `--prior-completeness` handoff and documented examples.
+
+### Fixed
+
+- Reviewer legs that impersonate the runner or return malformed control output
+  now degrade instead of entering judgment. Valid mapped no-finding reviews
+  remain accepted when they contain the lens's exact sentinel.
+
 ## 0.4.0.0 — 2026-07-15
 
 CMR returns to one job: review a fixed target against fixed authority, judge the

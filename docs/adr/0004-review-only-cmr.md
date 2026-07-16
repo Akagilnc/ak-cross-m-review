@@ -1,4 +1,4 @@
-# ADR 0004: CMR is a one-pass review gate
+# ADR 0004: CMR is a review-only fixed-target gate
 
 ## Status
 
@@ -12,15 +12,17 @@ procedure. Review generated work, repaired that work, and then reviewed its own
 repairs. The skill became a second development engine instead of a review gate.
 
 The useful core is smaller: freeze what is being reviewed and which authority
-governs it; ask independent model families one focused question; let a judge
-verify candidate findings; report once.
+governs it; ask each fresh panel one focused question; let a judge verify
+candidate findings; report once.
 
 ## Decision
 
-1. CMR is review-only. One invocation performs one fixed-target, one-lens,
-   one-panel pass and stops after judgment. The caller owns every repair,
-   commit, retry, and later gate. Review-only is an outcome boundary, not
-   filesystem read-only inside isolated reviewer clones.
+1. CMR is review-only. One invocation fixes one target and authority set, then
+   performs either one selected lens or the explicit ordered `all` gate. `all`
+   uses fresh panel passes for completeness and correctness; it never combines
+   their prompts or reviewer contexts. The caller owns every repair, commit,
+   retry, and later gate. Review-only is an outcome boundary, not filesystem
+   read-only inside isolated reviewer clones.
 2. The target is one user-supplied base-to-HEAD range from a clean committed
    repository. Record HEAD and status before dispatch and recheck both before
    the terminal verdict. Pin one resolved log command and one resolved diff
@@ -34,16 +36,19 @@ verify candidate findings; report once.
    remote-changed leg and unexpected target change without reset or cleanup.
    The authority set is frozen before dispatch. Completeness without enumerable
    authority hard-stops.
-3. Per-slice uses correctness. Ship-pre and design-document work call
-   completeness first and correctness later as separate outer invocations.
+3. Per-slice uses correctness. Ship-pre and design-document work may call either
+   named lens separately or explicit `all`. `all` runs completeness first and
+   launches a fresh correctness pass only after a sealed `complete` result,
+   reusing the pinned endpoints and authority set but no reviewer context or
+   scratch clone. Lens omission remains an error; it does not default to `all`.
 4. The default panel is Codex + Grok. The optional `claude` token uses the
    explicit `backends/claude-review.sh` CLI adapter, configurable through
    `CMR_CLAUDE_MODEL` and defaulting to `claude-opus-4-8`; it leaves CLI
    reasoning effort unset. Its headless call uses `--permission-mode
    acceptEdits --allowedTools Bash` so it can write scratch and run Git, tests,
    and probes in its independent clone. It does not use `bypassPermissions`.
-   It makes no automatic fallback; CLI failure or empty output degrades the
-   leg. Other optional legs are agy and OpenCode. agy
+   It makes no automatic fallback; CLI failure, empty output, or malformed
+   reviewer output degrades the leg. Other optional legs are agy and OpenCode. agy
    makes one primary call and, only when its log
    confirms quota/429, may make one configured second-pool call; an empty
    fallback disables it. Auth and other failures do not retry. The successful
@@ -77,11 +82,13 @@ verify candidate findings; report once.
     clone. Reviewers may install, test, and probe there, but may not repair,
     commit, push, or mutate remotes. Candidate locations are actual `path:line`
     anchors. Completeness gaps require both authority and consumer anchors.
-11. The task packet contains only the endpoint SHAs, the two resolved Git
-    commands, the selected lens, the ordered authority source list, and the
-    candidate contract. It never embeds, segments, compresses, archives, or
-    preloads the diff or repository files. Equal reviewer input means equal
-    target/range, authority, lens, and candidate contract.
+11. Each panel pass's task packet contains only the fixed reviewer role
+    boundary, endpoint SHAs, the two resolved Git commands, that pass's
+    selected lens, the ordered authority source list, and the candidate
+    contract. It never embeds, segments,
+    compresses, archives, or preloads the diff or repository files. Equal
+    reviewer input means equal target/range, authority, lens, and candidate
+    contract.
 This decision expressly supersedes the active CMR behavior recorded in ADR
 0001/0002 where it requires host-specific squads, disclosed document repair
 rules, or `SKILL.md + DOC-MODE.md` as the authority union. Their historical
@@ -90,7 +97,7 @@ from the active skill; provenance remains in git history.
 
 ## Consequences
 
-- `SKILL.md` plus the selected lens prompt is the complete active authority.
+- `SKILL.md` plus each selected lens prompt is the complete active authority.
 - Model-family diversity remains. Panel membership and review-pass retries are
   caller decisions; agy's declared quota-only second pool is the sole
   adapter-local fallback.
@@ -103,3 +110,6 @@ from the active skill; provenance remains in git history.
   repository into the model prompt.
 - Review reports become inputs to an outer workflow instead of instructions to
   mutate the reviewed target.
+- The generic engine can run the complete ship-pre/design sequence through
+  explicit `--lens all` without adding another preset or changing either named
+  single-lens entry point.

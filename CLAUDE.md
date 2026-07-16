@@ -1,8 +1,9 @@
 # ak-cross-m-review
 
 Local, pre-PR, review-only cross-model gate. `SKILL.md` plus the selected prompt
-under `prompts/` is the complete active authority; named skills under `skills/`
-are preset entry points. ADR 0004 records the owner-approved v0.4 boundary.
+or prompts under `prompts/` is the complete active authority; named skills under
+`skills/` are preset entry points. ADR 0004 records the owner-approved v0.4
+boundary.
 
 `backends/` only transport the small review task and return output; they do not
 judge or repair. Reviewers run from independent clone roots and read the pinned
