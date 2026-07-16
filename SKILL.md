@@ -170,11 +170,22 @@ hard-stop. Do not probe quota: make the real calls and report real failures.
 
 Build one small task packet outside `REPO_ROOT` containing only:
 
+- the fixed reviewer role boundary below;
 - `BASE_SHA` and `PRE_HEAD`;
 - the one resolved log command and one resolved diff command from Step 1;
 - the current pass's selected lens prompt;
 - the frozen ordered authority source list; and
 - the candidate contract from Step 5.
+
+Put this role boundary first, verbatim:
+
+> You are the only reviewer inside one already-created panel leg, not the
+> runner, panel, or judge. Do not call another model/agent CLI, dispatch or
+> simulate a panel, create or discard clones, or emit runner verdict,
+> degradation, or retry instructions. The current directory is the assigned
+> clone; do not re-clone it. Use ordinary repository tools and tests freely.
+> Your only valid submission is the current lens's candidate format or exact
+> no-candidate sentence.
 
 Do not attach the diff, changed files, repository archive, compressed content,
 or preloaded file bodies. Each reviewer owns repository reading, search, and
@@ -227,10 +238,15 @@ Every panel pass creates fresh reviewer calls and fresh independent clones. In
 `all`, the correctness pass must not reuse a completeness reviewer process,
 output, task packet, or `LEG_ROOT`.
 
-A successful member has exit code zero and non-empty review stdout. Record every
-failed/empty member as `degraded` with token, model, actual family if known, and
-error evidence; it is not an approval. At least two successful members from
-distinct actual families are required. Otherwise return
+A successful member has exit code zero, non-empty review stdout, and
+reviewer-shaped content: either the current lens's exact no-candidate sentence
+or at least one candidate containing every required Step 5 field. An attempted
+top-level runner control line (outside quoted candidate evidence), including
+`CMR-VERDICT:`, `CMR-LENS-RESULT:`, or `export CMR_PANEL=`, makes the output
+malformed. Record every failed, empty, or malformed member as `degraded` with
+token, model, actual family if known, and error evidence; it is not an
+approval. At least two successful members from distinct actual families are
+required. Otherwise return
 `CMR-VERDICT: hard-stop` and print a fully
 resolved retry in two correctly labelled parts: a copyable shell line beginning
 with `export CMR_PANEL=...`, followed by a copyable **agent-chat skill
