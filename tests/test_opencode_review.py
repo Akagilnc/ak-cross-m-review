@@ -99,7 +99,7 @@ def test_default_invocation_is_pure_attachment_based_and_repo_scoped(tmp_path):
         "<prompt-file>",
         "--dir",
         str(ROOT),
-        "Use the pinned task and inspect this repository; return only the grounded prose review.",
+        "Review the attached packet and return only the grounded prose review.",
     ]
     assert cwd_dump.read_text().strip() == str(ROOT)
 

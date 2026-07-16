@@ -320,6 +320,7 @@ fi
 
 REVIEW="$(cat "$LASTMSG" 2>/dev/null || true)"
 if [ -z "$REVIEW" ]; then
+  emit_native_output_tail
   echo "codex-review: codex exited 0 but wrote no final message (empty -o file; only a trace, or -o unsupported) — degrade, flag '本轮缺 codex'" >&2
   exit 1
 fi

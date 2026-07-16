@@ -36,7 +36,9 @@ def test_nonzero_codex_exit_preserves_native_error_and_degrades(tmp_path):
     # stderr while still degrading rather than counting it as a review.
     codex.write_text(
         "#!/bin/sh\n"
-        'echo "Input exceeds the maximum length of 1048576 characters." >&2\n'
+        'printf "EARLY_NATIVE_OUTPUT_PREFIX_MUST_BE_TRUNCATED\\n" >&2\n'
+        "head -c 9000 /dev/zero | tr '\\0' x >&2\n"
+        'printf "\\nInput exceeds the maximum length of 1048576 characters.\\n" >&2\n'
         "exit 1\n"
     )
     codex.chmod(codex.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
@@ -56,6 +58,10 @@ def test_nonzero_codex_exit_preserves_native_error_and_degrades(tmp_path):
         f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     )
     assert r.stdout == ""
+    assert "EARLY_NATIVE_OUTPUT_PREFIX_MUST_BE_TRUNCATED" not in r.stderr, (
+        "native diagnostics must be bounded to the final 8192 bytes; an "
+        f"unbounded cat leaked the early prefix. stderr={r.stderr!r}"
+    )
     assert "Input exceeds the maximum length of 1048576 characters." in r.stderr
     assert r.stderr.index("Input exceeds the maximum length") < r.stderr.index(
         "codex exited non-zero"
@@ -167,7 +173,7 @@ def test_emits_last_message_not_stdout_echo(tmp_path):
     assert "route() treats a non-reviewer output" in r.stdout, (
         f"codex's -o review was not emitted. stdout={r.stdout!r}"
     )
-    assert "VERBOSE_ECHO_PROMPT_TRACE_NOISE" not in r.stdout, (
+    assert "VERBOSE_TASK_TRACE_NOISE" not in r.stdout, (
         "the verbose codex stdout echo was emitted instead of the clean "
         f"-o last message — the size cut is not happening. stdout={r.stdout!r}"
     )
@@ -189,6 +195,10 @@ def test_degrades_when_final_message_empty(tmp_path):
         f"stdout={r.stdout!r}\nstderr={r.stderr!r}"
     )
     assert r.stdout == ""
+    assert "only a reasoning trace on stdout, no final message" in r.stderr
+    assert r.stderr.index("only a reasoning trace") < r.stderr.index(
+        "exited 0 but wrote no final message"
+    )
     assert "本轮缺 codex" in r.stderr
 
 
