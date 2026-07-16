@@ -17,6 +17,11 @@ ERROR_FILE="$(mktemp)"
 REVIEW_FILE="$(mktemp)"
 trap 'rm -f "$OUTPUT_FILE" "$ERROR_FILE" "$REVIEW_FILE"' EXIT
 
+if ! command -v jq >/dev/null 2>&1; then
+  echo "claude-review: degrade — flag '本轮缺 claude' (jq unavailable for Claude event stream)" >&2
+  exit 1
+fi
+
 set +e
 claude -p \
   --model "$MODEL" \
@@ -39,11 +44,6 @@ if [ "$CLAUDE_RC" -ne 0 ]; then
 fi
 if [ ! -s "$OUTPUT_FILE" ]; then
   echo "claude-review: degrade — flag '本轮缺 claude' (empty output, claude rc=0)" >&2
-  exit 1
-fi
-
-if ! command -v jq >/dev/null 2>&1; then
-  echo "claude-review: degrade — flag '本轮缺 claude' (jq unavailable for Claude event stream)" >&2
   exit 1
 fi
 

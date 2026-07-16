@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import stat
 import subprocess
 from pathlib import Path
@@ -56,7 +57,7 @@ def _run_claude(
     env.pop("CMR_CLAUDE_MODEL", None)
     env.update(env_extra)
     return subprocess.run(
-        ["bash", str(SCRIPT), mode],
+        ["/bin/bash", str(SCRIPT), mode],
         input=REVIEW_TASK,
         capture_output=True,
         text=True,
@@ -190,6 +191,33 @@ def test_invalid_mode_degrades_before_claude_runs(tmp_path):
     assert "invalid MODE" in result.stderr
     assert "本轮缺 claude" in result.stderr
     assert "should not run" not in result.stdout
+
+
+def test_missing_jq_degrades_before_claude_runs(tmp_path):
+    stub_dir = tmp_path / "bin"
+    ran = tmp_path / "claude-ran"
+    _stub_claude(
+        stub_dir,
+        ': > "$CLAUDE_RAN"\n'
+        'printf "should not run\\n"\n'
+        'exit 0\n',
+    )
+    for tool in ("mktemp", "rm"):
+        resolved = shutil.which(tool)
+        assert resolved is not None
+        (stub_dir / tool).symlink_to(resolved)
+
+    result = _run_claude(
+        stub_dir,
+        PATH=str(stub_dir),
+        CLAUDE_RAN=str(ran),
+    )
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert not ran.exists()
+    assert "jq unavailable" in result.stderr
+    assert "本轮缺 claude" in result.stderr
 
 
 def test_nonzero_claude_exit_degrades_without_leaking_partial_review(tmp_path):
