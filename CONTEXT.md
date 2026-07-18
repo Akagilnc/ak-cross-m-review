@@ -8,7 +8,9 @@ complete active authority; Steps 1–5 define the procedure.
 - **lens selection** — correctness, completeness, or explicit ordered `all`;
   each panel pass still receives exactly one prompt under `prompts/`.
 - **preset** — a named wrapper that selects one lens.
-- **degraded member** — a selected reviewer that produced no usable review.
+- **degraded member** — a selected reviewer whose transport failed (non-zero
+  exit or empty stdout). Content shape never degrades a leg (ADR 0141).
+- **present member** — exit 0 + non-empty raw stdout; pure prose is legal paper.
 - **candidate** — an evidence-backed claim awaiting judgment.
 - **judge** — the main session that adjudicates candidates.
 - **lawful rejection** — an evidence-backed rejection defined by Step 5.

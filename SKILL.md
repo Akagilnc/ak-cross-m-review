@@ -282,15 +282,20 @@ Every panel pass creates fresh reviewer calls and fresh independent clones. In
 `all`, the correctness pass must not reuse a completeness reviewer process,
 output, task packet, or `LEG_ROOT`.
 
-A successful member has exit code zero, non-empty review stdout, and
-reviewer-shaped content: either it contains the current lens's exact
-no-candidate sentence or at least one candidate containing every required field
-from Step 5. An attempted
-top-level runner control line (outside quoted candidate evidence), including
-`CMR-VERDICT:`, `CMR-LENS-RESULT:`, or `export CMR_PANEL=`, makes the output
-malformed. Record every failed, empty, or malformed member as `degraded` with
-token, model, actual family if known, and error evidence; it is not an
-approval. At least two successful members from distinct actual families are
+A successful member has exit code zero and non-empty review stdout
+(transport alive). **Content shape is not a gate** (ADR 0141 / wiki): pure
+prose, progress-style narration, reviews without the exact no-candidate
+sentence, and reviews without structured or anchored candidate fields all
+count as present. The judge distills anchors and dispositions from raw
+stdout; never void a leg as 「无锚点候选＝废票」 or 「进度散文＝无卷」.
+An attempted top-level runner control line (outside quoted candidate
+evidence), including `CMR-VERDICT:`, `CMR-LENS-RESULT:`, or
+`export CMR_PANEL=`, makes the output malformed (runner impersonation —
+protocol discipline, not paper format). Record every failed, empty, or
+malformed member as `degraded` with token, model, actual family if known,
+and error evidence; it is not an approval. Family floor: leg present =
+transport success; diversity counts actual vendors of present members.
+At least two successful members from distinct actual families are
 required. Otherwise return
 `CMR-VERDICT: hard-stop` and print a fully
 resolved retry in two correctly labelled parts: a copyable shell line beginning
@@ -329,7 +334,10 @@ An admissible candidate contains:
 Correctness candidates use the actual affected `path:line`. A completeness
 absence cites both its authority repository `path:line` or task-packet
 `source-label:line` and the nearest actual affected or expected consumer
-`path:line`; without both anchors it is not admissible.
+`path:line`; without both anchors a **candidate claim** is not admissible
+for judgment. That filter is judge-side claim quality only — it never voids
+the **leg** that produced the prose (ADR 0141: leg present = transport
+success; the judge still reads the raw stdout).
 
 Verify each candidate against the fixed target and authority. Judge the defect
 claim separately from its remedy:

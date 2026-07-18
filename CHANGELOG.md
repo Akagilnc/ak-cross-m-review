@@ -4,6 +4,21 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.4.2.0 — 2026-07-18
+
+### Fixed — leg prose is legal paper (ADR 0141 / wiki realignment)
+
+Successful panel member is again **transport-only**: exit 0 + non-empty raw
+stdout. Content-shape gates that voided pure prose or unanchored reviews
+(「无锚点候选＝废票」「进度散文＝无卷」) are deleted — same class of bug as the
+0.3.9.0 sentinel-JSON phantom-outage. The judge distills anchors from raw
+stdout; candidate `path:line` requirements remain **claim-quality** filters
+for Step 5 judgment, never leg-presence gates. Family floor: present =
+transport success; diversity counts actual vendors of present members.
+Runner-impersonation control lines still degrade (protocol discipline).
+
+Companion: ming-salvage-sim #1005.
+
 ## 0.4.1.0 — 2026-07-16
 
 CMR can now run a complete ship-pre or design-document gate through one
