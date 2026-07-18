@@ -1,6 +1,6 @@
 ---
 name: ak-cmr-completeness
-description: Run an independent completeness cross-model review of a fixed base-to-HEAD diff.
+description: Use when the user explicitly requests cross-model completeness review of whether a fixed diff delivers every stated requirement, spec clause, or design decision.
 allowed-tools:
   - Skill
 ---

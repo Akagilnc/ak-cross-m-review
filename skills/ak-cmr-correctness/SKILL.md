@@ -1,6 +1,6 @@
 ---
 name: ak-cmr-correctness
-description: Run an independent correctness cross-model review of a fixed base-to-HEAD diff.
+description: Use when the user explicitly requests cross-model correctness review to find real bugs or counterexamples in a fixed diff.
 allowed-tools:
   - Skill
 ---

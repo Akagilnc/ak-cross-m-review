@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: Fixed-target cross-model review of a base-to-HEAD diff through one selected lens or the explicit ordered all gate.
+description: Use when the user explicitly requests CMR or cross-model review of a fixed branch or diff, asks for both completeness and correctness, or a CMR preset delegates to the shared engine.
 allowed-tools:
   - Bash
   - Read
@@ -335,9 +335,8 @@ Correctness candidates use the actual affected `path:line`. A completeness
 absence cites both its authority repository `path:line` or task-packet
 `source-label:line` and the nearest actual affected or expected consumer
 `path:line`; without both anchors a **candidate claim** is not admissible
-for judgment. That filter is judge-side claim quality only — it never voids
-the **leg** that produced the prose (ADR 0141: leg present = transport
-success; the judge still reads the raw stdout).
+for judgment. This filters claims, not member presence; apply Step 4's
+member-presence rule.
 
 Verify each candidate against the fixed target and authority. Judge the defect
 claim separately from its remedy:
