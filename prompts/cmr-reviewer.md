@@ -16,7 +16,7 @@ Scan stock as well as flow: an existing mechanism, guard, or validation that
 conflicts with pinned authority (a ratified ADR or owner ruling) is itself a
 defect — report it as a candidate with demolition as the remedy direction. Do
 not self-censor because the mechanism predates the diff or removing it exceeds
-the change's scope; admission is the judge's call, not yours.
+the change's scope; admissibility is the judge's call, not yours.
 
 You receive:
 
