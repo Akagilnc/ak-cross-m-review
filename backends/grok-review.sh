@@ -29,9 +29,10 @@ cat > "$PROMPT_FILE"
 # - --always-approve + --permission-mode bypassPermissions: allow the agent
 #   tool-loop without interactive permission stalls (the load-bearing fix)
 GROK_HOME="${HOME:-/home/agent}"
-mkdir -p "${GROK_HOME}/.grok/sessions" 2>/dev/null || true
-if [ ! -w "${GROK_HOME}" ] || [ ! -w "${GROK_HOME}/.grok" ]; then
-  echo "grok-review: degrade — flag '本轮缺 grok' (HOME/session dir not writable: ${GROK_HOME})" >&2
+if ! mkdir -p "${GROK_HOME}/.grok/sessions" 2>/dev/null \
+  || [ ! -d "${GROK_HOME}/.grok/sessions" ] \
+  || [ ! -w "${GROK_HOME}/.grok/sessions" ]; then
+  echo "grok-review: degrade — flag '本轮缺 grok' (session dir unusable: ${GROK_HOME}/.grok/sessions)" >&2
   exit 1
 fi
 
