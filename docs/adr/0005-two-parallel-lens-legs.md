@@ -10,8 +10,9 @@ amended below.
 ## Decision
 
 CMR runs each lens as one independent sub-agent leg; `--lens all` dispatches
-both legs in a single batch and each leg ends with its own labelled verdict
-(`CMR-VERDICT: completeness=…`, `CMR-VERDICT: correctness=…`). One leg's
+both legs in a single batch and each lens ends with its own labelled verdict,
+emitted by the judge (`CMR-VERDICT: completeness=…`,
+`CMR-VERDICT: correctness=…`); a leg submits candidates only. One leg's
 failure reports as that lens's own `hard-stop`; it never withholds the other
 lens's result. The skill does not select models or transports and does not
 require cross-model composition: a sub-agent is a harness primitive, and which

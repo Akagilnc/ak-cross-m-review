@@ -4,6 +4,10 @@
 
 Accepted（2026-07-13）
 
+> 2026-09-05（ADR 0005）：§3–§4 随其对象一并退役——backend 行为测试与
+> `codex-review.sh --selftest` 已连同 `backends/`、`tests/` 删除，本仓不再有
+> 可执行面；§1–§2（文档测试永久废止、机制需事故基础 + 值得吗闸）继续现役。
+
 ## Context
 
 2026-07-13 的架构审查（issue #35）把六个「深化候选」送进 grilling，

@@ -4,8 +4,12 @@
 
 Accepted (2026-07-15); amended 2026-07-16, owner decision. §3 (ordered
 `all`) and §4 (panel composition, family floor, transport adapters) are
-superseded by ADR 0005 (2026-09-05); §1, §2, §5, §6 remain in force as amended
-there.
+superseded by ADR 0005 (2026-09-05); §1, §2, §5, §6, §7, §8 remain in force as
+amended there. Also superseded by ADR 0005: §9 (no executable surface remains,
+so no behavior tests) and the scratch-clone clause of §10 (isolation is the
+harness's); §10's first sentence — prompts resolve from the directory
+containing the loaded `SKILL.md` — is carried into `SKILL.md` Step 4; §11
+remains minus `--mode`.
 
 ## Context
 
