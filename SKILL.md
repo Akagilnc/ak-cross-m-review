@@ -17,7 +17,7 @@ This file plus each selected prompt is the complete active authority. See `CONTE
 legs, judge their candidates independently, report, and stop. The caller owns
 every repair, commit, retry, and later review.
 
-Model composition is the callers: each lens runs as one leg on whatever the harness supplies; a caller who wants cross-model coverage composes it (two harnesses, or a harness fan-out).
+Model composition is the caller's: each lens runs as one leg on whatever the harness supplies; a caller who wants cross-model coverage composes it (two harnesses, or a harness fan-out).
 
 ## Invocation
 
