@@ -1,29 +1,26 @@
 # ak-cross-m-review
 
-Local, pre-PR, review-only cross-model gate. `SKILL.md` plus the selected prompt
-or prompts under `prompts/` is the complete active authority; named skills under
-`skills/` are preset entry points. ADR 0004 records the owner-approved v0.4
-boundary.
+Local, pre-PR, review-only CMR. `SKILL.md` plus each selected prompt under
+`prompts/` is the complete active authority. `CONTEXT.md` defines vocabulary,
+and ADR 0005 records the owner-approved v0.5 boundary. The named skills under
+`skills/` are presets.
 
-`backends/` only transport the small review task and return output; they do not
-judge or repair. Reviewers run from independent clone roots and read the pinned
-diff, authority, surrounding repository, and tests themselves. Runtime dispatch
-and scratch lifecycle live in `SKILL.md` Step 4; judgment, sealing, and
-termination live in Step 5.
+## Operation
+
+Use `SKILL.md` Steps 1–5 for pinning, authority, lens selection, harness
+dispatch, judgment, sealing, and termination. Do not duplicate that procedure
+here. The harness must provide sub-agents and isolated copies; this repository
+provides instructions and prompts only.
+
+Install the engine and both presets with:
+
+```bash
+scripts/install-skills.sh
+```
 
 ## Testing
 
-Run: `pytest` (or `.venv/bin/pytest`). Then run:
-
-```bash
-bash backends/codex-review.sh --selftest
-```
-
-Full conventions are in [TESTING.md](./TESTING.md).
-
-- Tests cover executable backend behavior, not Markdown wording (ADR 0003).
-- New executable behavior or error paths require behavioral coverage.
-- Preserve the incident-backed Codex invocation guard and agy transport tests.
-- Grok and Claude invocation behavior belongs to their thin adapters and
-  behavior tests, not duplicated prose in `SKILL.md`.
-- Never commit with a red test or selftest.
+The review engine has no executable surface and no tests;
+`scripts/install-skills.sh` is an installation helper only. ADR 0003 still
+forbids tests that pin documentation wording; review prose changes against the
+active authority and Git diff.

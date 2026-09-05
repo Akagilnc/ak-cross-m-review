@@ -4,6 +4,64 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.5.0.0 — 2026-09-05
+
+CMR is now two parallel lens legs on your harness. `--lens all` dispatches
+completeness and correctness at once, each lens ends with its own labelled
+verdict, and one leg's failure never withholds the other's result. Model
+choice, sub-agent execution, and isolation belong to the harness and the
+caller; the skill pins the target and authority, judges each leg's candidates,
+seals, and stops. ADR 0005 records the owner decision.
+
+### Added
+
+- `--lens all` runs both lenses in one parallel batch. Each lens ends with its
+  own line: `CMR-VERDICT: completeness=complete|gaps|hard-stop` and
+  `CMR-VERDICT: correctness=converged|findings|hard-stop`.
+- Every leg first proves it runs on an independent copy (its top level differs
+  from `TARGET_ROOT`) and pins that copy to `PRE_HEAD` before reading anything.
+  The brief carries the lens prompt's full text, so a leg needs nothing from
+  the skill's own directory.
+- `CONTEXT.md` glossary (lens / leg / judge / verdict) and ADR 0005.
+
+### Changed
+
+- The skill selects no model or transport and requires no cross-model
+  composition. A caller who wants cross-model coverage composes it outside
+  the skill, for example by invoking it under different harnesses. The three
+  skill descriptions now trigger on the request, not on a promised property.
+- The judge keeps verification, the four lawful rejection reasons, and the
+  defect/remedy split. A candidate the four reasons cannot dispose stays
+  `live`, and the report names the owner decision it needs; the `escalate`
+  verdict is gone.
+- The Step 1 pin gate and the Step 5 seal are root-anchored, ignore the
+  harness's `.claude/worktrees/` isolation directory, and the seal runs from
+  `TARGET_ROOT`.
+
+### Removed
+
+- `--mode`, `CMR_PANEL`, the transport table, family accounting, the agy
+  fallback pool, the skill-built clone block and leg audits, the unlabelled
+  `CMR-VERDICT: hard-stop` form, and the completeness-first ordering of `all`.
+- `backends/` (five CLI adapters), `tests/`, the selftest, `pyproject.toml`,
+  `TESTING.md`, and the CI workflow that ran them. The review engine has no
+  executable surface; `scripts/install-skills.sh` remains as the installer.
+
+### Fixed
+
+- `scripts/install-skills.sh` refuses a destination that exists and is not a
+  symlink (it used to nest a link inside a real directory and still print a
+  success line), keeps linking the remaining skills after any failure, and
+  exits 1 when any skill was not installed.
+
+### For contributors
+
+- ADR 0004's Status block lists, clause by clause, what ADR 0005 superseded
+  and what stays in force; ADR 0003 and ADR 0001 carry supersession notes, and
+  the ADR 0001 rule map is historical.
+- The new engine reviewed itself on this branch for seven rounds, both lenses
+  each round; every finding and disposition is in the commit messages.
+
 ## 0.4.2.0 — 2026-07-18
 
 ### Fixed — leg prose is legal paper (ADR 0141 / wiki realignment)

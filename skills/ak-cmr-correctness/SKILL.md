@@ -1,6 +1,6 @@
 ---
 name: ak-cmr-correctness
-description: Use when the user explicitly requests cross-model correctness review to find real bugs or counterexamples in a fixed diff.
+description: Use when the user requests cross-model correctness review of a fixed base-to-HEAD diff on the caller's harness.
 allowed-tools:
   - Skill
 ---
@@ -10,5 +10,5 @@ allowed-tools:
 This is a preset, not an independent engine.
 
 Invoke `ak-cross-m-review` exactly once with `--lens correctness`. Pass the
-user's base, mode, and authority inputs through unchanged. Return the root
-skill's report unchanged, then stop.
+user's base and authority inputs through unchanged. Return the root skill's
+report unchanged, then stop.
