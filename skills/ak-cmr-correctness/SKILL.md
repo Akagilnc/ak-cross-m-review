@@ -1,6 +1,6 @@
 ---
 name: ak-cmr-correctness
-description: Use when the user explicitly requests cross-model correctness review to find real bugs or counterexamples in a fixed diff.
+description: Use when the user requests cross-model correctness review of a fixed base-to-HEAD diff on the caller's harness.
 allowed-tools:
   - Skill
 ---

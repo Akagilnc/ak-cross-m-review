@@ -1,6 +1,6 @@
 ---
 name: ak-cmr-completeness
-description: Use when the user explicitly requests cross-model completeness review of whether a fixed diff delivers every stated requirement, spec clause, or design decision.
+description: Use when the user requests cross-model completeness review of a fixed base-to-HEAD diff on the caller's harness.
 allowed-tools:
   - Skill
 ---
