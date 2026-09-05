@@ -36,8 +36,10 @@ arguments, not a shell CLI:
 
 Run from the target repository:
 
-1. Require `git status --porcelain=v1 --untracked-files=all -- :/
-   ':(top,exclude).claude/worktrees/**'` to return no output, excluding only the harness worktrees.
+1. Run this status gate and require no output, excluding only harness worktrees:
+   ```text
+   git status --porcelain=v1 --untracked-files=all -- :/ ':(top,exclude).claude/worktrees/**'
+   ```
 2. Resolve `PRE_HEAD` with `git rev-parse --verify 'HEAD^{commit}'` and
    `BASE_SHA` with `git rev-parse --verify '<base>^{commit}'`; retain the
    literal full SHAs.
@@ -83,14 +85,10 @@ authority or its own evidenced `hard-stop`.
 
 ## Step 3 — Select lenses
 
-`--lens completeness|correctness|all` is required; omission is a `hard-stop`.
-Only failures common to every selected lens in Steps 1–3 — a Step 1 pin failure
-or `--lens` omission — end the invocation with the single unlabelled line
-`CMR-VERDICT: hard-stop`. A lens-specific Step 2 failure ends that lens with its
-labelled `CMR-VERDICT: completeness=hard-stop`; any other selected lens still dispatches.
-
-Resolve the selected prompt path from the directory containing this loaded
-`SKILL.md`:
+`--lens completeness|correctness|all` is required. A Step 1 pin failure ends every selected lens with its labelled `hard-stop` line
+(`CMR-VERDICT: completeness=hard-stop` and `CMR-VERDICT: correctness=hard-stop` for `all`). `--lens` omission is a usage error:
+report it and emit no verdict line because no lens was selected. A lens-specific Step 2 failure ends that lens with its labelled
+`CMR-VERDICT: completeness=hard-stop`; any other selected lens still dispatches.
 
 - `completeness` loads `prompts/cmr-completeness.md` and applies
   Clause–Wire–Exercise.
@@ -117,7 +115,7 @@ Give each leg a brief containing only:
 - this reviewer role boundary;
 - literal `BASE_SHA` and `PRE_HEAD`;
 - the two frozen commands from Step 1;
-- the absolute lens prompt path resolved in Step 3;
+- the full text of the selected lens prompt, read from `prompts/` beside this loaded `SKILL.md`;
 - the ordered authority list; and
 - the candidate contract from Step 5.
 
@@ -135,7 +133,7 @@ Reviewer role boundary:
 > invoke or simulate another agent; instead complete this lens directly. Do
 > not emit `CMR-VERDICT:`; instead submit candidates for the judge.
 
-Never paste the diff or file bodies into a brief; the leg runs the pinned
+The lens prompt is authority, not target content. Never paste target diff or target file bodies into a brief; the leg runs the pinned
 commands and reads sources itself. A sub-agent error, empty output, or
 runner-impersonating control line makes only that lens a `hard-stop`, reported
 with evidence, and does not affect the other lens.
@@ -187,8 +185,10 @@ outranks an equivalent added mechanism.
 After every selected leg has a judgment or evidenced failure, seal once:
 
 1. require `git rev-parse 'HEAD^{commit}'` to equal `PRE_HEAD`;
-2. require `git status --porcelain=v1 --untracked-files=all -- :/
-   ':(top,exclude).claude/worktrees/**'` to be empty, excluding only the harness worktrees.
+2. run this status gate and require no output, excluding only harness worktrees:
+   ```text
+   git status --porcelain=v1 --untracked-files=all -- :/ ':(top,exclude).claude/worktrees/**'
+   ```
 
 Any change is a `hard-stop`; show before/after HEAD and status evidence. Never
 reset, checkout, remove, or clean the target.
@@ -203,7 +203,7 @@ CMR-VERDICT: correctness=converged|findings|hard-stop|escalate
 Completeness is `complete` when no live gap or unresolved `unverifiable` row remains; otherwise it is `gaps`.
 Correctness is `converged` when no live defect remains; otherwise it is `findings`.
 `escalate` means a genuine owner decision is required to dispose a candidate.
-`hard-stop` means a prerequisite, seal, or leg failure as defined above.
+`hard-stop` means a prerequisite, seal, or leg failure as defined above; Step 1 pin and seal failures apply to every selected lens, while Step 2 and leg failures apply only to that lens. A `--lens` usage error emits no verdict line.
 
 Completion criterion: after the single successful seal, every selected lens
 has an independent judgment or evidenced failure and exactly one labelled
