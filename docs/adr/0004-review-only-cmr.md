@@ -11,9 +11,14 @@ harness's; the skill neither builds nor audits copies); §9 (no executable
 surface remains, so no behavior tests); §10's scratch-clone clause; and §1's
 "explicit ordered `all` gate" / "fresh panel passes" sentences. Still in
 force: §1's review-only boundary; §2's target-pinning, authority-freezing, and
-"original-target mutation hard-stops with evidence" clauses; §5; §6; §7; §8;
-§10's first sentence (prompts resolve from the directory containing the loaded
-`SKILL.md`, now `SKILL.md` Step 3); §11.
+"original-target mutation hard-stops with evidence" clauses; §5's
+adjudication doctrine (its "Panel outputs … verifies their union" wording is
+superseded — one leg per lens, no union); §6; §7; §8; §10's first sentence
+(prompts resolve from the directory containing the loaded `SKILL.md`, now the
+Step 4 brief item "read from `prompts/` beside this loaded `SKILL.md`"); §11.
+The Consequences section below is the 2026-07 record: only its first, third,
+and sixth bullets still describe v0.5; the others (model-family diversity,
+adapters, independent clones, ordered `all`) are historical.
 
 ## Context
 
