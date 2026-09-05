@@ -2,10 +2,11 @@
 
 ## Status
 
-Accepted (2026-09-05, owner decision). Supersedes ADR 0004 §3 (ordered `all`)
-and §4 (panel composition, family floor, transport adapters); §1, §2 (target
-pinning and authority), §5 (judgment) and §6 (lens prompts) remain in force as
-amended below.
+Accepted (2026-09-05, owner decision). Supersedes ADR 0004 §3 (ordered `all`),
+§4 (panel composition, family floor, transport adapters), §2's clone
+sentences, §9, and §10's scratch-clone clause; ADR 0004's Status block lists
+exactly which clauses remain in force (target pinning, authority freezing,
+mutation hard-stop, judgment, lens prompts, presets, prompt resolution).
 
 ## Decision
 

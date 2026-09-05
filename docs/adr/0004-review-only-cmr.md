@@ -2,14 +2,17 @@
 
 ## Status
 
-Accepted (2026-07-15); amended 2026-07-16, owner decision. §3 (ordered
-`all`) and §4 (panel composition, family floor, transport adapters) are
-superseded by ADR 0005 (2026-09-05); §1, §2, §5, §6, §7, §8 remain in force as
-amended there. Also superseded by ADR 0005: §9 (no executable surface remains,
-so no behavior tests) and the scratch-clone clause of §10 (isolation is the
-harness's); §10's first sentence — prompts resolve from the directory
-containing the loaded `SKILL.md` — is carried into `SKILL.md` Step 4; §11
-remains minus `--mode`.
+Accepted (2026-07-15); amended 2026-07-16, owner decision. Amended again
+2026-09-05 by ADR 0005, which supersedes: §3 (ordered `all`); §4 (panel
+composition, family floor, transport adapters); §2's clone sentences — every
+clause from "Each panel member receives an independent writable clone" through
+"preserve every dirty, moved, or remote-changed leg" (isolation is the
+harness's; the skill neither builds nor audits copies); §9 (no executable
+surface remains, so no behavior tests); and §10's scratch-clone clause. Still
+in force: §1; §2's target-pinning, authority-freezing, and
+"original-target mutation hard-stops with evidence" clauses; §5; §6; §7; §8;
+§10's first sentence (prompts resolve from the directory containing the loaded
+`SKILL.md`, now `SKILL.md` Step 3); §11.
 
 ## Context
 
