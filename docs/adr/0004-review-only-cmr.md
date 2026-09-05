@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted (2026-07-15); amended 2026-07-16, owner decision.
+Accepted (2026-07-15); amended 2026-07-16, owner decision. §3 (ordered
+`all`) and §4 (panel composition, family floor, transport adapters) are
+superseded by ADR 0005 (2026-09-05); §1, §2, §5, §6 remain in force as amended
+there.
 
 ## Context
 
