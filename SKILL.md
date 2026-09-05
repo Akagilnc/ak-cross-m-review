@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: Use when the user explicitly requests CMR or cross-model review of a fixed target through one or two parallel completeness and correctness lens legs, or when a CMR preset delegates to this shared engine.
+description: Use when the user requests CMR (cross-model review) of a fixed target — one leg per selected lens on the caller's harness — or a CMR preset delegates here.
 allowed-tools:
   - Agent
   - Bash
@@ -11,12 +11,13 @@ allowed-tools:
 
 # /ak-cross-m-review — fixed-target review engine
 
-This file plus each selected prompt is the complete active authority. See
-`CONTEXT.md` for vocabulary.
+This file plus each selected prompt is the complete active authority. See `CONTEXT.md` for vocabulary.
 
 **REVIEW ONLY.** Pin one fixed target and authority set, run the selected lens
 legs, judge their candidates independently, report, and stop. The caller owns
 every repair, commit, retry, and later review.
+
+Model composition is the callers: each lens runs as one leg on whatever the harness supplies; a caller who wants cross-model coverage composes it (two harnesses, or a harness fan-out).
 
 ## Invocation
 
@@ -41,8 +42,8 @@ Run from the target repository:
    git status --porcelain=v1 --untracked-files=all -- :/ ':(top,exclude).claude/worktrees/**'
    ```
 2. Resolve literal `PRE_HEAD` with `git rev-parse --verify 'HEAD^{commit}'`,
-   `BASE_SHA` with `git rev-parse --verify '<base>^{commit}'`, `TARGET_ROOT` with
-   `git rev-parse --show-toplevel`, and `PRE_REF` with `git symbolic-ref -q HEAD` (or record `detached`).
+   `BASE_SHA` with `git rev-parse --verify '<base>^{commit}'`, and `TARGET_ROOT`
+   with `git rev-parse --show-toplevel`.
 3. Substitute those SHAs and freeze these commands exactly:
 
    ```text
@@ -53,8 +54,7 @@ Run from the target repository:
 4. Run the frozen log command and require the frozen diff command to produce a
    non-empty diff.
 
-A dirty tree, unresolved required ref, unexpected failed command, or empty diff is a `hard-stop`.
-Record the exact failing command and its native output in one sentence.
+A dirty tree, unresolved required ref, unexpected failed command, or empty diff is a `hard-stop`. Record the exact failing command and its native output in one sentence.
 
 Completion criterion: clean status, literal pin values, and one non-empty diff represented by the two frozen commands.
 
@@ -172,6 +172,8 @@ remedy_reason: unconstitutional | over_defense | not_established | scope_creep
 remedy_evidence: required when rejected
 ```
 
+A real defect stays live when only its proposed remedy is rejected.
+
 These are the four lawful rejection reasons: `unconstitutional` conflicts with
 ratified authority; `over_defense` adds an unjustified guard; `not_established`
 lacks proof in the fixed target; `scope_creep` applies only when a remedy
@@ -179,11 +181,10 @@ invents unauthorized behavior. A pre-existing or adjacent defect remains
 eligible. Difficulty is never a rejection reason. Deletion or simplification
 outranks an equivalent added mechanism.
 
-After every selected leg has a judgment or evidenced failure, seal once:
+After every selected leg has a judgment or evidenced failure, seal once, from `TARGET_ROOT` (the commands below run with `TARGET_ROOT` as their working directory):
 
 1. require `git rev-parse 'HEAD^{commit}'` to equal `PRE_HEAD`;
-2. require `git symbolic-ref -q HEAD` to equal `PRE_REF`, including the recorded `detached` state;
-3. run this status gate and require no output, excluding only harness worktrees:
+2. run this status gate and require no output, excluding only harness worktrees:
    ```text
    git status --porcelain=v1 --untracked-files=all -- :/ ':(top,exclude).claude/worktrees/**'
    ```
@@ -199,11 +200,10 @@ CMR-VERDICT: correctness=converged|findings|hard-stop|escalate
 ```
 
 Completeness is `complete` when no live gap or unresolved `unverifiable` row
-remains; otherwise it is `gaps`, unless disposing a candidate requires a genuine
-owner decision, in which case the lens is `escalate`.
-Correctness is `converged` when no live defect remains; otherwise it is
-`findings`, unless disposing a candidate requires a genuine owner decision, in
-which case the lens is `escalate`.
+remains; otherwise it is `gaps`. Correctness is `converged` when no live defect
+remains; otherwise it is `findings`. A lens is `escalate` only when a candidate's
+`defect` disposition itself requires a genuine owner decision; `remedy: owner_decision`
+leaves the lens verdict on the defect outcome.
 `hard-stop` means a prerequisite, seal, or leg failure as defined above; Step 1 pin and seal failures apply to every selected lens, while Step 2 and leg failures apply only to that lens. A `--lens` usage error emits no verdict line.
 
 Completion criterion: after the single successful seal, every selected lens has an independent judgment or evidenced failure and exactly one labelled verdict;
