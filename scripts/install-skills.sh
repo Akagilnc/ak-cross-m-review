@@ -20,17 +20,18 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SKILLS_DIR="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
 mkdir -p "$SKILLS_DIR"
-refusals=0
+failures=0
 
 link() {
   local name="$1" target="$2" destination="$SKILLS_DIR/$1"
   if [ ! -d "$target" ] || [ ! -f "$target/SKILL.md" ]; then
     echo "install-skills: skip $name — no SKILL.md at $target" >&2
+    failures=$((failures + 1))
     return 0
   fi
   if [ -e "$destination" ] && [ ! -L "$destination" ]; then
     echo "install-skills: refuse $destination — destination exists and is not a symlink" >&2
-    refusals=$((refusals + 1))
+    failures=$((failures + 1))
     return 0
   fi
   ln -sfn "$target" "$destination"
@@ -41,8 +42,8 @@ echo "Installing cross-model-review skills into $SKILLS_DIR:"
 link "ak-cross-m-review" "$REPO_ROOT"
 link "ak-cmr-completeness"  "$REPO_ROOT/skills/ak-cmr-completeness"
 link "ak-cmr-correctness"   "$REPO_ROOT/skills/ak-cmr-correctness"
-if [ "$refusals" -ne 0 ]; then
-  echo "install-skills: failed — refused $refusals non-symlink destination(s)" >&2
+if [ "$failures" -ne 0 ]; then
+  echo "install-skills: failed — $failures skill(s) not installed" >&2
   exit 1
 fi
 echo "Done. Restart / re-scan skills if your client caches the list."
