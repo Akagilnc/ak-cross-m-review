@@ -20,6 +20,7 @@ scripts/install-skills.sh
 
 ## Testing
 
-This repository has no executable surface and no tests. ADR 0003 still forbids
-tests that pin documentation wording; review prose changes against the active
-authority and Git diff.
+The review engine has no executable surface and no tests;
+`scripts/install-skills.sh` is an installation helper only. ADR 0003 still
+forbids tests that pin documentation wording; review prose changes against the
+active authority and Git diff.

@@ -23,8 +23,8 @@ both lenses together; see `SKILL.md` Invocation.
 - a harness that can dispatch sub-agents in isolated copies;
 - Git for pinning and sealing the fixed target.
 
-There is no executable surface in this repository. The harness supplies the
-execution environment.
+The review engine has no executable surface or tests; `scripts/install-skills.sh`
+is an installation helper only. The harness supplies the execution environment.
 
 ## Repository map
 
