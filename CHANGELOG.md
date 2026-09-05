@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.5.1.0 — 2026-09-05
+
+`SKILL.md` pruned 210 → 170 lines with no rule lost: each rule now has one
+home (hard-stop scoping in Step 5, candidate contracts in the lens prompts,
+the pin sequence in the role boundary), and the disposition schema and
+admissible-candidate block are one sentence each. One incident-backed
+clarification: a leg needs a copy of the *target* at `PRE_HEAD`; the harness
+provides it when it can (Claude Code `isolation: worktree`, only when the
+session's repository is the target), otherwise the caller creates one
+worktree per leg — ADR 0005, `CONTEXT.md`, and `README.md` say the same.
+
 ## 0.5.0.0 — 2026-09-05
 
 CMR is now two parallel lens legs on your harness. `--lens all` dispatches

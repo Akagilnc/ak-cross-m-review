@@ -19,9 +19,13 @@ lens's result. The skill does not select models or transports and does not
 require cross-model composition: a sub-agent is a harness primitive, and which
 model runs it — or how many times the caller invokes a lens under different
 harnesses — is the caller's business, exactly as `code-review` treats its two
-axes. Isolation is the harness's business too: each leg works in the
-harness-provided independent copy of the target (Claude Code `Agent`
-`isolation: worktree`, the Codex sandbox) under a review-only brief; the skill
+axes. Isolation is not the skill's business either: each leg works in an
+independent copy OF THE TARGET at `PRE_HEAD` under a review-only brief. The
+harness provides that copy when it can (Claude Code `Agent`
+`isolation: worktree` — only when the session's repository is the target);
+when it cannot (an external target, or the Codex sandbox, which shares the
+working tree), the caller creates one worktree per leg from `TARGET_ROOT`
+(amended 2026-09-05 after both cases were observed). The skill
 neither builds nor audits copies it did not create; the one-line precondition
 a leg runs on its own copy (its top level is not `TARGET_ROOT`) is the leg's
 pin, not a skill audit. The judge stays: the invoking session
