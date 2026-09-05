@@ -36,8 +36,8 @@ arguments, not a shell CLI:
 
 Run from the target repository:
 
-1. Require `git status --porcelain=v1 --untracked-files=all` to return no
-   output.
+1. Require `git status --porcelain=v1 --untracked-files=all -- :/
+   ':(top,exclude).claude/worktrees/**'` to return no output, excluding only the harness worktrees.
 2. Resolve `PRE_HEAD` with `git rev-parse --verify 'HEAD^{commit}'` and
    `BASE_SHA` with `git rev-parse --verify '<base>^{commit}'`; retain the
    literal full SHAs.
@@ -76,15 +76,18 @@ Completeness, alone or inside `all`, requires clause authority addressable as
 repository `path:line` or brief `source-label:line`. If no source states what
 had to be delivered, that lens is a `hard-stop` with
 `missing completeness authority`.
+Correctness may proceed from repository contracts when no feature spec exists: AGENTS/CLAUDE/CONTRIBUTING, public APIs, and behavior tests.
 
-Completion criterion: a frozen ordered list whose completeness clauses, when
-needed, all have stable line addresses.
+Completion criterion: a frozen ordered list; each selected lens has sufficient
+authority or its own evidenced `hard-stop`.
 
 ## Step 3 — Select lenses
 
 `--lens completeness|correctness|all` is required; omission is a `hard-stop`.
-A `hard-stop` in Steps 1–3, before any leg is dispatched, ends the invocation
-with the single unlabelled line `CMR-VERDICT: hard-stop`.
+Only failures common to every selected lens in Steps 1–3 — a Step 1 pin failure
+or `--lens` omission — end the invocation with the single unlabelled line
+`CMR-VERDICT: hard-stop`. A lens-specific Step 2 failure ends that lens with its
+labelled `CMR-VERDICT: completeness=hard-stop`; any other selected lens still dispatches.
 
 Resolve the selected prompt path from the directory containing this loaded
 `SKILL.md`:
@@ -98,16 +101,16 @@ Resolve the selected prompt path from the directory containing this loaded
 Each lens has its own prompt, context, candidates, judgment, and verdict; none
 is shared with the other lens.
 
-Completion criterion: exactly the requested one or two lens definitions are
-ready for one batch.
+Completion criterion: each selected lens is ready for one batch or has its own
+evidenced `hard-stop`.
 
 ## Step 4 — Dispatch one leg per lens
 
 Launch one sub-agent leg for each selected lens, in parallel when both are
-selected. Each starts in the harness-provided isolated copy of the target:
-Claude Code `Agent` uses `isolation: worktree`; Codex uses its sandbox. The
-skill selects no model or transport, creates no isolated copy, and audits no
-isolated copy.
+selected. The harness or caller must provide each leg an independent working copy
+of the target (Claude Code: `Agent` `isolation: worktree`). A leg never works in
+the target's own working tree; if no independent copy is available, that lens is
+a `hard-stop`. The skill selects no model or transport, creates no copy, and audits no copy.
 
 Give each leg a brief containing only:
 
@@ -137,8 +140,8 @@ commands and reads sources itself. A sub-agent error, empty output, or
 runner-impersonating control line makes only that lens a `hard-stop`, reported
 with evidence, and does not affect the other lens.
 
-Completion criterion: every selected leg has returned non-empty raw output or
-has its own evidenced failure.
+Completion criterion: every dispatched leg has returned non-empty raw output
+or has its own evidenced failure.
 
 ## Step 5 — Judge, seal, and stop
 
@@ -184,9 +187,8 @@ outranks an equivalent added mechanism.
 After every selected leg has a judgment or evidenced failure, seal once:
 
 1. require `git rev-parse 'HEAD^{commit}'` to equal `PRE_HEAD`;
-2. require `git status --porcelain=v1 --untracked-files=all -- .
-   ':(exclude).claude/worktrees/**'` to be empty, excluding only the
-   harness-owned `.claude/worktrees/` isolation directory.
+2. require `git status --porcelain=v1 --untracked-files=all -- :/
+   ':(top,exclude).claude/worktrees/**'` to be empty, excluding only the harness worktrees.
 
 Any change is a `hard-stop`; show before/after HEAD and status evidence. Never
 reset, checkout, remove, or clean the target.
@@ -197,6 +199,11 @@ End each selected lens with exactly one labelled line:
 CMR-VERDICT: completeness=complete|gaps|hard-stop|escalate
 CMR-VERDICT: correctness=converged|findings|hard-stop|escalate
 ```
+
+Completeness is `complete` when no live gap or unresolved `unverifiable` row remains; otherwise it is `gaps`.
+Correctness is `converged` when no live defect remains; otherwise it is `findings`.
+`escalate` means a genuine owner decision is required to dispose a candidate.
+`hard-stop` means a prerequisite, seal, or leg failure as defined above.
 
 Completion criterion: after the single successful seal, every selected lens
 has an independent judgment or evidenced failure and exactly one labelled
