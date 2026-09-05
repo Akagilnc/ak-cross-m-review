@@ -119,7 +119,7 @@ enough. A symbol, hunk header, or path without a real line number is not a
 location and must not be submitted.
 
 Severity describes consequence, not confidence. Do not raise it because a
-claim is well grounded or likely to be repeated by another reviewer.
+claim is well grounded.
 
 ## Output
 
