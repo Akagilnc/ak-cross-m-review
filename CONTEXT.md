@@ -22,8 +22,9 @@ authority delivered?) or `correctness` (is what exists right?).
 _Avoid_: axis, gate, mode, pass
 
 **Leg**:
-One independent sub-agent running exactly one lens inside a harness-provided
-isolated copy of the target. A lens has exactly one leg per invocation.
+One independent sub-agent running exactly one lens inside an independent copy
+of the target at `PRE_HEAD` — provided by the harness when it can, otherwise
+created by the caller. A lens has exactly one leg per invocation.
 _Avoid_: panel, member, reviewer squad, vendor leg
 
 **Candidate**:
