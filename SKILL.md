@@ -83,6 +83,11 @@ needed, all have stable line addresses.
 ## Step 3 — Select lenses
 
 `--lens completeness|correctness|all` is required; omission is a `hard-stop`.
+A `hard-stop` in Steps 1–3, before any leg is dispatched, ends the invocation
+with the single unlabelled line `CMR-VERDICT: hard-stop`.
+
+Resolve the selected prompt path from the directory containing this loaded
+`SKILL.md`:
 
 - `completeness` loads `prompts/cmr-completeness.md` and applies
   Clause–Wire–Exercise.
@@ -109,13 +114,17 @@ Give each leg a brief containing only:
 - this reviewer role boundary;
 - literal `BASE_SHA` and `PRE_HEAD`;
 - the two frozen commands from Step 1;
-- its lens prompt path under `prompts/`;
+- the absolute lens prompt path resolved in Step 3;
 - the ordered authority list; and
 - the candidate contract from Step 5.
 
 Reviewer role boundary:
 
 > Review exactly one lens in the assigned harness-provided isolated copy.
+> Pin first: verify `git rev-parse HEAD` equals literal `PRE_HEAD` and literal
+> `BASE_SHA` resolves; when HEAD differs, detach only this isolated copy at
+> `PRE_HEAD`, then verify again. If either pin cannot be established, return
+> this lens as a `hard-stop` with exact command evidence.
 > Run the frozen commands, inspect the named authority and repository, perform
 > useful tests or probes, and submit only evidence-backed candidates under the
 > candidate contract. Work review only: preserve the fixed target and leave
@@ -175,7 +184,9 @@ outranks an equivalent added mechanism.
 After every selected leg has a judgment or evidenced failure, seal once:
 
 1. require `git rev-parse 'HEAD^{commit}'` to equal `PRE_HEAD`;
-2. require `git status --porcelain=v1 --untracked-files=all` to be empty.
+2. require `git status --porcelain=v1 --untracked-files=all -- .
+   ':(exclude).claude/worktrees/**'` to be empty, excluding only the
+   harness-owned `.claude/worktrees/` isolation directory.
 
 Any change is a `hard-stop`; show before/after HEAD and status evidence. Never
 reset, checkout, remove, or clean the target.
