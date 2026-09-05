@@ -19,10 +19,12 @@ _Avoid_: spec (alone), reference docs
 **Lens**:
 One review question with its own prompt file — `completeness` (was the
 authority delivered?) or `correctness` (is what exists right?).
+_Avoid_: axis, gate, mode, pass
 
 **Leg**:
 One independent sub-agent running exactly one lens inside a harness-provided
 isolated copy of the target. A lens has exactly one leg per invocation.
+_Avoid_: panel, member, reviewer squad, vendor leg
 
 **Candidate**:
 An evidence-backed claim a leg submits for judgment; never a verdict.

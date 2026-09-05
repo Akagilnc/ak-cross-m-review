@@ -22,7 +22,9 @@ harnesses — is the caller's business, exactly as `code-review` treats its two
 axes. Isolation is the harness's business too: each leg works in the
 harness-provided independent copy of the target (Claude Code `Agent`
 `isolation: worktree`, the Codex sandbox) under a review-only brief; the skill
-neither builds nor audits clones. The judge stays: the invoking session
+neither builds nor audits copies it did not create; the one-line precondition
+a leg runs on its own copy (its top level is not `TARGET_ROOT`) is the leg's
+pin, not a skill audit. The judge stays: the invoking session
 verifies each candidate against the fixed target and authority set, disposes it
 `live` / `refuted` under the four lawful rejection reasons, and adjudicates a
 defect separately from its remedy.

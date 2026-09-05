@@ -11,17 +11,23 @@ clean, unmoved, remote-free scratch" through "without reset or cleanup"
 (isolation is the harness's; the skill neither builds nor audits copies) —
 while the sentence between those two ranges, "Original-target mutation
 hard-stops with evidence", stays in force; §9 (no executable surface remains,
-so no behavior tests); §10's scratch-clone clause; §1's "explicit ordered
-`all` gate" / "fresh panel passes" sentences; and §11's six-item packet
+so no behavior tests); §10's clause "every transport runs with cwd at its own
+writable scratch clone" and its second sentence ("Reviewers may install, test,
+and probe there …", whose "there" is that clone); §1's "explicit ordered
+`all` gate" / "fresh panel passes" sentences; §11's six-item packet
 enumeration (the v0.5 brief, listed in `SKILL.md` Step 4, also carries
-`TARGET_ROOT` and the lens prompt's text). Still in force: §1's review-only
+`TARGET_ROOT` and the lens prompt's text); and §11's sentence "Equal reviewer
+input means equal target/range, authority, lens, and candidate contract"
+(moot with one leg per lens). Still in force: §1's review-only
 boundary; §2's target-pinning, authority-freezing, and "original-target
 mutation hard-stops with evidence" clauses; §5's adjudication doctrine (its
 "Panel outputs … verifies their union" wording is superseded — one leg per
-lens, no union); §6; §7; §8; §10's first sentence (prompts resolve from the
-directory containing the loaded `SKILL.md`, now the Step 4 brief item "read
-from `prompts/` beside this loaded `SKILL.md`"); §11's "never embeds …
-the diff or repository files" clause (the target's, not the lens prompt).
+lens, no union); §6; §7; §8; §10's opening clause "Prompts … resolve from the
+physical directory containing the loaded `SKILL.md`" (adapters no longer
+exist; the clause now lives as the Step 4 brief item "read from `prompts/`
+beside this loaded `SKILL.md`") and §10's `path:line` anchor sentences; §11's
+"never embeds … the diff or repository files" clause (the target's, not the
+lens prompt).
 The Consequences section below is the 2026-07 record: only its first, third,
 and sixth bullets still describe v0.5; the others (model-family diversity,
 adapters, independent clones, ordered `all`) are historical.
