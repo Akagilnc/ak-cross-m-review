@@ -17,7 +17,7 @@ This file plus each selected prompt is the complete active authority. See `CONTE
 legs, judge their candidates independently, report, and stop. The caller owns
 every repair, commit, retry, and later review.
 
-Model composition is the caller's: each lens runs as one leg on whatever the harness supplies; a caller who wants cross-model coverage composes it (two harnesses, or a harness fan-out).
+Model composition is the caller's: each lens runs as one leg on whatever the harness supplies; a caller who wants cross-model coverage composes it (outside this skill, for example by invoking it under different harnesses).
 
 ## Invocation
 
@@ -172,6 +172,8 @@ remedy_reason: unconstitutional | over_defense | not_established | scope_creep
 remedy_evidence: required when rejected
 ```
 
+A candidate the four reasons cannot dispose stays `live`, and the report names the owner decision it needs.
+
 A real defect stays live when only its proposed remedy is rejected.
 
 These are the four lawful rejection reasons: `unconstitutional` conflicts with
@@ -195,15 +197,13 @@ reset, checkout, remove, or clean the target.
 End each selected lens with exactly one labelled line:
 
 ```text
-CMR-VERDICT: completeness=complete|gaps|hard-stop|escalate
-CMR-VERDICT: correctness=converged|findings|hard-stop|escalate
+CMR-VERDICT: completeness=complete|gaps|hard-stop
+CMR-VERDICT: correctness=converged|findings|hard-stop
 ```
 
 Completeness is `complete` when no live gap or unresolved `unverifiable` row
 remains; otherwise it is `gaps`. Correctness is `converged` when no live defect
-remains; otherwise it is `findings`. A lens is `escalate` only when a candidate's
-`defect` disposition itself requires a genuine owner decision; `remedy: owner_decision`
-leaves the lens verdict on the defect outcome.
+remains; otherwise it is `findings`.
 `hard-stop` means a prerequisite, seal, or leg failure as defined above; Step 1 pin and seal failures apply to every selected lens, while Step 2 and leg failures apply only to that lens. A `--lens` usage error emits no verdict line.
 
 Completion criterion: after the single successful seal, every selected lens has an independent judgment or evidenced failure and exactly one labelled verdict;
