@@ -40,9 +40,9 @@ Run from the target repository:
    ```text
    git status --porcelain=v1 --untracked-files=all -- :/ ':(top,exclude).claude/worktrees/**'
    ```
-2. Resolve `PRE_HEAD` with `git rev-parse --verify 'HEAD^{commit}'` and
-   `BASE_SHA` with `git rev-parse --verify '<base>^{commit}'`; retain the
-   literal full SHAs.
+2. Resolve literal `PRE_HEAD` with `git rev-parse --verify 'HEAD^{commit}'`,
+   `BASE_SHA` with `git rev-parse --verify '<base>^{commit}'`, `TARGET_ROOT` with
+   `git rev-parse --show-toplevel`, and `PRE_REF` with `git symbolic-ref -q HEAD` (or record `detached`).
 3. Substitute those SHAs and freeze these commands exactly:
 
    ```text
@@ -53,11 +53,10 @@ Run from the target repository:
 4. Run the frozen log command and require the frozen diff command to produce a
    non-empty diff.
 
-A dirty tree, unresolved ref, failed command, or empty diff is a `hard-stop`.
+A dirty tree, unresolved required ref, unexpected failed command, or empty diff is a `hard-stop`.
 Record the exact failing command and its native output in one sentence.
 
-Completion criterion: clean status, two literal commit SHAs, and one non-empty
-diff represented by the two frozen commands.
+Completion criterion: clean status, literal pin values, and one non-empty diff represented by the two frozen commands.
 
 ## Step 2 — Pin the authority set
 
@@ -104,16 +103,13 @@ evidenced `hard-stop`.
 
 ## Step 4 — Dispatch one leg per lens
 
-Launch one sub-agent leg for each selected lens, in parallel when both are
-selected. The harness or caller must provide each leg an independent working copy
-of the target (Claude Code: `Agent` `isolation: worktree`). A leg never works in
-the target's own working tree; if no independent copy is available, that lens is
-a `hard-stop`. The skill selects no model or transport, creates no copy, and audits no copy.
+Launch one sub-agent leg for each selected lens, in parallel when both are selected. The harness or caller provides each leg an independent working copy
+(Claude Code: `Agent` `isolation: worktree`). The skill selects no model or transport and creates no copy.
 
 Give each leg a brief containing only:
 
 - this reviewer role boundary;
-- literal `BASE_SHA` and `PRE_HEAD`;
+- literal `BASE_SHA`, `PRE_HEAD`, and `TARGET_ROOT`;
 - the two frozen commands from Step 1;
 - the full text of the selected lens prompt, read from `prompts/` beside this loaded `SKILL.md`;
 - the ordered authority list; and
@@ -122,10 +118,11 @@ Give each leg a brief containing only:
 Reviewer role boundary:
 
 > Review exactly one lens in the assigned harness-provided isolated copy.
-> Pin first: verify `git rev-parse HEAD` equals literal `PRE_HEAD` and literal
-> `BASE_SHA` resolves; when HEAD differs, detach only this isolated copy at
-> `PRE_HEAD`, then verify again. If either pin cannot be established, return
-> this lens as a `hard-stop` with exact command evidence.
+> Pin first: require `git rev-parse --show-toplevel` to differ from literal
+> `TARGET_ROOT`; equality means no independent copy, so return this lens as a
+> `hard-stop` with evidence and do not detach. Then verify `git rev-parse HEAD`
+> equals literal `PRE_HEAD` and literal `BASE_SHA` resolves; when HEAD differs,
+> detach only this isolated copy at `PRE_HEAD`, then verify again. If any pin cannot be established, return this lens as a `hard-stop` with exact evidence.
 > Run the frozen commands, inspect the named authority and repository, perform
 > useful tests or probes, and submit only evidence-backed candidates under the
 > candidate contract. Work review only: preserve the fixed target and leave
@@ -185,7 +182,8 @@ outranks an equivalent added mechanism.
 After every selected leg has a judgment or evidenced failure, seal once:
 
 1. require `git rev-parse 'HEAD^{commit}'` to equal `PRE_HEAD`;
-2. run this status gate and require no output, excluding only harness worktrees:
+2. require `git symbolic-ref -q HEAD` to equal `PRE_REF`, including the recorded `detached` state;
+3. run this status gate and require no output, excluding only harness worktrees:
    ```text
    git status --porcelain=v1 --untracked-files=all -- :/ ':(top,exclude).claude/worktrees/**'
    ```
@@ -200,11 +198,13 @@ CMR-VERDICT: completeness=complete|gaps|hard-stop|escalate
 CMR-VERDICT: correctness=converged|findings|hard-stop|escalate
 ```
 
-Completeness is `complete` when no live gap or unresolved `unverifiable` row remains; otherwise it is `gaps`.
-Correctness is `converged` when no live defect remains; otherwise it is `findings`.
-`escalate` means a genuine owner decision is required to dispose a candidate.
+Completeness is `complete` when no live gap or unresolved `unverifiable` row
+remains; otherwise it is `gaps`, unless disposing a candidate requires a genuine
+owner decision, in which case the lens is `escalate`.
+Correctness is `converged` when no live defect remains; otherwise it is
+`findings`, unless disposing a candidate requires a genuine owner decision, in
+which case the lens is `escalate`.
 `hard-stop` means a prerequisite, seal, or leg failure as defined above; Step 1 pin and seal failures apply to every selected lens, while Step 2 and leg failures apply only to that lens. A `--lens` usage error emits no verdict line.
 
-Completion criterion: after the single successful seal, every selected lens
-has an independent judgment or evidenced failure and exactly one labelled
-verdict. Stop unconditionally.
+Completion criterion: after the single successful seal, every selected lens has an independent judgment or evidenced failure and exactly one labelled verdict;
+or, on an evidenced pin or seal failure, every selected lens carries its labelled `hard-stop`. Stop unconditionally.
