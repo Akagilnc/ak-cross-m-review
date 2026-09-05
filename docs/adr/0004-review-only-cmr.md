@@ -4,10 +4,13 @@
 
 Accepted (2026-07-15); amended 2026-07-16, owner decision. Amended again
 2026-09-05 by ADR 0005, which supersedes: §3 (ordered `all`); §4 (panel
-composition, family floor, transport adapters); §2's clone sentences — every
-clause from "Each panel member receives an independent writable clone" through
-"preserve every dirty, moved, or remote-changed leg" (isolation is the
-harness's; the skill neither builds nor audits copies); §9 (no executable
+composition, family floor, transport adapters); §2's clone sentences — the
+four sentences from "Each panel member receives an independent writable clone"
+through "rejects a destination inside the original target", and the two
+scratch-preservation sentences from "Only clean, unmoved, remote-free scratch"
+through "without reset or cleanup" (isolation is the harness's; the skill
+neither builds nor audits copies) — while the sentence between them,
+"Original-target mutation hard-stops with evidence", stays in force; §9 (no executable
 surface remains, so no behavior tests); §10's scratch-clone clause; and §1's
 "explicit ordered `all` gate" / "fresh panel passes" sentences. Still in
 force: §1's review-only boundary; §2's target-pinning, authority-freezing, and
