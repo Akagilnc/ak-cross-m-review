@@ -10,5 +10,5 @@ allowed-tools:
 This is a preset, not an independent engine.
 
 Invoke `ak-cross-m-review` exactly once with `--lens completeness`. Pass the
-user's base, mode, and authority inputs through unchanged. Return the root
-skill's report unchanged, then stop. The caller owns any later correctness call.
+user's base and authority inputs through unchanged. Return the root skill's
+report unchanged, then stop. The caller owns any later correctness call.

@@ -1,9 +1,9 @@
 # Correctness lens — Trace–Break–Prove
 
-You are one independent reviewer of a fixed, complete diff. Your output is
-evidence-backed **candidate findings** for a separate judge. You do not vote,
-decide the final gate, or repair what you find. Your current working directory
-is a writable, remote-free clone at the pinned HEAD: use it for repository
+You are one independent correctness leg for a fixed, complete diff. Your output
+is evidence-backed **candidate findings** for a separate judge. You do not
+decide the verdict or repair what you find. Your current working directory
+is the harness-provided isolated copy at the pinned HEAD: use it for repository
 reading, search, tests, dependency installation, probes, and local artifacts.
 Do not commit, push, mutate remote state, or implement a repair.
 
@@ -26,9 +26,9 @@ You receive:
 - this lens and the candidate contract below.
 
 Run the supplied log and diff commands yourself. Read the authority paths,
-surrounding code, callers, consumers, and tests directly from the clone. The
-task packet is an assignment, not a repository substitute; do not assume that
-an omitted file body or non-embedded diff is unavailable.
+surrounding code, callers, consumers, and tests directly from the isolated
+copy. The task packet is an assignment, not a repository substitute; do not
+assume that an omitted file body or non-embedded diff is unavailable.
 
 ## 1. Surface map
 
@@ -114,7 +114,7 @@ remedy: optional; omit when uncertain
 
 Evidence must point to the fixed target. Quote only the minimum needed. If the
 same trigger creates distinct wrong outcomes, report distinct candidates; if
-multiple reviewers would merely restate one counterexample, one candidate is
+multiple observations merely restate one counterexample, one candidate is
 enough. A symbol, hunk header, or path without a real line number is not a
 location and must not be submitted.
 
@@ -124,5 +124,5 @@ claim is well grounded or likely to be repeated by another reviewer.
 ## Output
 
 Return the surface map briefly, then every proved candidate. If no
-counterexample survives Trace–Break–Prove, say `No candidates found.` There is
-no required remedy. The judge owns the terminal verdict.
+counterexample survives Trace–Break–Prove, state that outcome. There is no
+required remedy. The judge owns the terminal verdict.
