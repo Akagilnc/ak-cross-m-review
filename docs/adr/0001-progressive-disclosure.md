@@ -4,10 +4,12 @@
 
 Accepted（2026-07-13）
 
-> 2026-09-05（ADR 0005）：§规则→唯一权威位置映射 中指向 `DOC-MODE.md`
-> （ADR 0004 §8 已删）、`TESTING.md`、`SKILL.md` Step 2「Reasoning-effort
-> contract」（均随 v0.5 删除）的行自此为历史记录；现役权威位置只有
-> `SKILL.md` 各 Step、两份 lens prompt 与 `CONTEXT.md`。
+> 2026-09-05（ADR 0005）：§规则→唯一权威位置映射 整张表自此为历史记录——
+> 它点名的位置（`DOC-MODE.md`、`TESTING.md`、Step 0 / Step 2 各 bullet、
+> §缺钉闸、§Submission contract 等）多数已随 v0.4/v0.5 删除或改写，且其中
+> 部分规则（如「严禁合一次 cmr 闸」的顺序含义）已被 ADR 0005 推翻。现役权威
+> 位置只有 `SKILL.md` 各 Step、两份 lens prompt 与 `CONTEXT.md`；后续 dedup
+> 轮以此为基准，不以本表为基准。
 
 > 2026-07-13（同日，#38）：本 ADR 描述的测试侧保护（golden hash ×2、anti-dual-source / shared-rationale-survival 断言、存在性/关键句测试）已按用户裁定整体移除；§Golden-hash 迁移规则与 Consequences 中的相关描述自此为历史记录，不再现役。规则留痕改由 prose 内 RECORDED 标记 + git 史承担（见 ADR 0003，issue #41）。
 >
