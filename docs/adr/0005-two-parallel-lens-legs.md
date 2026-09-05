@@ -46,8 +46,9 @@ defect separately from its remedy.
 ## Consequences
 
 - `backends/`, their behavior tests, the selftest, and the pytest scaffolding
-  are deleted; the repository has no executable surface and therefore no
-  tests (ADR 0003 §3–§4 no longer have a subject). `--mode` is removed — it
+  are deleted; the review engine has no executable surface and therefore no
+  tests — `scripts/install-skills.sh` remains as an installation helper only
+  (ADR 0003 §3–§4 no longer have a subject). `--mode` is removed — it
   only ever validated itself.
 - The `CMR-VERDICT:` contract becomes one labelled line per lens; an `all`
   invocation prints two. No executable consumer depended on the single-line

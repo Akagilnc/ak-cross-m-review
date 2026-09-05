@@ -8,8 +8,9 @@ composition, family floor, transport adapters); §2's clone sentences — every
 clause from "Each panel member receives an independent writable clone" through
 "preserve every dirty, moved, or remote-changed leg" (isolation is the
 harness's; the skill neither builds nor audits copies); §9 (no executable
-surface remains, so no behavior tests); and §10's scratch-clone clause. Still
-in force: §1; §2's target-pinning, authority-freezing, and
+surface remains, so no behavior tests); §10's scratch-clone clause; and §1's
+"explicit ordered `all` gate" / "fresh panel passes" sentences. Still in
+force: §1's review-only boundary; §2's target-pinning, authority-freezing, and
 "original-target mutation hard-stops with evidence" clauses; §5; §6; §7; §8;
 §10's first sentence (prompts resolve from the directory containing the loaded
 `SKILL.md`, now `SKILL.md` Step 3); §11.
