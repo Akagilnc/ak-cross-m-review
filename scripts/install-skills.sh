@@ -25,7 +25,7 @@ link() {
   local name="$1" target="$2"
   if [ ! -d "$target" ] || [ ! -f "$target/SKILL.md" ]; then
     echo "install-skills: skip $name — no SKILL.md at $target" >&2
-    return 1
+    return 0
   fi
   ln -sfn "$target" "$SKILLS_DIR/$name"
   echo "  ✓ $SKILLS_DIR/$name -> $target"
