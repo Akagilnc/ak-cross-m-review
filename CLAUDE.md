@@ -9,7 +9,7 @@ and ADR 0005 records the owner-approved v0.5 boundary. The named skills under
 
 Use `SKILL.md` Steps 1–5 for pinning, authority, lens selection, harness
 dispatch, judgment, sealing, and termination. Do not duplicate that procedure
-here. The harness must provide sub-agents and isolated copies; this repository
+here. The harness must provide sub-agents and isolated copies for `all` only; this repository
 provides instructions and prompts only.
 
 Install the engine and both presets with:

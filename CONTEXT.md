@@ -1,8 +1,6 @@
 # ak-cross-m-review
 
-Local, pre-PR review gate: two independent lenses run as parallel sub-agents
-against a pinned diff and report one verdict each. `SKILL.md` plus the selected
-lens prompt is the complete active authority; this file is vocabulary only.
+Local, pre-PR review gate: two independent lenses against a pinned diff, one verdict each; a single lens runs in the invoking session, `all` runs both as parallel sub-agent legs. `SKILL.md` plus the selected lens prompt is the complete active authority; this file is vocabulary only.
 
 ## Language
 
@@ -22,9 +20,7 @@ authority delivered?) or `correctness` (is what exists right?).
 _Avoid_: axis, gate, mode, pass
 
 **Leg**:
-One independent sub-agent running exactly one lens inside an independent copy
-of the target at `PRE_HEAD` — provided by the harness when it can, otherwise
-created by the caller. A lens has exactly one leg per invocation.
+One independent sub-agent running exactly one lens inside an independent copy of the target at `PRE_HEAD`, dispatched only by `all`; the copy is provided by the harness when it can, otherwise created by the caller. A single-lens invocation has no leg: the invoking session applies the lens itself.
 _Avoid_: panel, member, reviewer squad, vendor leg
 
 **Candidate**:

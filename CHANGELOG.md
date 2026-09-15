@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.5.2.0 — 2026-09-15
+
+A single-lens invocation now runs in the invoking session: no sub-agent, no separate working copy. The session applies the lens prompt, writes its candidate list, removes its own probe residue, and judges; seal residue is re-cleaned rather than hard-stopped, and only a moved HEAD still hard-stops. `all` is unchanged and remains the only path that dispatches sub-agent legs, so a harness without sub-agents invokes each lens separately. The lens prompts no longer assert that the working directory is a harness-provided copy. ADR 0005 amended.
+
 ## 0.5.1.0 — 2026-09-05
 
 `SKILL.md` pruned 210 → 170 lines with no rule lost: each rule now has one
