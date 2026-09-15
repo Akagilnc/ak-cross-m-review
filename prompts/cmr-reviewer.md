@@ -26,8 +26,8 @@ You receive:
 - this lens and the candidate contract below.
 
 Run the supplied log and diff commands yourself. Read the authority paths,
-surrounding code, callers, consumers, and tests directly from the isolated
-copy. The task packet is an assignment, not a repository substitute; do not
+surrounding code, callers, consumers, and tests directly from the working
+directory. The task packet is an assignment, not a repository substitute; do not
 assume that an omitted file body or non-embedded diff is unavailable.
 
 ## 1. Surface map

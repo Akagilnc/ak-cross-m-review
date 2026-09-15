@@ -20,8 +20,8 @@ You receive:
 - this lens and the candidate contract below.
 
 Run the supplied log and diff commands yourself. Read every repository authority
-path from the isolated copy and every labelled user source from the task packet,
-plus the surrounding producers, consumers, tests, and contracts. The task
+path from the working directory and every labelled user source from the task
+packet, plus the surrounding producers, consumers, tests, and contracts. The task
 packet is an assignment, not a repository substitute; do not assume that an
 omitted file body or non-embedded diff is unavailable.
 
