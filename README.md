@@ -1,11 +1,11 @@
 # ak-cross-m-review
 
 Local, pre-PR, review-only CMR. Version 0.5 runs completeness and correctness
-as independent lens legs; an `all` invocation dispatches both in parallel. The
-harness owns sub-agent execution; each leg runs in an independent copy of the
-target that the harness provides when it can and the caller creates otherwise.
-The invoking session judges each result against one fixed target and authority
-set. ADR 0005 records the owner decision.
+as independent lenses. A single lens runs in the invoking session; an `all`
+invocation dispatches both as parallel sub-agent legs, each in an independent
+copy of the target that the harness provides when it can and the caller creates
+otherwise. The invoking session judges each result against one fixed target and
+authority set. ADR 0005 records the owner decision.
 
 `SKILL.md` plus each selected prompt under `prompts/` is the complete active
 authority. For the executable review procedure, see `SKILL.md` Steps 1–5; this
@@ -21,7 +21,7 @@ both lenses together; see `SKILL.md` Invocation.
 
 ## Dependencies
 
-- a harness that can dispatch sub-agents in isolated copies;
+- a harness that can dispatch sub-agents in isolated copies (needed for `all` only);
 - Git for pinning and sealing the fixed target.
 
 The review engine has no executable surface or tests; `scripts/install-skills.sh`

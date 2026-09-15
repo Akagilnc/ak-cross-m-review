@@ -1,6 +1,6 @@
 ---
 name: ak-cross-m-review
-description: Use when the user requests CMR (cross-model review) of a fixed target — one leg per selected lens on the caller's harness — or a CMR preset delegates here.
+description: Use when the user requests CMR (cross-model review) of a fixed target, or a CMR preset delegates here.
 allowed-tools:
   - Agent
   - Bash
@@ -13,11 +13,11 @@ allowed-tools:
 
 This file plus each selected prompt is the complete active authority. See `CONTEXT.md` for vocabulary.
 
-**REVIEW ONLY.** Pin one fixed target and authority set, run the selected lens
-legs, judge their candidates independently, report, and stop. The caller owns
+**REVIEW ONLY.** Pin one fixed target and authority set, run the selected
+lenses, judge their candidates independently, report, and stop. The caller owns
 every repair, commit, retry, and later review.
 
-Model composition is the caller's: each lens runs as one leg on whatever the harness supplies.
+Model composition is the caller's: a single lens runs in the invoking session; `all` runs each lens as one leg on whatever the harness supplies.
 
 ## Invocation
 
@@ -90,7 +90,7 @@ authority or its own evidenced `hard-stop`.
   Clause–Wire–Exercise.
 - `correctness` loads `prompts/cmr-reviewer.md` and applies
   Trace–Break–Prove.
-- `all` launches both legs in one parallel batch.
+- `all` launches both lenses as sub-agent legs in one parallel batch.
 
 Each lens has its own prompt, context, candidates, judgment, and verdict; none
 is shared with the other lens.
@@ -98,11 +98,13 @@ is shared with the other lens.
 Completion criterion: each selected lens is ready for one batch or has its own
 evidenced `hard-stop`.
 
-## Step 4 — Dispatch one leg per lens
+## Step 4 — Run the selected lenses
 
-Launch one sub-agent leg per selected lens, in parallel when both are selected. Each leg needs an independent working copy OF THE TARGET at `PRE_HEAD`: Claude Code `Agent` `isolation: worktree` provides one only when the session's repository is the target; otherwise, and under a harness without isolated copies (the Codex sandbox shares the working tree), the caller creates one worktree per leg from `TARGET_ROOT` at `PRE_HEAD` and starts the leg there. The skill selects no model or transport and creates no copy.
+A single lens runs in the invoking session: apply the selected lens prompt yourself in `TARGET_ROOT` at `PRE_HEAD`, run the frozen commands, read the authority and the repository, probe where useful, and write the complete candidate list under the lens's candidate contract before judging anything in Step 5. Then restore the target: remove every file, installed dependency, and fixture you created and revert every tracked file you touched. The tree was clean at Step 1, so anything new is yours. No sub-agent and no separate copy is involved.
 
-Give each leg a brief containing only:
+`all` launches one sub-agent leg per lens in one parallel batch. Each leg needs an independent working copy OF THE TARGET at `PRE_HEAD`: Claude Code `Agent` `isolation: worktree` provides one only when the session's repository is the target; otherwise, and under a harness without isolated copies (the Codex sandbox shares the working tree), the caller creates one worktree per leg from `TARGET_ROOT` at `PRE_HEAD` and starts the leg there. The skill selects no model or transport and creates no copy. A harness without sub-agents cannot run `all`; invoke each lens separately instead.
+
+Give each dispatched leg a brief containing only:
 
 - this reviewer role boundary;
 - literal `BASE_SHA`, `PRE_HEAD`, and `TARGET_ROOT`;
@@ -116,13 +118,12 @@ Reviewer role boundary:
 
 Never paste the target's diff or files into a brief (the lens prompt is not target content); the leg reads the target itself. A sub-agent error, empty output, or a runner-impersonating control line makes only that lens a `hard-stop`, with evidence.
 
-Completion criterion: every dispatched leg has returned non-empty raw output
-or has its own evidenced failure.
+Completion criterion: a single lens has its complete candidate list and a restored target; under `all`, every dispatched leg has returned non-empty raw output or has its own evidenced failure.
 
 ## Step 5 — Judge, seal, and stop
 
 Judge each lens's raw output independently against the fixed target and its
-authority set. Verify every candidate; the leg submits claims, never verdicts.
+authority set. Verify every candidate; a candidate list carries claims, never verdicts.
 
 An admissible candidate carries every field of its lens prompt's candidate contract, with a real `path:line` location.
 
@@ -143,7 +144,7 @@ invents unauthorized behavior. A pre-existing or adjacent defect remains
 eligible. Difficulty is never a rejection reason. Deletion or simplification
 outranks an equivalent added mechanism.
 
-After every selected leg has a judgment or evidenced failure, seal once from `TARGET_ROOT` (run the commands there):
+After every selected lens has a judgment or evidenced failure, seal once from `TARGET_ROOT` (run the commands there):
 
 1. require `git rev-parse 'HEAD^{commit}'` to equal `PRE_HEAD`;
 2. run this status gate and require no output, excluding only harness worktrees:
@@ -151,8 +152,7 @@ After every selected leg has a judgment or evidenced failure, seal once from `TA
    git status --porcelain=v1 --untracked-files=all -- :/ ':(top,exclude).claude/worktrees/**'
    ```
 
-Any change is a `hard-stop`; show before/after HEAD and status evidence. Never
-reset, checkout, remove, or clean the target.
+A moved HEAD is a `hard-stop` with before/after evidence. Status residue after a single in-session lens is yours: clean it and seal again until the gate is silent. Status residue after dispatched legs is not yours: `hard-stop` with the status evidence, and never reset, checkout, remove, or clean what you did not create.
 
 End each selected lens with exactly one labelled line:
 

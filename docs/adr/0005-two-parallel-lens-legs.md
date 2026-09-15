@@ -7,11 +7,11 @@ Accepted (2026-09-05, owner decision). Supersedes ADR 0004 §3 (ordered `all`),
 sentences, §9, and §10's scratch-clone clause; ADR 0004's Status block lists
 exactly which clauses remain in force (target pinning, authority freezing,
 mutation hard-stop, judgment, lens prompts, presets, prompt resolution).
+Amended 2026-09-15 (owner decision): a single-lens invocation runs in the invoking session; see the Decision.
 
 ## Decision
 
-CMR runs each lens as one independent sub-agent leg; `--lens all` dispatches
-both legs in a single batch and each lens ends with its own labelled verdict,
+CMR runs a single selected lens in the invoking session, which applies the lens prompt, restores the target it probed, and then judges; `all` runs each lens as one independent sub-agent leg, both dispatched in a single batch, and each lens ends with its own labelled verdict,
 emitted by the judge (`CMR-VERDICT: completeness=…`,
 `CMR-VERDICT: correctness=…`); a leg submits candidates only. One leg's
 failure reports as that lens's own `hard-stop`; it never withholds the other
@@ -32,6 +32,8 @@ pin, not a skill audit. The judge stays: the invoking session
 verifies each candidate against the fixed target and authority set, disposes it
 `live` / `refuted` under the four lawful rejection reasons, and adjudicates a
 defect separately from its remedy.
+
+Amended 2026-09-15 (owner decision). A sub-agent with a separate copy exists for two reasons: to keep two lenses from sharing context, and to keep probes off the reviewed target. A single-lens invocation has nothing to keep apart, so it runs in the invoking session with no sub-agent and no separate copy; the session removes its own probe residue before sealing, and residue is re-cleaned, not hard-stopped, because the tree was clean at the pin and anything new is the session's own. The only remaining seal hard-stop for an in-session lens is a moved HEAD. `all` is unchanged. A harness without sub-agents therefore runs each lens as a separate invocation.
 
 ## Considered options
 
