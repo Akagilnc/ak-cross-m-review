@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.5.2.1 — 2026-10-07
+
+A reviewer's own failed probe command (for example `python: command not found`) no longer hard-stops the lens; the reviewer corrects the command or proves from source and states the limit. The Step 1 failed-command clause now covers only the pin commands of that step. A dirty tree, an unresolved ref, or an empty diff still hard-stops. Fixes #52.
+
 ## 0.5.2.0 — 2026-09-15
 
 A single-lens invocation now runs in the invoking session: no sub-agent, no separate working copy. The session applies the lens prompt, writes its candidate list, removes its own probe residue, and judges; seal residue is re-cleaned rather than hard-stopped, and only a moved HEAD still hard-stops. `all` is unchanged and remains the only path that dispatches sub-agent legs, so a harness without sub-agents invokes each lens separately. The lens prompts no longer assert that the working directory is a harness-provided copy. ADR 0005 amended.
