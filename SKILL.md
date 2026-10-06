@@ -54,7 +54,7 @@ Run from the target repository:
 4. Run the frozen log command and require the frozen diff command to produce a
    non-empty diff.
 
-A dirty tree, unresolved required ref, unexpected failed command, or empty diff is a `hard-stop`. Record the exact failing command and its native output in one sentence.
+A dirty tree, unresolved required ref, a failed command in this step, or empty diff is a `hard-stop`. Record the exact failing command and its native output in one sentence.
 
 Completion criterion: clean status, literal pin values, and one non-empty diff represented by the two frozen commands.
 
@@ -164,7 +164,7 @@ CMR-VERDICT: correctness=converged|findings|hard-stop
 Completeness is `complete` when no live gap or unresolved `unverifiable` row
 remains; otherwise it is `gaps`. Correctness is `converged` when no live defect
 remains; otherwise it is `findings`.
-`hard-stop` means a prerequisite, seal, or leg failure as defined above; Step 1 pin and seal failures apply to every selected lens, while Step 2 and leg failures apply only to that lens. A `--lens` usage error emits no verdict line.
+`hard-stop` means a prerequisite, seal, or leg failure as defined above; Step 1 pin and seal failures apply to every selected lens, while Step 2 and leg failures apply only to that lens. A failed probe command is not a `hard-stop`: correct it, or prove from source and state the limit. A `--lens` usage error emits no verdict line.
 
 Completion criterion: after the single successful seal, every selected lens has an independent judgment or evidenced failure and exactly one labelled verdict;
 or, on an evidenced pin or seal failure, every selected lens carries its labelled `hard-stop`. Stop unconditionally.
