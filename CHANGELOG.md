@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.5.3.0 — 2026-10-24
+
+Completeness now treats a coding-convention guide as authority: the target's lint configuration, CONTRIBUTING or style document, or a supplied style guide. Each rule is a clause checked only against lines the diff adds or changes; Wire and Exercise do not apply, a linter that enforces a rule is run as evidence, and a convention candidate must carry the rewritten line. A supplied guide ranks below the target's own lint configuration and CONTRIBUTING. Correctness is unchanged. On a held-out sindresorhus exam (4 TS/JS questions, codex gpt-6.1-sol high), passing a distilled style guide raised recovered maintainer comments from 4/13 to 8/13 with no loss of correctness or spec-delivery findings.
+
 ## 0.5.2.1 — 2026-10-07
 
 A reviewer's own failed probe command (for example `python: command not found`) no longer hard-stops the lens; the reviewer corrects the command or proves from source and states the limit. The Step 1 failed-command clause now covers only the pin commands of that step. A dirty tree, an unresolved ref, or an empty diff still hard-stops. Fixes #52.
