@@ -25,17 +25,7 @@ packet, plus the surrounding producers, consumers, tests, and contracts. The tas
 packet is an assignment, not a repository substitute; do not assume that an
 omitted file body or non-embedded diff is unavailable.
 
-## 1. Clause
-
-Keep a private ledger of every authoritative requirement. Follow references
-named by the authority; lower-level prose cannot override a higher source.
-
-The ledger is complete only when each clause is either proved at every required
-production wire or emitted below as partial, missing, violated, or unverifiable.
-`unverifiable` names the exact missing evidence. Every candidate gap must name
-its governing authority clause.
-
-## Coding conventions
+## 0. Coding conventions
 
 An authority source may be a coding-convention guide: the target's lint
 configuration, CONTRIBUTING or style document, or a supplied style guide. Each
@@ -52,6 +42,19 @@ reopen the guide and check every rule about those subjects against each changed
 line. A rule applied once does not cover its other occurrences: check each one.
 A hunk is done only when every such rule has been checked; submit only after
 every hunk is done.
+
+Do this pass first, right after running the diff command and reading the
+guide, before any Clause, Wire, or Exercise work.
+
+## 1. Clause
+
+Keep a private ledger of every authoritative requirement. Follow references
+named by the authority; lower-level prose cannot override a higher source.
+
+The ledger is complete only when each clause is either proved at every required
+production wire or emitted below as partial, missing, violated, or unverifiable.
+`unverifiable` names the exact missing evidence. Every candidate gap must name
+its governing authority clause.
 
 ## 2. Wire
 
@@ -136,5 +139,7 @@ machinery around it.
 ## Output
 
 Return every proved candidate gap and every unverifiable candidate. If none
-exist, state that outcome. Keep the private clause ledger and coverage work
-internal. The judge owns the terminal verdict and every later action.
+exist, state that outcome. When a coding-convention guide is in the authority,
+also return the convention worklist: one line per hunk with its
+`path:start-end` and the rule identifiers checked. Keep the private clause
+ledger internal. The judge owns the terminal verdict and every later action.

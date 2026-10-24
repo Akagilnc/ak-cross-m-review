@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.5.3.2 — 2026-10-25
+
+The coding-convention pass now runs first in the completeness lens, before Clause, Wire, and Exercise work, and the lens returns its convention worklist (each hunk with the rule identifiers checked). In the v0.5.3.1 Python exam the lens spent its session on behavior probes and reopened the guide only at the end to fill citations; rule-covered misses rose from 17 to 22.
+
 ## 0.5.3.1 — 2026-10-25
 
 Coding-convention review in the completeness lens is now a hunk worklist: each changed hunk, documentation and tests included, is checked rule by rule against every guide rule about what it contains, every occurrence counts, and the lens submits only after every hunk is done. A changed file that also serves as authority is still reviewed for its changed lines. Prompted by a 40-question Python exam where 12 misses had a rule naming the fix on a line the reviewer had read.
