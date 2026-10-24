@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.5.3.3 — 2026-10-25
+
+The coding-convention pass works rule by rule: it searches the diff for each rule's subject and raises an occurrence when the rule's recommended form would improve it, even if the current form is not wrong. A candidate yields to the surrounding file's consistent local practice, scope rules are judged against the change's stated purpose, and a remedy fixes only what the rule names. The returned convention worklist is removed; in the g2 Python exam it covered every hunk yet listed rule-ID ranges without per-line judgment.
+
 ## 0.5.3.2 — 2026-10-25
 
 The coding-convention pass now runs first in the completeness lens, before Clause, Wire, and Exercise work, and the lens returns its convention worklist (each hunk with the rule identifiers checked). In the v0.5.3.1 Python exam the lens spent its session on behavior probes and reopened the guide only at the end to fill citations; rule-covered misses rose from 17 to 22.
