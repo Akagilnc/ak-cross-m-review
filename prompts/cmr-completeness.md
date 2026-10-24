@@ -43,6 +43,12 @@ line. A rule applied once does not cover its other occurrences: check each one.
 A hunk is done only when every such rule has been checked; submit only after
 every hunk is done.
 
+Before raising a convention candidate, read how the surrounding file or module
+already writes the same thing. When it consistently differs from the guide, the
+local practice governs and there is no candidate. Judge a rule about change
+scope against the change's stated purpose: moves, renames, and cleanup that the
+purpose covers are in scope. A remedy fixes only what the rule names.
+
 Do this pass first, right after running the diff command and reading the
 guide, before any Clause, Wire, or Exercise work.
 
