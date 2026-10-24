@@ -41,9 +41,17 @@ An authority source may be a coding-convention guide: the target's lint
 configuration, CONTRIBUTING or style document, or a supplied style guide. Each
 of its rules is a clause that applies only to lines the diff adds or changes;
 pre-existing code is out of scope. Wire and Exercise do not apply to these
-clauses. Read every changed line against every applicable rule, and when the
-target's linter enforces a rule, run it on the changed files and use its output
-as evidence.
+clauses; when the target's linter enforces a rule, run it on the changed files
+and use its output as evidence.
+
+Treat the diff as a worklist of hunks, documentation, comments, messages, and
+tests included; a file the diff changes is reviewed for its changed lines even
+when it also serves as authority. For each hunk, list what it contains (names,
+signatures, messages, comments, docstrings, assertions, prose sentences), then
+reopen the guide and check every rule about those subjects against each changed
+line. A rule applied once does not cover its other occurrences: check each one.
+A hunk is done only when every such rule has been checked; submit only after
+every hunk is done.
 
 ## 2. Wire
 
