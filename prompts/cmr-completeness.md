@@ -35,6 +35,16 @@ production wire or emitted below as partial, missing, violated, or unverifiable.
 `unverifiable` names the exact missing evidence. Every candidate gap must name
 its governing authority clause.
 
+## Coding conventions
+
+An authority source may be a coding-convention guide: the target's lint
+configuration, CONTRIBUTING or style document, or a supplied style guide. Each
+of its rules is a clause that applies only to lines the diff adds or changes;
+pre-existing code is out of scope. Wire and Exercise do not apply to these
+clauses. Read every changed line against every applicable rule, and when the
+target's linter enforces a rule, run it on the changed files and use its output
+as evidence.
+
 ## 2. Wire
 
 For each executable clause that appears delivered, trace the real wire:
@@ -100,6 +110,10 @@ evidence: ledger row, files read, commands/probes, and observed result
 severity_hint: impact if the judge establishes the gap
 remedy: optional; omit when uncertain
 ```
+
+For a coding-convention candidate, `location` is the changed line,
+`failure scenario` names the rule it breaks, and `remedy` is required: the
+rewritten line.
 
 Even an absence needs both real anchors: the authority repository `path:line` or
 task-packet `source-label:line` that requires the behavior, and the nearest

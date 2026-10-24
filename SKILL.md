@@ -69,7 +69,9 @@ Freeze one ordered authority set before dispatch:
 4. surrounding code as evidence of an established contract only.
 
 Follow references named by higher authority; lower authority cannot override
-higher authority. List repository authority by relative path. Put exact
+higher authority. A supplied coding-convention guide ranks below the target's
+own lint configuration and CONTRIBUTING wherever it appears in the list. List
+repository authority by relative path. Put exact
 user-supplied text in the brief under a stable label such as
 `user-authority-1`, with stable line addresses.
 
