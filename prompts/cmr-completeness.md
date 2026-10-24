@@ -34,14 +34,20 @@ pre-existing code is out of scope. Wire and Exercise do not apply to these
 clauses; when the target's linter enforces a rule, run it on the changed files
 and use its output as evidence.
 
-Treat the diff as a worklist of hunks, documentation, comments, messages, and
-tests included; a file the diff changes is reviewed for its changed lines even
-when it also serves as authority. For each hunk, list what it contains (names,
-signatures, messages, comments, docstrings, assertions, prose sentences), then
-reopen the guide and check every rule about those subjects against each changed
-line. A rule applied once does not cover its other occurrences: check each one.
-A hunk is done only when every such rule has been checked; submit only after
-every hunk is done.
+Work rule by rule, not hunk by hunk. For each rule, find every added or changed
+line where its subject occurs (names, signatures, messages, imports, containers,
+comments, docstrings, assertions, prose sentences) by searching the diff output,
+not by recall; a file the diff changes is searched even when it also serves as
+authority. For each occurrence, ask whether the form the rule recommends, or its
+"after" example, would improve that line. A rule recommends as well as forbids:
+an occurrence its recommended form would improve is a candidate even when the
+current form is not wrong.
+
+Before raising a convention candidate, read how the surrounding file or module
+already writes the same thing. When it consistently differs from the guide, the
+local practice governs and there is no candidate. Judge a rule about change
+scope against the change's stated purpose: moves, renames, and cleanup that the
+purpose covers are in scope. A remedy fixes only what the rule names.
 
 Do this pass first, right after running the diff command and reading the
 guide, before any Clause, Wire, or Exercise work.
@@ -139,7 +145,5 @@ machinery around it.
 ## Output
 
 Return every proved candidate gap and every unverifiable candidate. If none
-exist, state that outcome. When a coding-convention guide is in the authority,
-also return the convention worklist: one line per hunk with its
-`path:start-end` and the rule identifiers checked. Keep the private clause
-ledger internal. The judge owns the terminal verdict and every later action.
+exist, state that outcome. Keep the private clause ledger and coverage work
+internal. The judge owns the terminal verdict and every later action.
