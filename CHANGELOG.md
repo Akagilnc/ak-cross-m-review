@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## 0.5.3.5 — 2026-10-25
+
+Reverts the 0.5.3.4 trial (convention pass writes the rule's form per occurrence; no self-refutation of a rewrite). On 20 Python PRs (50 actionable maintainer comments, completeness lens, same factory, model, and guides as the 0.5.3.3 baseline), a blind grader scored 0.5.3.4 at 24.5 against 25.5, and neither recovered any of the 8 misses stable across earlier rounds. The prompt is back to 0.5.3.3.
+
 ## 0.5.3.3 — 2026-10-25
 
 The coding-convention pass works rule by rule: it searches the diff for each rule's subject and raises an occurrence when the rule's recommended form would improve it, even if the current form is not wrong. A candidate yields to the surrounding file's consistent local practice, scope rules are judged against the change's stated purpose, and a remedy fixes only what the rule names. The returned convention worklist is removed; in the g2 Python exam it covered every hunk yet listed rule-ID ranges without per-line judgment.
