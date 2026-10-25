@@ -139,6 +139,10 @@ A candidate the four reasons cannot dispose stays `live`, and the report names t
 
 A real defect stays live when only its proposed remedy is rejected.
 
+A coding-convention candidate in the `rewritten` state stays `live` unless its
+location, quoted line, or rule citation is false (`not_established`); whether
+the rewrite is worth taking is the caller's call, not this judgment.
+
 These are the four lawful rejection reasons: `unconstitutional` conflicts with
 ratified authority; `over_defense` adds an unjustified guard; `not_established`
 lacks proof in the fixed target; `scope_creep` applies only when a remedy

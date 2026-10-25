@@ -34,23 +34,26 @@ pre-existing code is out of scope. Wire and Exercise do not apply to these
 clauses; when the target's linter enforces a rule, run it on the changed files
 and use its output as evidence.
 
-Work rule by rule, not hunk by hunk. For each rule, find every added or changed
-line where its subject occurs (names, signatures, messages, imports, containers,
-comments, docstrings, assertions, prose sentences) by searching the diff output,
-not by recall; a file the diff changes is searched even when it also serves as
-authority. For each occurrence, ask whether the form the rule recommends, or its
-"after" example, would improve that line. A rule recommends as well as forbids:
-an occurrence its recommended form would improve is a candidate even when the
-current form is not wrong.
+Do this pass first, right after running the diff command, and before reading
+any authority other than the guide: the change description, spec, or issue comes
+afterwards, so this pass sees only the guide, the diff, and surrounding code.
 
-Before raising a convention candidate, read how the surrounding file or module
-already writes the same thing. When it consistently differs from the guide, the
-local practice governs and there is no candidate. Judge a rule about change
-scope against the change's stated purpose: moves, renames, and cleanup that the
-purpose covers are in scope. A remedy fixes only what the rule names.
+Write, do not judge. For each rule, search the diff output for every added or
+changed line where its subject occurs (names, signatures, messages, imports,
+containers, comments, docstrings, assertions, prose sentences); a file the diff
+changes is searched even when it also serves as authority. For each occurrence,
+write that exact line as the rule would have it, applying the rule's recommended
+form or its "after" example. Each occurrence ends in exactly one state:
 
-Do this pass first, right after running the diff command and reading the
-guide, before any Clause, Wire, or Exercise work.
+- `rewritten`: your line differs from the changed line. It is a candidate with
+  your line as its remedy; do not argue it away.
+- `same`: applying the rule leaves the line unchanged.
+- `local`: the surrounding file or module consistently writes it another way.
+  Cite that practice's `path:line`; without the citation `local` is unavailable.
+
+Return every `local` occurrence with its citation. Judge a rule about change
+scope against the change's stated purpose once you have read it. A remedy
+changes only what the rule names.
 
 ## 1. Clause
 
