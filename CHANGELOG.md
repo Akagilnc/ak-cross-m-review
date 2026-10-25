@@ -4,10 +4,6 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is the gstack
 4-digit `MAJOR.MINOR.PATCH.MICRO` scheme.
 
-## 0.5.3.4 — 2026-10-25
-
-Experimental, on trial in the factory. The coding-convention pass runs before the change description is read and writes, for each rule occurrence, the line as the rule would have it: a differing line is a candidate (`rewritten`), an unchanged one is `same`, and `local` requires a `path:line` citation of local practice. The in-session judge may refute a `rewritten` candidate only as `not_established`. Modeled on the notary and secretariat fixes in ak-pi-workflow-roles. Reverted if a 20-PR factory run against the g3 baseline shows no gain.
-
 ## 0.5.3.3 — 2026-10-25
 
 The coding-convention pass works rule by rule: it searches the diff for each rule's subject and raises an occurrence when the rule's recommended form would improve it, even if the current form is not wrong. A candidate yields to the surrounding file's consistent local practice, scope rules are judged against the change's stated purpose, and a remedy fixes only what the rule names. The returned convention worklist is removed; in the g2 Python exam it covered every hunk yet listed rule-ID ranges without per-line judgment.
